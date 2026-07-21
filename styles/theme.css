@@ -1,0 +1,35 @@
+:root {
+  --background: oklch(0.105 0.009 25);
+  --foreground: oklch(0.97 0.004 285);
+  --card: oklch(0.155 0.012 25);
+  --card-foreground: oklch(0.97 0.004 285);
+  --popover: oklch(0.17 0.014 25);
+  --popover-foreground: oklch(0.97 0.004 285);
+  --primary: oklch(0.61 0.225 25);
+  --primary-foreground: oklch(0.985 0.002 25);
+  --secondary: oklch(0.205 0.014 25);
+  --secondary-foreground: oklch(0.94 0.004 285);
+  --muted: oklch(0.19 0.012 25);
+  --muted-foreground: oklch(0.7 0.012 25);
+  --accent: oklch(0.245 0.055 25);
+  --accent-foreground: oklch(0.97 0.006 25);
+  --destructive: oklch(0.65 0.2 25);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 12%);
+  --ring: oklch(0.65 0.21 25);
+
+  --container-max: 76rem;
+  --container-gutter: clamp(1rem, 3vw, 2rem);
+  --section-space: clamp(4.5rem, 10vw, 8rem);
+  --header-height: 4rem;
+
+  --tracking-display: -0.04em;
+  --tracking-heading: -0.025em;
+  --leading-display: 0.98;
+  --leading-body: 1.65;
+
+  --radius: 0.75rem;
+  --blur-glass: 1rem;
+  --elevation-soft: 0 1px 2px oklch(0 0 0 / 18%), 0 16px 48px oklch(0 0 0 / 20%);
+  --elevation-glow: 0 0 64px oklch(0.58 0.22 25 / 20%);
+}
