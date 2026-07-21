@@ -4,9 +4,7 @@ import {
   ArrowRight,
   BadgeCheck,
   BriefcaseBusiness,
-  Crown,
   FileText,
-  Headphones,
   History,
   LayoutDashboard,
   ShieldCheck,
@@ -30,15 +28,15 @@ const content = {
   player: {
     title: "Ваше пространство игрока",
     description:
-      "После создания профиля вам будут доступны основные возможности VX House в одном личном пространстве.",
+      "Предварительный состав будущего пространства. Фактическая доступность будет зависеть от страны, партнёров и подтверждённого профиля.",
     spaceLabel: "Личное пространство",
-    status: "Сценарий подготовлен",
+    status: "Предварительный состав",
     featuredIcon: LayoutDashboard,
     features: [
       {
-        title: "Личный кабинет",
+        title: "Персональный маршрут",
         description:
-          "Статус профиля, доступные функции и важные обновления в одном месте.",
+          "Доступные условия, инструкции и следующий шаг в одном контексте.",
         icon: LayoutDashboard,
       },
       {
@@ -48,9 +46,9 @@ const content = {
         icon: Sparkles,
       },
       {
-        title: "Поддержка",
-        description: "Прямой доступ к сопровождению и истории обращений.",
-        icon: Headphones,
+        title: "Проверка результата",
+        description: "Понятный статус отправленного результата и причина решения.",
+        icon: BadgeCheck,
       },
       {
         title: "История активности",
@@ -59,23 +57,23 @@ const content = {
         icon: History,
       },
       {
-        title: "Привилегии участника",
+        title: "Подтверждённые преимущества",
         description:
-          "Уровень, доступные преимущества и новые возможности аккаунта.",
-        icon: Crown,
+          "Только фактически подтверждённые условия без смешивания с прогрессом.",
+        icon: ShieldCheck,
       },
     ],
   },
   partner: {
     title: "Ваше партнёрское пространство",
     description:
-      "После создания профиля вы получите единое пространство для управления сотрудничеством с VX House.",
+      "Предварительный состав будущего пространства. Партнёрская роль и доступные материалы могут потребовать ручного подтверждения.",
     spaceLabel: "Партнёрское пространство",
-    status: "Сценарий подготовлен",
+    status: "Предварительный состав",
     featuredIcon: BriefcaseBusiness,
     features: [
       {
-        title: "Партнёрский кабинет",
+        title: "Партнёрский маршрут",
         description:
           "Основная информация о сотрудничестве, статусах и доступных действиях.",
         icon: BriefcaseBusiness,
@@ -92,10 +90,10 @@ const content = {
         icon: Workflow,
       },
       {
-        title: "Поддержка партнёров",
+        title: "Инструкции и материалы",
         description:
-          "Прямая связь с командой VX House по вопросам сотрудничества.",
-        icon: Headphones,
+          "Применимые к роли и стране рабочие материалы в одном контексте.",
+        icon: FileText,
       },
       {
         title: "История активности",
@@ -183,7 +181,7 @@ export function AccessBenefitsStep({
               </div>
               <div className={styles.benefitSecurity}>
                 <ShieldCheck aria-hidden="true" />
-                <span>Доступ защищён</span>
+                <span>Доступность уточняется</span>
               </div>
             </motion.article>
 
@@ -216,7 +214,7 @@ export function AccessBenefitsStep({
           className={styles.benefitsContinue}
           onClick={onContinue}
         >
-          Продолжить создание пространства
+          Продолжить
           <ArrowRight aria-hidden="true" />
         </Button>
         <button type="button" className={styles.stepBackButton} onClick={onBack}>

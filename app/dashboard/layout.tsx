@@ -4,8 +4,8 @@ import { DashboardShell } from "@/components/dashboard/dashboard-shell";
 import styles from "@/app/dashboard/dashboard.module.css";
 
 export const metadata: Metadata = {
-  title: "Личное пространство",
-  description: "Демонстрационный личный кабинет VX House для игроков и партнёров.",
+  title: "Кабинет игрока",
+  description: "Демонстрационный кабинет игрока VX House с прозрачным отображением будущего прогресса.",
   robots: { index: false, follow: false },
 };
 

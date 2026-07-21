@@ -1,3 +1,10 @@
+export { Benefits } from "./benefits";
+export { Faq } from "./faq";
 export { Hero } from "./hero";
+export { HowItWorks } from "./how-it-works";
 export { InsidePlatform } from "./inside-platform";
+export { ProductModel } from "./product-model";
+export { PublicSection } from "./public-section";
+export { Responsibility } from "./responsibility";
 export { Section } from "./section";
+export { SiteFooter } from "./site-footer";

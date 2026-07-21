@@ -5,7 +5,7 @@ import { AccessFlow } from "@/components/access/access-flow";
 export const metadata: Metadata = {
   title: "Получение доступа",
   description:
-    "Начало безопасного пути к личному пространству VX House.",
+    "Выберите роль, страну и языковое предпочтение, чтобы подготовить сценарий получения доступа к VX House.",
   robots: {
     index: false,
     follow: false,

@@ -39,20 +39,20 @@ export function InsidePlatform() {
           className="inside-platform__eyebrow"
         >
           <LayoutDashboard aria-hidden="true" />
-          <span>Что внутри VX House</span>
+          <span>Единое пространство</span>
         </motion.div>
 
         <motion.h2
           variants={prefersReducedMotion ? undefined : fadeUp}
           id="inside-platform-title"
         >
-          Всё необходимое — в одном месте
+          Контекст не теряется между шагами
         </motion.h2>
 
         <motion.p variants={prefersReducedMotion ? undefined : fadeUp}>
-          Единое пространство для управления профилем, персональными условиями,
-          поддержкой и взаимодействием с платформой. Важные статусы и события
-          всегда собраны в понятном личном кабинете.
+          Возможность, инструкция, действие у партнёра и проверка результата
+          связаны в один маршрут. Интерфейс показывает состояние процесса и
+          объясняет, что произойдёт дальше.
         </motion.p>
 
         <motion.div variants={prefersReducedMotion ? undefined : fadeUp}>

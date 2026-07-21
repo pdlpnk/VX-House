@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Gift, Headphones, ShieldCheck, Sparkles } from "lucide-react";
+import { ArrowRight, Check, FileCheck2, ListChecks, ShieldCheck } from "lucide-react";
 
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
 
@@ -9,7 +9,7 @@ export function HeroVisual() {
   const prefersReducedMotion = useReducedMotion();
 
   return (
-    <div className="hero-visual" aria-hidden="true">
+    <div className="hero-visual" role="img" aria-label="Пример прозрачного маршрута в VX House">
       <div className="ecosystem-halo" />
       <div className="ecosystem-orbit ecosystem-orbit--outer" />
       <div className="ecosystem-orbit ecosystem-orbit--inner" />
@@ -33,24 +33,26 @@ export function HeroVisual() {
       >
         <div className="account-panel__shine" />
         <div className="account-panel__header">
-          <div className="account-panel__avatar">VX</div>
+          <div className="account-panel__avatar"><ListChecks /></div>
           <div>
-            <p>Личный кабинет</p>
-            <span><ShieldCheck /> Профиль защищён</span>
+            <p>Маршрут в VX House</p>
+            <span><ShieldCheck /> Условия видны заранее</span>
           </div>
-          <div className="account-panel__status">Активен</div>
+          <div className="account-panel__status">Пример</div>
         </div>
 
-        <div className="account-panel__balance">
-          <span>Баланс привилегий</span>
-          <strong>12 480</strong>
-          <div className="account-panel__progress"><span /></div>
+        <div className="account-panel__route">
+          <div><span><Check /></span><p>Возможность</p></div>
+          <ArrowRight />
+          <div><span><Check /></span><p>Инструкция</p></div>
+          <ArrowRight />
+          <div data-current><span><FileCheck2 /></span><p>Проверка</p></div>
         </div>
 
-        <div className="account-panel__metrics">
-          <div><span>Уровень</span><strong>Прайм</strong></div>
-          <div><span>Награды</span><strong>8</strong></div>
-          <div><span>Поддержка</span><strong>24/7</strong></div>
+        <div className="account-panel__note">
+          <span>Следующий шаг</span>
+          <strong>Отправить результат на проверку</strong>
+          <small>Итог становится подтверждённым только после проверки VX House.</small>
         </div>
       </motion.div>
 
@@ -64,8 +66,8 @@ export function HeroVisual() {
           y: { duration: 5.8, delay: 0.7, repeat: Infinity, ease: "easeInOut" },
         }}
       >
-        <span className="reward-card__icon"><Gift /></span>
-        <span><small>Новое преимущество</small><strong>+ 1 250</strong></span>
+        <span className="reward-card__icon"><FileCheck2 /></span>
+        <span><small>Результат</small><strong>Проверяется прозрачно</strong></span>
       </motion.div>
 
       <motion.div
@@ -78,29 +80,9 @@ export function HeroVisual() {
           y: { duration: 6.4, repeat: Infinity, ease: "easeInOut" },
         }}
       >
-        <Sparkles />
-        <span><small>Особые условия</small><strong>Подключены</strong></span>
+        <ListChecks />
+        <span><small>Перед действием</small><strong>Понятная инструкция</strong></span>
       </motion.div>
-
-      <motion.div
-        className="support-node"
-        initial={prefersReducedMotion ? false : { opacity: 0, scale: 0.7 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.6, delay: 0.75, ease: [0.22, 1, 0.36, 1] }}
-      >
-        <Headphones />
-      </motion.div>
-
-      <motion.div
-        className="vx-token vx-token--one"
-        animate={prefersReducedMotion ? undefined : { y: [0, -7, 0], rotate: [8, 13, 8] }}
-        transition={{ duration: 6.2, repeat: Infinity, ease: "easeInOut" }}
-      ><span>VX</span></motion.div>
-      <motion.div
-        className="vx-token vx-token--two"
-        animate={prefersReducedMotion ? undefined : { y: [0, 6, 0], rotate: [-12, -6, -12] }}
-        transition={{ duration: 7.1, repeat: Infinity, ease: "easeInOut" }}
-      ><span>VX</span></motion.div>
     </div>
   );
 }

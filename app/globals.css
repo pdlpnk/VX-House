@@ -3,6 +3,7 @@
 @import "../styles/effects.css";
 @import "../styles/hero.css";
 @import "../styles/platform.css";
+@import "../styles/public.css";
 
 @theme inline {
   --color-background: var(--background);
@@ -72,7 +73,7 @@
   }
 
   .skip-link {
-    @apply fixed left-4 top-4 z-[100] -translate-y-20 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-transform focus:translate-y-0;
+    @apply fixed left-4 top-4 z-[100] flex min-h-11 -translate-y-20 items-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-transform focus:translate-y-0;
   }
 }
 

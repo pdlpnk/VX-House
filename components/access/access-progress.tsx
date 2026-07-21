@@ -2,11 +2,12 @@ import styles from "@/app/access/access.module.css";
 
 const stepLabels = [
   "Знакомство",
-  "Сценарий",
-  "Возможности",
-  "Профиль",
-  "Подготовка",
-  "Готово",
+  "Роль",
+  "Пространство",
+  "Рынок",
+  "Контакт",
+  "Подтверждение",
+  "Следующий шаг",
 ] as const;
 
 type AccessProgressProps = {
@@ -24,6 +25,7 @@ export function AccessProgress({ currentStep }: AccessProgressProps) {
       aria-valuemin={1}
       aria-valuemax={stepLabels.length}
       aria-valuenow={currentStep}
+      aria-valuetext={`${currentLabel}. Шаг ${currentStep} из ${stepLabels.length}`}
     >
       <div className={styles.progressText}>
         <strong>Шаг {currentStep} из {stepLabels.length}</strong>

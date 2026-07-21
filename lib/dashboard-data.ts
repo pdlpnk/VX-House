@@ -1,89 +1,43 @@
-export type DashboardRole = "player" | "partner";
-
-export type DashboardProfile = {
-  name: string;
-  email: string;
-  role: DashboardRole;
-  createdAt: string;
+export type DashboardPreferences = {
+  displayName: string;
   reducedMotion: boolean;
-  demoMode: boolean;
-  notificationsEnabled: boolean;
 };
 
-export const DASHBOARD_STORAGE_KEY = "vx-house-dashboard";
+export const DASHBOARD_PREFERENCES_KEY = "vx-house-player-dashboard-preferences";
 
-export const defaultDashboardProfile: DashboardProfile = {
-  name: "Алексей",
-  email: "alexey@vxhouse.demo",
-  role: "player",
-  createdAt: "15 июля 2026",
+export const defaultDashboardPreferences: DashboardPreferences = {
+  displayName: "Демо-профиль",
   reducedMotion: false,
-  demoMode: true,
-  notificationsEnabled: true,
 };
 
-export function isDashboardRole(value: unknown): value is DashboardRole {
-  return value === "player" || value === "partner";
+function pickDisplayName(value: unknown, fallback: DashboardPreferences) {
+  return typeof value === "string" && value.trim()
+    ? value.trim().slice(0, 48)
+    : fallback.displayName;
 }
 
-function pickString(value: unknown, fallback: string) {
-  return typeof value === "string" && value.trim() ? value.trim() : fallback;
-}
+export function readDashboardPreferences(
+  storageKey = DASHBOARD_PREFERENCES_KEY,
+  fallback = defaultDashboardPreferences,
+): DashboardPreferences {
+  if (typeof window === "undefined") return fallback;
 
-function readJson(key: string): Record<string, unknown> | null {
   try {
-    const value = window.localStorage.getItem(key);
-    if (!value) return null;
+    const value = window.localStorage.getItem(storageKey);
+    if (!value) return fallback;
+
     const parsed: unknown = JSON.parse(value);
-    return parsed && typeof parsed === "object" ? parsed as Record<string, unknown> : null;
+    if (!parsed || typeof parsed !== "object") return fallback;
+
+    const source = parsed as Partial<DashboardPreferences>;
+    return {
+      displayName: pickDisplayName(source.displayName, fallback),
+      reducedMotion:
+        typeof source.reducedMotion === "boolean"
+          ? source.reducedMotion
+          : fallback.reducedMotion,
+    };
   } catch {
-    return null;
+    return fallback;
   }
-}
-
-export function readDashboardProfile(): DashboardProfile {
-  if (typeof window === "undefined") return defaultDashboardProfile;
-
-  const saved = readJson(DASHBOARD_STORAGE_KEY);
-  const onboarding = readJson("vx-house-onboarding") ?? readJson("vx-house-access");
-  const source = saved ?? onboarding ?? {};
-  const storedRole = source.role ?? source.scenario ?? source.selectedScenario;
-  const individualRole = window.localStorage.getItem("vx-house-scenario");
-
-  return {
-    name: pickString(
-      source.name ?? window.localStorage.getItem("vx-house-name"),
-      defaultDashboardProfile.name,
-    ),
-    email: pickString(
-      source.email ?? window.localStorage.getItem("vx-house-email"),
-      defaultDashboardProfile.email,
-    ),
-    role: isDashboardRole(storedRole)
-      ? storedRole
-      : isDashboardRole(individualRole)
-        ? individualRole
-        : defaultDashboardProfile.role,
-    createdAt: pickString(source.createdAt, defaultDashboardProfile.createdAt),
-    reducedMotion:
-      typeof source.reducedMotion === "boolean"
-        ? source.reducedMotion
-        : defaultDashboardProfile.reducedMotion,
-    demoMode:
-      typeof source.demoMode === "boolean"
-        ? source.demoMode
-        : defaultDashboardProfile.demoMode,
-    notificationsEnabled:
-      typeof source.notificationsEnabled === "boolean"
-        ? source.notificationsEnabled
-        : defaultDashboardProfile.notificationsEnabled,
-  };
-}
-
-export function roleLabel(role: DashboardRole) {
-  return role === "partner" ? "Партнёр VX House" : "Участник VX House";
-}
-
-export function roleShortLabel(role: DashboardRole) {
-  return role === "partner" ? "Партнёр" : "Игрок";
 }

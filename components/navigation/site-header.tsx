@@ -9,7 +9,8 @@ import { Button } from "@/components/ui/button";
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
 
 const navigation = [
-  { label: "О платформе", href: "#platform" },
+  { label: "О платформе", href: "#model" },
+  { label: "Как это работает", href: "#process" },
   { label: "Вопросы", href: "#faq" },
 ] as const;
 

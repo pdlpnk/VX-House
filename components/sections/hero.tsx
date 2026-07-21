@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ArrowDown, ArrowRight, Layers3 } from "lucide-react";
+import { ArrowDown, ArrowRight, Network } from "lucide-react";
 
 import { Container } from "@/components/container";
 import { HeroVisual } from "@/components/hero-visual";
@@ -32,24 +32,24 @@ export function Hero() {
           className="mx-auto flex max-w-2xl flex-col items-center text-center lg:mx-0 lg:items-start lg:text-left"
         >
           <motion.div variants={prefersReducedMotion ? undefined : fadeUp} className="hero-badge">
-            <Layers3 aria-hidden="true" />
-            <span>Закрытая платформа VX House</span>
+            <Network aria-hidden="true" />
+            <span>Платформа лояльности и сотрудничества</span>
           </motion.div>
 
           <motion.h1
             variants={prefersReducedMotion ? undefined : fadeUp}
             id="hero-title"
-            className="mt-7 max-w-[12ch] text-balance text-[clamp(3.25rem,8.2vw,7rem)] font-semibold leading-[0.94] tracking-[var(--tracking-display)] text-foreground"
+            className="mt-7 max-w-[13ch] text-balance text-[clamp(3.1rem,6.5vw,5.75rem)] font-semibold leading-[0.95] tracking-[var(--tracking-display)] text-foreground"
           >
-            Единая платформа для игроков и партнёров.
+            Понятный путь к персональным условиям.
           </motion.h1>
 
           <motion.p
             variants={prefersReducedMotion ? undefined : fadeUp}
             className="mt-7 max-w-xl text-pretty text-base leading-7 text-muted-foreground sm:text-lg sm:leading-8"
           >
-            Особые условия, вознаграждения, личный кабинет и прямое
-            сопровождение — в одной защищённой экосистеме.
+            VX House объединяет инструкции, взаимодействие с партнёрскими
+            сервисами и прозрачную проверку результата в одном пространстве.
           </motion.p>
 
           <motion.div
@@ -72,7 +72,7 @@ export function Hero() {
               variant="outline"
               className="rounded-xl border-white/10 bg-white/[0.035] backdrop-blur-md"
             >
-              <a href="#platform">Изучить платформу</a>
+              <a href="#process">Как это работает</a>
             </Button>
           </motion.div>
         </motion.div>
@@ -88,8 +88,8 @@ export function Hero() {
       </Container>
 
       <motion.a
-        href="#platform"
-        aria-label="Прокрутить к обзору платформы"
+        href="#model"
+        aria-label="Прокрутить к описанию платформы"
         initial={prefersReducedMotion ? false : { opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 1, duration: 0.6 }}

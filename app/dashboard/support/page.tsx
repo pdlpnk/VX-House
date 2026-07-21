@@ -1,5 +1,5 @@
-import { DashboardSupportPage } from "@/components/dashboard/pages/dashboard-support-page";
+import { SupportCenter } from "@/components/support/support-center";
 
 export default function SupportPage() {
-  return <DashboardSupportPage />;
+  return <SupportCenter role="player" basePath="/dashboard/support" />;
 }

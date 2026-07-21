@@ -4,58 +4,61 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import {
-  DASHBOARD_STORAGE_KEY,
-  type DashboardProfile,
-  defaultDashboardProfile,
-  readDashboardProfile,
+  DASHBOARD_PREFERENCES_KEY,
+  type DashboardPreferences,
+  defaultDashboardPreferences,
+  readDashboardPreferences,
 } from "@/lib/dashboard-data";
 
 type DashboardContextValue = {
-  profile: DashboardProfile;
-  updateProfile: (updates: Partial<DashboardProfile>) => void;
-  resetProfile: () => void;
+  preferences: DashboardPreferences;
+  updatePreferences: (updates: Partial<DashboardPreferences>) => void;
+  resetPreferences: () => void;
   shouldReduceMotion: boolean;
 };
 
 const DashboardContext = createContext<DashboardContextValue | null>(null);
 
-export function DashboardProvider({ children }: { children: React.ReactNode }) {
+export function DashboardProvider({
+  children,
+  storageKey = DASHBOARD_PREFERENCES_KEY,
+  defaultPreferences = defaultDashboardPreferences,
+}: {
+  children: React.ReactNode;
+  storageKey?: string;
+  defaultPreferences?: DashboardPreferences;
+}) {
   const systemReducedMotion = useReducedMotion();
-  const [profile, setProfile] = useState<DashboardProfile>(defaultDashboardProfile);
+  const [preferences, setPreferences] = useState<DashboardPreferences>(defaultPreferences);
 
   useEffect(() => {
-    const frame = window.requestAnimationFrame(() => setProfile(readDashboardProfile()));
+    const frame = window.requestAnimationFrame(() => {
+      setPreferences(readDashboardPreferences(storageKey, defaultPreferences));
+    });
     return () => window.cancelAnimationFrame(frame);
-  }, []);
+  }, [defaultPreferences, storageKey]);
 
-  const persist = useCallback((nextProfile: DashboardProfile) => {
-    setProfile(nextProfile);
-    window.localStorage.setItem(DASHBOARD_STORAGE_KEY, JSON.stringify(nextProfile));
-  }, []);
+  const updatePreferences = useCallback((updates: Partial<DashboardPreferences>) => {
+    setPreferences((current) => {
+      const next = { ...current, ...updates };
+      window.localStorage.setItem(storageKey, JSON.stringify(next));
+      return next;
+    });
+  }, [storageKey]);
 
-  const updateProfile = useCallback(
-    (updates: Partial<DashboardProfile>) => {
-      setProfile((currentProfile) => {
-        const nextProfile = { ...currentProfile, ...updates };
-        window.localStorage.setItem(DASHBOARD_STORAGE_KEY, JSON.stringify(nextProfile));
-        return nextProfile;
-      });
-    },
-    [],
-  );
-
-  const resetProfile = useCallback(() => {
-    persist(defaultDashboardProfile);
-  }, [persist]);
+  const resetPreferences = useCallback(() => {
+    setPreferences(defaultPreferences);
+    window.localStorage.removeItem(storageKey);
+  }, [defaultPreferences, storageKey]);
 
   const value = useMemo(
     () => ({
-      profile,
-      updateProfile,
-      resetProfile,
-      shouldReduceMotion: systemReducedMotion || profile.reducedMotion,
+      preferences,
+      updatePreferences,
+      resetPreferences,
+      shouldReduceMotion: systemReducedMotion || preferences.reducedMotion,
     }),
-    [profile, resetProfile, systemReducedMotion, updateProfile],
+    [preferences, resetPreferences, systemReducedMotion, updatePreferences],
   );
 
   return <DashboardContext.Provider value={value}>{children}</DashboardContext.Provider>;

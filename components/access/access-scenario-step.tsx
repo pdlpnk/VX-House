@@ -1,11 +1,12 @@
 import { motion } from "framer-motion";
-import { ArrowLeft, Check, Gamepad2, Handshake } from "lucide-react";
+import { ArrowLeft, Check, CircleUserRound, Handshake } from "lucide-react";
 
 import styles from "@/app/access/access.module.css";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import type { AccessScenario } from "@/lib/access-draft";
 
-export type AccessScenario = "player" | "partner";
+export type { AccessScenario } from "@/lib/access-draft";
 
 type AccessScenarioStepProps = {
   selectedScenario: AccessScenario | null;
@@ -20,15 +21,15 @@ const scenarios = [
     id: "player" as const,
     title: "Игрок",
     description:
-      "Получите доступ к личному кабинету, специальным условиям, сопровождению и возможностям платформы.",
-    icon: Gamepad2,
+      "Персональные условия, инструкции и прозрачная история взаимодействия с партнёрскими сервисами.",
+    icon: CircleUserRound,
     number: "01",
   },
   {
     id: "partner" as const,
     title: "Партнёр",
     description:
-      "Используйте инструменты сотрудничества, поддержку и управление партнёрским взаимодействием.",
+      "Условия сотрудничества, рабочие материалы и понятные статусы взаимодействия с VX House.",
     icon: Handshake,
     number: "02",
   },
@@ -47,8 +48,8 @@ export function AccessScenarioStep({
         <span className={styles.scenarioEyebrow}>Персональное пространство</span>
         <h1 tabIndex={-1}>Выберите подходящий сценарий</h1>
         <p>
-          Это поможет подготовить пространство VX House именно под ваши задачи.
-          Вы всегда сможете изменить выбор позже.
+          Роль определит состав будущего пространства. Партнёрский доступ может
+          потребовать отдельного подтверждения после подключения авторизации.
         </p>
       </div>
 

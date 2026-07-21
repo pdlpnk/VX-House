@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { ArrowRight, Clock3, KeyRound, ShieldCheck } from "lucide-react";
+import { ArrowRight, CheckCircle2, KeyRound, MapPin } from "lucide-react";
 import Link from "next/link";
 
 import styles from "@/app/access/access.module.css";
@@ -28,7 +28,7 @@ export function AccessWelcomeStep({ onStart, reducedMotion }: AccessWelcomeStepP
         className={styles.eyebrow}
       >
         <KeyRound aria-hidden="true" />
-        <span>Приватный доступ</span>
+        <span>Получение доступа</span>
       </motion.div>
 
       <motion.h1
@@ -43,15 +43,17 @@ export function AccessWelcomeStep({ onStart, reducedMotion }: AccessWelcomeStepP
         variants={reducedMotion ? undefined : fadeUp}
         className={styles.description}
       >
-        Здесь начинается ваше личное пространство. Выберите подходящий сценарий,
-        подтвердите контакт — и мы подготовим кабинет с нужными возможностями.
+        VX House — платформа лояльности и сотрудничества для совершеннолетних
+        пользователей в Турции и Азербайджане. Этот короткий сценарий поможет
+        определить роль, рынок и предпочтительный язык.
       </motion.p>
 
       <motion.p
         variants={reducedMotion ? undefined : fadeUp}
         className={styles.duration}
       >
-        Около двух минут. Без пароля и длинной анкеты.
+        Аккаунт пока не создаётся. Перед отправкой данных потребуется настоящая
+        авторизация и подтверждение контакта на следующем этапе разработки.
       </motion.p>
 
       <motion.div
@@ -64,7 +66,7 @@ export function AccessWelcomeStep({ onStart, reducedMotion }: AccessWelcomeStepP
           className={styles.startButton}
           onClick={onStart}
         >
-          Начать
+          Продолжить
           <ArrowRight aria-hidden="true" />
         </Button>
         <Link href="/" className={styles.backLink}>
@@ -75,13 +77,13 @@ export function AccessWelcomeStep({ onStart, reducedMotion }: AccessWelcomeStepP
       <motion.div
         variants={reducedMotion ? undefined : fadeUp}
         className={styles.trust}
-        aria-label="Преимущества процесса получения доступа"
+        aria-label="Этапы знакомства с VX House"
       >
-        <span><Clock3 aria-hidden="true" /> Около двух минут</span>
+        <span><CheckCircle2 aria-hidden="true" /> Только необходимые данные</span>
         <i aria-hidden="true" />
-        <span><KeyRound aria-hidden="true" /> Вход без пароля</span>
+        <span><MapPin aria-hidden="true" /> Учёт страны и языка</span>
         <i aria-hidden="true" />
-        <span><ShieldCheck aria-hidden="true" /> Данные защищены</span>
+        <span><KeyRound aria-hidden="true" /> Без ложного создания аккаунта</span>
       </motion.div>
     </motion.div>
   );
