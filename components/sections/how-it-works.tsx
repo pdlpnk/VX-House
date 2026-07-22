@@ -1,27 +1,27 @@
-import { ArrowRight, CheckCircle2, ExternalLink, FileText, SearchCheck } from "lucide-react";
+import { ArrowRight, CheckCircle2, FileText, SearchCheck, UserPlus } from "lucide-react";
 
 import { PublicSection } from "@/components/sections/public-section";
 
 const steps = [
   {
-    icon: SearchCheck,
-    title: "Доступная возможность",
-    text: "Пользователь видит условия, ограничения и ожидаемый результат до начала действия.",
+    icon: UserPlus,
+    title: "Создайте аккаунт",
+    text: "Выберите роль, укажите основные данные и получите доступ к личному кабинету.",
   },
   {
     icon: FileText,
-    title: "Пошаговая инструкция",
-    text: "VX House объясняет порядок действий и способ подтверждения без скрытых требований.",
+    title: "Выберите предложение",
+    text: "Ознакомьтесь с условиями, сроками и возможным вознаграждением до начала участия.",
   },
   {
-    icon: ExternalLink,
-    title: "Действие у партнёра",
-    text: "Необходимое действие выполняется во внешнем партнёрском сервисе, а не внутри VX House.",
+    icon: SearchCheck,
+    title: "Выполните инструкции",
+    text: "Следуйте пошаговому заданию и отправьте результат на проверку.",
   },
   {
     icon: CheckCircle2,
-    title: "Проверенный результат",
-    text: "Результат отправляется на проверку. Статус и причина решения остаются понятными пользователю.",
+    title: "Получите вознаграждение",
+    text: "После подтверждения результат и начисление появятся в личном кабинете.",
   },
 ] as const;
 
@@ -29,9 +29,9 @@ export function HowItWorks() {
   return (
     <PublicSection
       id="process"
-      eyebrow="Как работает платформа"
-      title="От условия до результата — один прозрачный маршрут"
-      description="На каждом этапе понятно, что делать дальше, где происходит действие и когда результат можно считать подтверждённым."
+      eyebrow="Как это работает"
+      title="Четыре простых шага"
+      description="После регистрации вы сразу видите доступные возможности и условия участия."
       className="process-section"
     >
       <ol className="process-list">

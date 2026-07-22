@@ -9,8 +9,9 @@ import { Button } from "@/components/ui/button";
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
 
 const navigation = [
-  { label: "О платформе", href: "#model" },
+  { label: "Возможности", href: "#model" },
   { label: "Как это работает", href: "#process" },
+  { label: "Почему мы", href: "#benefits" },
   { label: "Вопросы", href: "#faq" },
 ] as const;
 
@@ -44,7 +45,7 @@ export function SiteHeader() {
 
         <nav
           aria-label="Основная навигация"
-          className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-1 sm:flex"
+          className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-1 min-[900px]:flex"
         >
           {navigation.map((item) => (
             <a

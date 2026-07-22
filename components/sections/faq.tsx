@@ -47,9 +47,9 @@ export function Faq() {
   return (
     <PublicSection
       id="faq"
-      eyebrow="Ответы на вопросы"
-      title="Главное — до получения доступа"
-      description="Короткие ответы о модели VX House, партнёрских действиях, проверке и доступности."
+      eyebrow="Вопросы и ответы"
+      title="Главное перед регистрацией"
+      description="Коротко о возможностях VX House, условиях участия и работе личного кабинета."
       className="faq-section"
     >
       <div className="faq-list">
@@ -61,7 +61,7 @@ export function Faq() {
         ))}
       </div>
       <div className="faq-cta">
-        <div><small>Следующий шаг</small><h3>Познакомьтесь со своим сценарием</h3><p>Выбор роли в onboarding не создаёт обязательств и помогает показать подходящее пространство.</p></div>
+        <div><small>Доступ к платформе</small><h3>Посмотрите, какие возможности доступны вам</h3><p>Создайте аккаунт, выберите роль и получите доступ к предложениям VX House.</p><span>Регистрация занимает несколько минут.</span></div>
         <a href="/access">Получить доступ</a>
       </div>
     </PublicSection>

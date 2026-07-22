@@ -6,6 +6,7 @@ import {
   Check,
   CircleUserRound,
   ClipboardCheck,
+  Gift,
   FileText,
   History,
   House,
@@ -23,16 +24,16 @@ const navigation = [
 ] as const;
 
 const route = [
-  { label: "Условия доступны", icon: Layers3, state: "complete" },
-  { label: "Инструкция изучена", icon: FileText, state: "complete" },
-  { label: "Результат на проверке", icon: ClipboardCheck, state: "current" },
+  { label: "Предложения", icon: Layers3, state: "complete" },
+  { label: "Задания", icon: FileText, state: "complete" },
+  { label: "Вознаграждения", icon: Gift, state: "current" },
 ] as const;
 
 export function PlatformDashboard() {
   const reducedMotion = useReducedMotion();
 
   return (
-    <div className="platform-preview" aria-label="Демонстрация маршрута в VX House">
+    <div className="platform-preview" aria-label="Демонстрация личного кабинета VX House">
       <div className="platform-preview__glow" aria-hidden="true" />
 
       <motion.div
@@ -56,7 +57,7 @@ export function PlatformDashboard() {
 
         <div className="platform-workspace">
           <header className="platform-workspace__header">
-            <div><span>Демонстрация пространства</span><h3>Прозрачный маршрут</h3></div>
+            <div><span>Демонстрация интерфейса</span><h3>Личный кабинет</h3></div>
             <span className="platform-demo-label">Без реальных данных</span>
           </header>
 
@@ -64,7 +65,7 @@ export function PlatformDashboard() {
             {route.map(({ label, icon: Icon, state }) => (
               <div className="platform-route__item" data-state={state} key={label}>
                 <span><Icon aria-hidden="true" /></span>
-                <div><small>{state === "current" ? "Текущий этап" : "Пройдено"}</small><strong>{label}</strong></div>
+                <div><small>{state === "current" ? "Доступно в кабинете" : "Основной раздел"}</small><strong>{label}</strong></div>
                 {state === "complete" ? <Check aria-hidden="true" /> : null}
               </div>
             ))}
@@ -74,22 +75,22 @@ export function PlatformDashboard() {
             <Card className="platform-action-card platform-card">
               <div className="platform-card__heading">
                 <span className="platform-card__icon"><ClipboardCheck aria-hidden="true" /></span>
-                <span className="platform-status"><i /> Ожидает решения</span>
+                <span className="platform-status"><i /> Всегда под рукой</span>
               </div>
-              <small>Следующий шаг</small>
-              <h4>Дождаться проверки результата</h4>
-              <p>После решения появится статус и понятное объяснение.</p>
+              <small>Доступные действия</small>
+              <h4>Выберите подходящее предложение</h4>
+              <p>Условия, сроки и возможное вознаграждение показаны заранее.</p>
             </Card>
 
             <Card className="platform-conditions-card platform-card">
               <div className="platform-card__heading">
                 <span className="platform-card__icon"><ShieldCheck aria-hidden="true" /></span>
-                <span>Условия</span>
+                <span>В кабинете</span>
               </div>
               <ul>
-                <li><Check aria-hidden="true" /> Требования показаны заранее</li>
-                <li><Check aria-hidden="true" /> Действие выполняется у партнёра</li>
-                <li><Check aria-hidden="true" /> Причина решения сохраняется</li>
+                <li><Check aria-hidden="true" /> История заданий</li>
+                <li><Check aria-hidden="true" /> Статусы начислений</li>
+                <li><Check aria-hidden="true" /> Помощь поддержки</li>
               </ul>
             </Card>
           </div>
@@ -105,7 +106,7 @@ export function PlatformDashboard() {
         transition={{ opacity: { duration: 0.55, delay: 0.35 }, scale: { duration: 0.55, delay: 0.35 }, y: { duration: 6, repeat: Infinity, ease: "easeInOut" } }}
       >
         <span><ArrowUpRight aria-hidden="true" /></span>
-        <div><small>Внешнее действие</small><strong>Партнёрский сервис</strong></div>
+        <div><small>Всё в одном месте</small><strong>История сохраняется</strong></div>
       </motion.div>
     </div>
   );

@@ -29,17 +29,19 @@ test("server-renders the VX House landing experience", async () => {
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
 
   const html = await response.text();
-  assert.match(html, /<title>VX House — платформа лояльности и сотрудничества<\/title>/i);
+  assert.match(html, /<title>VX House — специальные условия и вознаграждения<\/title>/i);
   assert.match(html, /<html[^>]*class="dark"/i);
   assert.match(html, /<main[^>]*id="main-content"/i);
   assert.match(html, /Перейти к содержимому/i);
-  assert.match(html, /Понятный путь к персональным условиям/i);
-  assert.match(html, /Платформа лояльности и сотрудничества/i);
+  assert.match(html, /Получайте больше от своей активности/i);
+  assert.match(html, /Закрытые условия и вознаграждения/i);
   assert.match(html, /Как это работает/i);
-  assert.match(html, /Платформа, которая делает условия понятными/i);
-  assert.match(html, /Личный маршрут без догадок/i);
-  assert.match(html, /Сотрудничество в едином контексте/i);
-  assert.match(html, /Действие у партнёра/i);
+  assert.match(html, /Всё необходимое в одном месте/i);
+  assert.match(html, /Специальные условия и вознаграждения/i);
+  assert.match(html, /Готовые сценарии и сопровождение/i);
+  assert.match(html, /Четыре простых шага/i);
+  assert.match(html, /Больше условий\. Меньше неопределённости\./i);
+  assert.match(html, /Посмотрите, какие возможности доступны вам/i);
   assert.match(html, /VX Rewards — общее название подтверждённых преимуществ/i);
   assert.match(html, /Турция и Азербайджан/i);
   assert.match(html, /id="faq"/i);

@@ -33,23 +33,24 @@ export function Hero() {
         >
           <motion.div variants={prefersReducedMotion ? undefined : fadeUp} className="hero-badge">
             <Network aria-hidden="true" />
-            <span>Платформа лояльности и сотрудничества</span>
+            <span>Закрытые условия и вознаграждения</span>
           </motion.div>
 
           <motion.h1
             variants={prefersReducedMotion ? undefined : fadeUp}
             id="hero-title"
-            className="mt-7 max-w-[13ch] text-balance text-[clamp(3.1rem,6.5vw,5.75rem)] font-semibold leading-[0.95] tracking-[var(--tracking-display)] text-foreground"
+            className="mt-7 max-w-[14ch] text-balance text-[clamp(2.65rem,11.5vw,5.75rem)] font-semibold leading-[0.95] tracking-[var(--tracking-display)] text-foreground"
           >
-            Понятный путь к персональным условиям.
+            Получайте больше от своей активности
           </motion.h1>
 
           <motion.p
             variants={prefersReducedMotion ? undefined : fadeUp}
             className="mt-7 max-w-xl text-pretty text-base leading-7 text-muted-foreground sm:text-lg sm:leading-8"
           >
-            VX House объединяет инструкции, взаимодействие с партнёрскими
-            сервисами и прозрачную проверку результата в одном пространстве.
+            VX House открывает доступ к специальным условиям, заданиям,
+            программам лояльности и денежным вознаграждениям от партнёров. Все
+            правила, сроки и этапы видны заранее.
           </motion.p>
 
           <motion.div

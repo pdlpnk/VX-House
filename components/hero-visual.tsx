@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ArrowRight, Check, FileCheck2, ListChecks, ShieldCheck } from "lucide-react";
+import { Check, Gift, Headphones, History, ListChecks, Sparkles } from "lucide-react";
 
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
 
@@ -9,7 +9,7 @@ export function HeroVisual() {
   const prefersReducedMotion = useReducedMotion();
 
   return (
-    <div className="hero-visual" role="img" aria-label="Пример прозрачного маршрута в VX House">
+    <div className="hero-visual" role="img" aria-label="Возможности личного кабинета VX House">
       <div className="ecosystem-halo" />
       <div className="ecosystem-orbit ecosystem-orbit--outer" />
       <div className="ecosystem-orbit ecosystem-orbit--inner" />
@@ -33,26 +33,20 @@ export function HeroVisual() {
       >
         <div className="account-panel__shine" />
         <div className="account-panel__header">
-          <div className="account-panel__avatar"><ListChecks /></div>
+          <div className="account-panel__avatar"><Sparkles /></div>
           <div>
-            <p>Маршрут в VX House</p>
-            <span><ShieldCheck /> Условия видны заранее</span>
+            <p>Что доступно в VX House</p>
+            <span><Check /> Правила и сроки видны заранее</span>
           </div>
-          <div className="account-panel__status">Пример</div>
+          <div className="account-panel__status">18+</div>
         </div>
 
-        <div className="account-panel__route">
-          <div><span><Check /></span><p>Возможность</p></div>
-          <ArrowRight />
-          <div><span><Check /></span><p>Инструкция</p></div>
-          <ArrowRight />
-          <div data-current><span><FileCheck2 /></span><p>Проверка</p></div>
-        </div>
-
-        <div className="account-panel__note">
-          <span>Следующий шаг</span>
-          <strong>Отправить результат на проверку</strong>
-          <small>Итог становится подтверждённым только после проверки VX House.</small>
+        <div className="account-panel__value-list">
+          <div><span><Sparkles /></span><p>Персональные предложения</p><Check /></div>
+          <div><span><ListChecks /></span><p>Задания и инструкции</p><Check /></div>
+          <div><span><Gift /></span><p>Кешбэк и вознаграждения</p><Check /></div>
+          <div><span><Headphones /></span><p>Поддержка</p><Check /></div>
+          <div><span><History /></span><p>История начислений</p><Check /></div>
         </div>
       </motion.div>
 
@@ -66,8 +60,8 @@ export function HeroVisual() {
           y: { duration: 5.8, delay: 0.7, repeat: Infinity, ease: "easeInOut" },
         }}
       >
-        <span className="reward-card__icon"><FileCheck2 /></span>
-        <span><small>Результат</small><strong>Проверяется прозрачно</strong></span>
+        <span className="reward-card__icon"><Gift /></span>
+        <span><small>По условиям предложения</small><strong>Кешбэк и награды</strong></span>
       </motion.div>
 
       <motion.div
@@ -80,8 +74,8 @@ export function HeroVisual() {
           y: { duration: 6.4, repeat: Infinity, ease: "easeInOut" },
         }}
       >
-        <ListChecks />
-        <span><small>Перед действием</small><strong>Понятная инструкция</strong></span>
+        <Headphones />
+        <span><small>Когда нужна помощь</small><strong>Поддержка рядом</strong></span>
       </motion.div>
     </div>
   );

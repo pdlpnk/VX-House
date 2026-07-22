@@ -39,20 +39,19 @@ export function InsidePlatform() {
           className="inside-platform__eyebrow"
         >
           <LayoutDashboard aria-hidden="true" />
-          <span>Единое пространство</span>
+          <span>Личный кабинет</span>
         </motion.div>
 
         <motion.h2
           variants={prefersReducedMotion ? undefined : fadeUp}
           id="inside-platform-title"
         >
-          Контекст не теряется между шагами
+          Всё важное видно сразу
         </motion.h2>
 
         <motion.p variants={prefersReducedMotion ? undefined : fadeUp}>
-          Возможность, инструкция, действие у партнёра и проверка результата
-          связаны в один маршрут. Интерфейс показывает состояние процесса и
-          объясняет, что произойдёт дальше.
+          Предложения, задания, вознаграждения, поддержка и история собраны в
+          одном кабинете. Вы всегда знаете текущий статус и следующий шаг.
         </motion.p>
 
         <motion.div variants={prefersReducedMotion ? undefined : fadeUp}>
