@@ -1,86 +1,63 @@
 "use client";
 
-import { ArrowRight, Compass, Info, MapPin, UserRound } from "lucide-react";
+import { ArrowRight, Compass, Info, MapPin, Search, UserRound } from "lucide-react";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 
 import styles from "@/app/dashboard/dashboard.module.css";
 import { DashboardGrid, DashboardGridItem, DashboardHeading, DashboardPage, StatusPill } from "@/components/dashboard/dashboard-ui";
 import { OpportunityStatusBadge } from "@/components/opportunities/opportunity-status";
 import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { buttonVariants } from "@/components/ui/button";
+import type { OpportunityView } from "@/lib/opportunities/types";
 import { cn } from "@/lib/utils";
-import {
-  getOpportunitiesByRole,
-  opportunityRoleLabels,
-  type OpportunityRole,
-} from "@/lib/opportunity-data";
 
-const catalogCopy = {
-  player: {
-    eyebrow: "Кабинет игрока",
-    description: "Единая модель будущих заданий, инструкций, промокодов и персональных условий для игрока.",
-    backHref: "/dashboard",
-  },
-  partner: {
-    eyebrow: "Партнёрское пространство",
-    description: "Единая модель будущих рабочих действий, материалов и условий сотрудничества для партнёра.",
-    backHref: "/partner",
-  },
-} as const;
+const typeLabels = { TASK: "Задание", INSTRUCTION: "Инструкция", PROMOCODE: "Промокод", FORECAST: "Прогноз", PERSONAL_CONDITION: "Персональное условие" } as const;
+const roleLabels = { PLAYER: "Игрок", PARTNER: "Партнёр" } as const;
+const copy = { PLAYER: { eyebrow: "Кабинет игрока", description: "Опубликованные возможности для вашей роли и рынка.", backHref: "/dashboard" }, PARTNER: { eyebrow: "Партнёрское пространство", description: "Рабочие возможности, доступные подтверждённому партнёрскому профилю.", backHref: "/partner" } } as const;
 
-export function OpportunityCatalog({ role, basePath }: { role: OpportunityRole; basePath: string }) {
-  const items = getOpportunitiesByRole(role);
-  const copy = catalogCopy[role];
+export function OpportunityCatalog({ role, basePath, initialItems }: { role: "PLAYER" | "PARTNER"; basePath: string; initialItems: OpportunityView[] }) {
+  const [items, setItems] = useState(initialItems);
+  const [search, setSearch] = useState("");
+  const [type, setType] = useState("");
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  return (
-    <DashboardPage>
-      <DashboardHeading
-        eyebrow={copy.eyebrow}
-        title="Возможности"
-        description={copy.description}
-        action={<StatusPill tone="neutral">Демонстрационная структура</StatusPill>}
-      />
+  useEffect(() => {
+    const controller = new AbortController();
+    const timer = window.setTimeout(async () => {
+      setPending(true); setError(null);
+      try {
+        const params = new URLSearchParams(); if (search.trim()) params.set("search", search.trim()); if (type) params.set("type", type);
+        const response = await fetch(`/api/opportunities?${params}`, { credentials: "same-origin", cache: "no-store", signal: controller.signal });
+        const body = await response.json() as { items?: OpportunityView[]; message?: string };
+        if (!response.ok) throw new Error(body.message ?? "Не удалось обновить каталог");
+        setItems(body.items ?? []);
+      } catch (cause) { if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : "Не удалось обновить каталог"); }
+      finally { if (!controller.signal.aborted) setPending(false); }
+    }, 250);
+    return () => { window.clearTimeout(timer); controller.abort(); };
+  }, [search, type]);
 
-      <section className={styles.opportunityCatalogIntro}>
-        <span><Compass aria-hidden="true" /></span>
-        <div>
-          <small>Frontend-модель</small>
-          <h2>Понятно, что доступно и что делать дальше</h2>
-          <p>Карточки ниже показывают структуру будущего каталога. Они не подтверждают назначение возможности, доступ пользователя или результат.</p>
-        </div>
-      </section>
-
-      <DashboardGrid className={styles.opportunityList}>
-        {items.map((opportunity) => (
-          <DashboardGridItem key={opportunity.id}>
-            <Card className={styles.opportunityCard}>
-              <div className={styles.opportunityCardTopline}>
-                <span>{opportunity.type}</span>
-                <OpportunityStatusBadge status={opportunity.status} />
-              </div>
-              <div className={styles.opportunityCardCopy}>
-                <small>Демонстрационный пример</small>
-                <h2>{opportunity.title}</h2>
-                <p>{opportunity.description}</p>
-              </div>
-              <dl className={styles.opportunityMeta}>
-                <div><dt><UserRound aria-hidden="true" /> Роль</dt><dd>{opportunityRoleLabels[opportunity.role]}</dd></div>
-                <div><dt><MapPin aria-hidden="true" /> Рынок</dt><dd>{opportunity.markets.join(" · ")}</dd></div>
-              </dl>
-              <div className={styles.opportunityNextStep}>
-                <span>Следующий шаг</span>
-                <p>{opportunity.nextStep}</p>
-              </div>
-              <Link className={cn(buttonVariants({ variant: "outline" }), styles.opportunityDetailsLink)} href={`${basePath}/${opportunity.id}`}>
-                Открыть карточку <ArrowRight aria-hidden="true" />
-              </Link>
-            </Card>
-          </DashboardGridItem>
-        ))}
-      </DashboardGrid>
-
-      <p className={styles.systemDisclosure}><Info aria-hidden="true" /> Действия, начисления и проверка результата не подключены. Открытие карточки показывает только frontend-структуру.</p>
-      <Link className={styles.pageBackLink} href={copy.backHref}>Вернуться к обзору</Link>
-    </DashboardPage>
-  );
+  const texts = copy[role];
+  return <DashboardPage>
+    <DashboardHeading eyebrow={texts.eyebrow} title="Возможности" description={texts.description} action={<StatusPill tone="brand">Серверный каталог</StatusPill>} />
+    <section className={styles.opportunityCatalogIntro}><span><Compass aria-hidden="true" /></span><div><small>Персональная выборка</small><h2>Понятно, что доступно и что делать дальше</h2><p>Роль, рынок, публикация и индивидуальная доступность проверяются сервером.</p></div></section>
+    <div className={styles.opportunityFilters} role="search" aria-label="Поиск и фильтрация возможностей">
+      <label><span>Поиск</span><div className={styles.inputWrap}><Search aria-hidden="true" /><Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Название или описание" /></div></label>
+      <label><span>Тип</span><select value={type} onChange={(event) => setType(event.target.value)}><option value="">Все типы</option>{Object.entries(typeLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+      <StatusPill tone={pending ? "attention" : "neutral"}>{pending ? "Обновляем…" : `${items.length} найдено`}</StatusPill>
+    </div>
+    {error ? <p className={styles.systemDisclosure} role="alert"><Info aria-hidden="true" />{error}</p> : null}
+    {items.length ? <DashboardGrid className={styles.opportunityList}>{items.map((item) => <DashboardGridItem key={item.id}><Card className={styles.opportunityCard}>
+      <div className={styles.opportunityCardTopline}><span>{typeLabels[item.type]}</span><OpportunityStatusBadge status={item.availability} /></div>
+      <div className={styles.opportunityCardCopy}><small>{item.market.name}</small><h2>{item.title}</h2><p>{item.description}</p></div>
+      <dl className={styles.opportunityMeta}><div><dt><UserRound aria-hidden="true" /> Роль</dt><dd>{roleLabels[item.role]}</dd></div><div><dt><MapPin aria-hidden="true" /> Рынок</dt><dd>{item.market.name}</dd></div></dl>
+      <div className={styles.opportunityNextStep}><span>Следующий шаг</span><p>{item.nextStep}</p></div>
+      <Link className={cn(buttonVariants({ variant: "outline" }), styles.opportunityDetailsLink)} href={`${basePath}/${item.id}`}>Открыть карточку <ArrowRight aria-hidden="true" /></Link>
+    </Card></DashboardGridItem>)}</DashboardGrid> : <Card className={styles.noDataPanel}><Compass aria-hidden="true" /><h2>Доступных возможностей пока нет</h2><p>Измените фильтр или вернитесь позже. Черновики и архивные публикации не показываются.</p></Card>}
+    <p className={styles.systemDisclosure}><Info aria-hidden="true" /> Доступность формируется сервером; экономические последствия в этом модуле не подключены.</p>
+    <Link className={styles.pageBackLink} href={texts.backHref}>Вернуться к обзору</Link>
+  </DashboardPage>;
 }

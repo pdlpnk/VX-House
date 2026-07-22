@@ -4,6 +4,8 @@ import { BriefcaseBusiness, ChartNoAxesCombined, FolderOpen, Gift, Handshake, He
 
 import { WorkspaceShell } from "@/components/dashboard/workspace-shell";
 import { PARTNER_PREFERENCES_KEY, defaultPartnerPreferences } from "@/lib/partner-data";
+import type { SafeProfileDTO } from "@/lib/repositories";
+import type { NotificationView } from "@/lib/support";
 
 const partnerConfig = {
   kind: "partner" as const,
@@ -45,10 +47,9 @@ const partnerConfig = {
     "/partner/rewards/": "Карточка VX Reward",
     "/partner/support/": "Обращение",
   },
-  demoText: "Здесь нет реальных задач, результатов, начислений или подтверждённого статуса сотрудничества.",
-  notificationText: "Здесь появятся только реальные изменения партнёрских задач, материалов и доступа после подключения сервиса.",
+  notificationText: "Новых событий партнёрского пространства пока нет.",
 };
 
-export function PartnerShell({ children }: { children: React.ReactNode }) {
-  return <WorkspaceShell config={partnerConfig}>{children}</WorkspaceShell>;
+export function PartnerShell({ children, profile, notifications }: { children: React.ReactNode; profile?: SafeProfileDTO; notifications?: NotificationView[] }) {
+  return <WorkspaceShell config={partnerConfig} profile={profile} notifications={notifications}>{children}</WorkspaceShell>;
 }

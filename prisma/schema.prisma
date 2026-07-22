@@ -1,0 +1,1289 @@
+generator client {
+  provider     = "prisma-client"
+  output       = "../lib/db/generated"
+  moduleFormat = "esm"
+  runtime      = "workerd"
+}
+
+// Node-only client for isolated integration tests. The application keeps the
+// workerd target required by the production runtime.
+generator testClient {
+  provider     = "prisma-client"
+  output       = "../lib/db/generated-node"
+  moduleFormat = "esm"
+  runtime      = "nodejs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum ProductRole {
+  PLAYER
+  PARTNER
+}
+
+enum MarketCode {
+  TR
+  AZ
+}
+
+enum LanguageCode {
+  RU
+  TR
+  AZ
+}
+
+enum AccountStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+  CLOSED
+}
+
+enum ContactVerificationStatus {
+  UNVERIFIED
+  PENDING
+  VERIFIED
+}
+
+enum OnboardingStatus {
+  ACCOUNT_CREATED
+  CONTACT_PENDING
+  CONTACT_VERIFIED
+  CONSENTS_PENDING
+  PROFILE_READY
+  PARTNER_APPROVAL_PENDING
+  COMPLETED
+}
+
+enum PartnerProfileStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+  CLOSED
+}
+
+enum ServiceStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  ARCHIVED
+}
+
+enum PublicationStatus {
+  DRAFT
+  IN_REVIEW
+  PUBLISHED
+  HIDDEN
+  ARCHIVED
+}
+
+enum OpportunityType {
+  TASK
+  INSTRUCTION
+  PROMOCODE
+  FORECAST
+  PERSONAL_CONDITION
+}
+
+enum EligibilityStatus {
+  ELIGIBLE
+  INELIGIBLE
+  PENDING
+  EXPIRED
+}
+
+enum UserTaskStatus {
+  AVAILABLE
+  ACCEPTED
+  IN_PROGRESS
+  AWAITING_SUBMISSION
+  SUBMITTED
+  UNDER_REVIEW
+  CLARIFICATION_REQUIRED
+  RESUBMISSION_REQUIRED
+  CONFIRMED
+  REJECTED
+  EXPIRED
+  CANCELLED
+}
+
+enum SubmissionStatus {
+  DRAFT
+  SUBMITTED
+  WITHDRAWN
+}
+
+enum ReviewDecision {
+  CLARIFICATION_REQUIRED
+  RESUBMISSION_REQUIRED
+  CONFIRMED
+  REJECTED
+}
+
+enum PointsEntryStatus {
+  PENDING
+  CONFIRMED
+  REVERSED
+}
+
+enum RankCode {
+  EXPLORER
+  NAVIGATOR
+  ATLAS
+  PRIME
+  SIGNATURE
+}
+
+enum RewardValueKind {
+  MONETARY
+  NON_MONETARY
+}
+
+enum RewardStatus {
+  EXPECTED
+  AWAITING_CONFIRMATION
+  CONFIRMED
+  PREPARING
+  AVAILABLE
+  PROVIDED
+  REJECTED
+  CANCELLED
+  EXPIRED
+}
+
+enum SupportPriority {
+  LOW
+  NORMAL
+  HIGH
+  CRITICAL
+}
+
+enum SupportConversationStatus {
+  CREATED
+  ASSIGNED
+  WAITING_OPERATOR
+  WAITING_USER
+  RESOLVED
+  CLOSED
+}
+
+enum SupportMessageAuthorType {
+  USER
+  OPERATOR
+  SYSTEM
+}
+
+enum AppealStatus {
+  DRAFT
+  SUBMITTED
+  UNDER_REVIEW
+  UPHELD
+  PARTIALLY_UPHELD
+  DENIED
+  CANCELLED
+}
+
+enum ForecastPublicationStatus {
+  DRAFT
+  IN_REVIEW
+  PUBLISHED
+  SUPERSEDED
+  RETRACTED
+  ARCHIVED
+}
+
+enum NotificationChannel {
+  IN_APP
+  EMAIL
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  READ
+  FAILED
+  CANCELLED
+}
+
+enum PromocodeActivationStatus {
+  ACTIVE
+  USED
+  EXPIRED
+  CANCELLED
+}
+
+model User {
+  id                          String                       @id @default(uuid()) @db.Uuid
+  email                       String                       @unique @db.VarChar(320)
+  displayName                 String?                      @db.VarChar(120)
+  passwordHash                String?                      @db.VarChar(255)
+  passwordChangedAt           DateTime?
+  disabledAt                  DateTime?
+  createdAt                   DateTime                     @default(now())
+  updatedAt                   DateTime                     @updatedAt
+  sessions                    Session[]
+  roles                       Role[]
+  profile                     UserProfile?
+  approvedPartners            PartnerProfile[]             @relation("PartnerApprover")
+  managedTasks                TaskDefinition[]             @relation("TaskManager")
+  reviewDecisions             SubmissionReview[]           @relation("SubmissionReviewer")
+  authoredForecasts           Forecast[]                   @relation("ForecastAuthor")
+  assignedSupport             SupportConversation[]        @relation("SupportAssignee")
+  supportMessages             SupportMessage[]             @relation("SupportMessageAuthor")
+  supportNotes                SupportInternalNote[]        @relation("SupportNoteAuthor")
+  appealDecisions             Appeal[]                     @relation("AppealReviewer")
+  notifications               Notification[]
+  userConsents                UserConsent[]
+  opportunityEligibilities    OpportunityEligibility[]
+  userTasks                   UserTask[]
+  vxPointsLedgerEntries       VXPointsLedgerEntry[]
+  userRanks                   UserRank[]
+  trustScoreEvents            TrustScoreEvent[]
+  trustScoreSnapshot          TrustScoreSnapshot?
+  vxRewards                   VXReward[]
+  supportConversations        SupportConversation[]
+  appeals                     Appeal[]
+  idempotencyRecords          IdempotencyRecord[]
+  onboardingProgress          OnboardingProgress?
+  emailVerificationChallenges EmailVerificationChallenge[]
+  accountStatusHistory        UserAccountStatusHistory[]   @relation("AccountStatusUser")
+  accountStatusChanges        UserAccountStatusHistory[]   @relation("AccountStatusActor")
+  partnerApprovalChanges      PartnerApprovalHistory[]     @relation("PartnerApprovalActor")
+  contentRevisions            AdminContentRevision[]       @relation("AdminContentAuthor")
+  notificationBatches         NotificationBatch[]          @relation("NotificationBatchActor")
+  forecastAccessRules         ForecastAccessRule[]
+  promocodeActivations        PromocodeActivation[]
+
+  @@index([createdAt])
+}
+
+model OnboardingProgress {
+  id             String           @id @default(uuid()) @db.Uuid
+  userId         String           @unique @db.Uuid
+  status         OnboardingStatus @default(ACCOUNT_CREATED)
+  ageConfirmedAt DateTime?
+  profileReadyAt DateTime?
+  completedAt    DateTime?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status, updatedAt])
+}
+
+model EmailVerificationChallenge {
+  id                String    @id @default(uuid()) @db.Uuid
+  userId            String    @db.Uuid
+  codeHash          String    @db.Char(64)
+  attemptCount      Int       @default(0)
+  maxAttempts       Int
+  expiresAt         DateTime
+  resendAvailableAt DateTime
+  consumedAt        DateTime?
+  revokedAt         DateTime?
+  createdAt         DateTime  @default(now())
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([expiresAt])
+}
+
+model Session {
+  id                String    @id @default(uuid()) @db.Uuid
+  tokenHash         String    @unique @db.VarChar(128)
+  userId            String    @db.Uuid
+  expiresAt         DateTime
+  absoluteExpiresAt DateTime
+  lastSeenAt        DateTime?
+  refreshedAt       DateTime?
+  revokedAt         DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@index([absoluteExpiresAt])
+}
+
+model Role {
+  id          String       @id @default(uuid()) @db.Uuid
+  key         String       @unique @db.VarChar(100)
+  name        String       @db.VarChar(120)
+  description String?      @db.VarChar(500)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  users       User[]
+  permissions Permission[]
+}
+
+model Permission {
+  id          String   @id @default(uuid()) @db.Uuid
+  key         String   @unique @db.VarChar(160)
+  name        String   @db.VarChar(160)
+  description String?  @db.VarChar(500)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  roles       Role[]
+}
+
+model AuditEvent {
+  id             String   @id @default(uuid()) @db.Uuid
+  actorType      String   @db.VarChar(32)
+  actorId        String?  @db.VarChar(128)
+  actorSessionId String?  @db.Uuid
+  action         String   @db.VarChar(160)
+  targetType     String   @db.VarChar(120)
+  targetId       String?  @db.VarChar(160)
+  occurredAt     DateTime @default(now())
+  metadata       Json
+
+  @@index([actorId, occurredAt])
+  @@index([action, occurredAt])
+  @@index([targetType, targetId])
+  @@index([occurredAt])
+}
+
+model RateLimitBucket {
+  keyHash         String   @id @db.VarChar(64)
+  requestCount    Int
+  windowStartedAt DateTime
+  expiresAt       DateTime
+  updatedAt       DateTime @updatedAt
+
+  @@index([expiresAt])
+}
+
+model Market {
+  id                String                 @id @default(uuid()) @db.Uuid
+  code              MarketCode             @unique
+  name              String                 @db.VarChar(120)
+  defaultLanguage   LanguageCode
+  isActive          Boolean                @default(false)
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+  profiles          UserProfile[]
+  serviceMarkets    PartnerServiceMarket[]
+  opportunityScopes OpportunityAudience[]
+  instructionScopes InstructionAudience[]
+  taskScopes        TaskVersionAudience[]
+  rankDefinitions   RankDefinition[]
+  economyPolicies   EconomyPolicy[]
+  promocodes        Promocode[]
+  forecastRules     ForecastAccessRule[]
+  consentVersions   ConsentVersion[]
+  supportCategories SupportCategory[]
+}
+
+model SupportCategory {
+  id            String                @id @default(uuid()) @db.Uuid
+  key           String                @unique @db.VarChar(80)
+  title         String                @db.VarChar(160)
+  description   String                @db.Text
+  roles         Json
+  marketId      String?               @db.Uuid
+  isActive      Boolean               @default(true)
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
+  market        Market?               @relation(fields: [marketId], references: [id], onDelete: Restrict)
+  conversations SupportConversation[]
+
+  @@index([marketId, isActive])
+}
+
+model EconomyPolicy {
+  id                 String            @id @default(uuid()) @db.Uuid
+  scopeKey           String            @db.VarChar(120)
+  version            Int
+  productRole        ProductRole?
+  marketId           String?           @db.Uuid
+  status             PublicationStatus @default(DRAFT)
+  startingTrustScore Int
+  pointsRules        Json
+  trustRules         Json
+  trustZones         Json
+  effectiveFrom      DateTime?
+  effectiveUntil     DateTime?
+  createdAt          DateTime          @default(now())
+  market             Market?           @relation(fields: [marketId], references: [id], onDelete: Restrict)
+
+  @@unique([scopeKey, version])
+  @@index([productRole, marketId, status, effectiveFrom])
+}
+
+model UserProfile {
+  id                        String                     @id @default(uuid()) @db.Uuid
+  userId                    String                     @unique @db.Uuid
+  productRole               ProductRole
+  marketId                  String                     @db.Uuid
+  preferredLanguage         LanguageCode
+  contactVerificationStatus ContactVerificationStatus  @default(UNVERIFIED)
+  contactVerifiedAt         DateTime?
+  accountStatus             AccountStatus              @default(PENDING)
+  accountStatusReason       String?                    @db.VarChar(500)
+  createdAt                 DateTime                   @default(now())
+  updatedAt                 DateTime                   @updatedAt
+  user                      User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  market                    Market                     @relation(fields: [marketId], references: [id], onDelete: Restrict)
+  playerProfile             PlayerProfile?
+  partnerProfile            PartnerProfile?
+  statusHistory             UserAccountStatusHistory[]
+
+  @@index([productRole, marketId, accountStatus])
+  @@index([contactVerificationStatus])
+}
+
+model UserAccountStatusHistory {
+  id            String        @id @default(uuid()) @db.Uuid
+  userId        String        @db.Uuid
+  userProfileId String        @db.Uuid
+  actorId       String        @db.Uuid
+  fromStatus    AccountStatus
+  toStatus      AccountStatus
+  reason        String        @db.VarChar(1000)
+  occurredAt    DateTime      @default(now())
+  user          User          @relation("AccountStatusUser", fields: [userId], references: [id], onDelete: Restrict)
+  userProfile   UserProfile   @relation(fields: [userProfileId], references: [id], onDelete: Restrict)
+  actor         User          @relation("AccountStatusActor", fields: [actorId], references: [id], onDelete: Restrict)
+
+  @@index([userId, occurredAt])
+  @@index([actorId, occurredAt])
+}
+
+model PlayerProfile {
+  id                  String        @id @default(uuid()) @db.Uuid
+  userProfileId       String        @unique @db.Uuid
+  participationStatus AccountStatus @default(PENDING)
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+  userProfile         UserProfile   @relation(fields: [userProfileId], references: [id], onDelete: Cascade)
+}
+
+model PartnerProfile {
+  id              String                   @id @default(uuid()) @db.Uuid
+  userProfileId   String                   @unique @db.Uuid
+  status          PartnerProfileStatus     @default(PENDING)
+  statusReason    String?                  @db.VarChar(500)
+  approvedById    String?                  @db.Uuid
+  approvedAt      DateTime?
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt
+  userProfile     UserProfile              @relation(fields: [userProfileId], references: [id], onDelete: Cascade)
+  approvedBy      User?                    @relation("PartnerApprover", fields: [approvedById], references: [id], onDelete: SetNull)
+  approvalHistory PartnerApprovalHistory[]
+
+  @@index([status])
+  @@index([approvedById])
+}
+
+model PartnerApprovalHistory {
+  id               String               @id @default(uuid()) @db.Uuid
+  partnerProfileId String               @db.Uuid
+  actorId          String               @db.Uuid
+  fromStatus       PartnerProfileStatus
+  toStatus         PartnerProfileStatus
+  reason           String               @db.VarChar(1000)
+  occurredAt       DateTime             @default(now())
+  partnerProfile   PartnerProfile       @relation(fields: [partnerProfileId], references: [id], onDelete: Restrict)
+  actor            User                 @relation("PartnerApprovalActor", fields: [actorId], references: [id], onDelete: Restrict)
+
+  @@index([partnerProfileId, occurredAt])
+  @@index([actorId, occurredAt])
+}
+
+model AdminContentRevision {
+  id          String            @id @default(uuid()) @db.Uuid
+  entityType  String            @db.VarChar(80)
+  entityId    String            @db.Uuid
+  version     Int
+  status      PublicationStatus @default(DRAFT)
+  snapshot    Json
+  reason      String            @db.VarChar(1000)
+  createdById String            @db.Uuid
+  publishedAt DateTime?
+  archivedAt  DateTime?
+  createdAt   DateTime          @default(now())
+  createdBy   User              @relation("AdminContentAuthor", fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@unique([entityType, entityId, version])
+  @@index([entityType, status, createdAt])
+  @@index([createdById, createdAt])
+}
+
+model ConsentDocument {
+  id         String           @id @default(uuid()) @db.Uuid
+  key        String           @unique @db.VarChar(120)
+  title      String           @db.VarChar(200)
+  isRequired Boolean          @default(true)
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+  versions   ConsentVersion[]
+}
+
+model ConsentVersion {
+  id                String          @id @default(uuid()) @db.Uuid
+  consentDocumentId String          @db.Uuid
+  marketId          String          @db.Uuid
+  version           Int
+  language          LanguageCode
+  contentHash       String          @db.VarChar(128)
+  publishedAt       DateTime?
+  effectiveFrom     DateTime?
+  retiredAt         DateTime?
+  createdAt         DateTime        @default(now())
+  consentDocument   ConsentDocument @relation(fields: [consentDocumentId], references: [id], onDelete: Restrict)
+  market            Market          @relation(fields: [marketId], references: [id], onDelete: Restrict)
+  userConsents      UserConsent[]
+
+  @@unique([consentDocumentId, marketId, version, language])
+  @@index([marketId, language, publishedAt, effectiveFrom])
+}
+
+model UserConsent {
+  id               String         @id @default(uuid()) @db.Uuid
+  userId           String         @db.Uuid
+  consentVersionId String         @db.Uuid
+  accepted         Boolean
+  recordedAt       DateTime       @default(now())
+  withdrawnAt      DateTime?
+  source           String         @db.VarChar(80)
+  user             User           @relation(fields: [userId], references: [id], onDelete: Restrict)
+  consentVersion   ConsentVersion @relation(fields: [consentVersionId], references: [id], onDelete: Restrict)
+
+  @@unique([userId, consentVersionId])
+  @@index([userId, recordedAt])
+}
+
+model IdempotencyRecord {
+  id          String   @id @default(uuid()) @db.Uuid
+  operation   String   @db.VarChar(160)
+  key         String   @db.VarChar(160)
+  actorId     String   @db.Uuid
+  requestHash String   @db.Char(64)
+  resultType  String   @db.VarChar(120)
+  resultId    String   @db.VarChar(160)
+  createdAt   DateTime @default(now())
+  actor       User     @relation(fields: [actorId], references: [id], onDelete: Restrict)
+
+  @@unique([operation, key])
+  @@index([actorId, createdAt])
+}
+
+model PartnerService {
+  id             String                 @id @default(uuid()) @db.Uuid
+  key            String                 @unique @db.VarChar(120)
+  name           String                 @db.VarChar(200)
+  status         ServiceStatus          @default(DRAFT)
+  externalUrl    String?                @db.VarChar(2048)
+  transitionRule String?                @db.Text
+  legalNotice    String?                @db.Text
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+  markets        PartnerServiceMarket[]
+  opportunities  Opportunity[]
+  tasks          TaskDefinition[]
+  promocodes     Promocode[]
+}
+
+model PartnerServiceMarket {
+  partnerServiceId String         @db.Uuid
+  marketId         String         @db.Uuid
+  status           ServiceStatus  @default(DRAFT)
+  termsVersion     String?        @db.VarChar(80)
+  availableFrom    DateTime?
+  availableUntil   DateTime?
+  partnerService   PartnerService @relation(fields: [partnerServiceId], references: [id], onDelete: Cascade)
+  market           Market         @relation(fields: [marketId], references: [id], onDelete: Restrict)
+
+  @@id([partnerServiceId, marketId])
+  @@index([marketId, status])
+}
+
+model Opportunity {
+  id               String                   @id @default(uuid()) @db.Uuid
+  key              String                   @unique @db.VarChar(140)
+  type             OpportunityType
+  title            String                   @db.VarChar(240)
+  description      String                   @db.Text
+  status           PublicationStatus        @default(DRAFT)
+  partnerServiceId String?                  @db.Uuid
+  instructionId    String?                  @db.Uuid
+  forecastId       String?                  @db.Uuid
+  nextStep         String                   @db.VarChar(500)
+  publishedAt      DateTime?
+  archivedAt       DateTime?
+  createdAt        DateTime                 @default(now())
+  updatedAt        DateTime                 @updatedAt
+  partnerService   PartnerService?          @relation(fields: [partnerServiceId], references: [id], onDelete: Restrict)
+  instruction      Instruction?             @relation(fields: [instructionId], references: [id], onDelete: Restrict)
+  forecast         Forecast?                @relation(fields: [forecastId], references: [id], onDelete: Restrict)
+  audiences        OpportunityAudience[]
+  eligibility      OpportunityEligibility[]
+  taskDefinitions  TaskDefinition[]
+  promocodes       Promocode[]
+
+  @@index([status, type])
+  @@index([partnerServiceId, status])
+  @@index([instructionId])
+  @@index([forecastId])
+}
+
+model OpportunityAudience {
+  opportunityId String      @db.Uuid
+  productRole   ProductRole
+  marketId      String      @db.Uuid
+  opportunity   Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  market        Market      @relation(fields: [marketId], references: [id], onDelete: Restrict)
+
+  @@id([opportunityId, productRole, marketId])
+  @@index([productRole, marketId])
+}
+
+model OpportunityEligibility {
+  id             String            @id @default(uuid()) @db.Uuid
+  opportunityId  String            @db.Uuid
+  userId         String            @db.Uuid
+  status         EligibilityStatus
+  reasonCode     String            @db.VarChar(120)
+  explanation    String            @db.VarChar(500)
+  policyVersion  String            @db.VarChar(80)
+  idempotencyKey String            @unique @db.VarChar(160)
+  evaluatedAt    DateTime          @default(now())
+  validUntil     DateTime?
+  opportunity    Opportunity       @relation(fields: [opportunityId], references: [id], onDelete: Restrict)
+  user           User              @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([userId, evaluatedAt])
+  @@index([opportunityId, status, evaluatedAt])
+}
+
+model Instruction {
+  id            String               @id @default(uuid()) @db.Uuid
+  key           String               @unique @db.VarChar(140)
+  title         String               @db.VarChar(240)
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+  versions      InstructionVersion[]
+  opportunities Opportunity[]
+}
+
+model InstructionVersion {
+  id            String                @id @default(uuid()) @db.Uuid
+  instructionId String                @db.Uuid
+  version       Int
+  status        PublicationStatus     @default(DRAFT)
+  title         String                @db.VarChar(240)
+  summary       String                @db.Text
+  language      LanguageCode
+  contentHash   String                @db.VarChar(128)
+  createdById   String                @db.Uuid
+  publishedAt   DateTime?
+  supersedesId  String?               @db.Uuid
+  createdAt     DateTime              @default(now())
+  instruction   Instruction           @relation(fields: [instructionId], references: [id], onDelete: Restrict)
+  supersedes    InstructionVersion?   @relation("InstructionVersionChain", fields: [supersedesId], references: [id], onDelete: Restrict)
+  supersededBy  InstructionVersion[]  @relation("InstructionVersionChain")
+  sections      InstructionSection[]
+  steps         InstructionStep[]
+  audiences     InstructionAudience[]
+  taskVersions  TaskVersion[]
+
+  @@unique([instructionId, version, language])
+  @@index([status, publishedAt])
+  @@index([createdById])
+}
+
+model InstructionSection {
+  id                   String             @id @default(uuid()) @db.Uuid
+  instructionVersionId String             @db.Uuid
+  position             Int
+  title                String             @db.VarChar(240)
+  body                 String             @db.Text
+  instructionVersion   InstructionVersion @relation(fields: [instructionVersionId], references: [id], onDelete: Cascade)
+
+  @@unique([instructionVersionId, position])
+}
+
+model InstructionStep {
+  id                   String             @id @default(uuid()) @db.Uuid
+  instructionVersionId String             @db.Uuid
+  position             Int
+  title                String             @db.VarChar(240)
+  body                 String             @db.Text
+  isRequired           Boolean            @default(true)
+  warning              String?            @db.Text
+  mediaReference       String?            @db.VarChar(500)
+  instructionVersion   InstructionVersion @relation(fields: [instructionVersionId], references: [id], onDelete: Cascade)
+
+  @@unique([instructionVersionId, position])
+}
+
+model InstructionAudience {
+  instructionVersionId String             @db.Uuid
+  productRole          ProductRole
+  marketId             String             @db.Uuid
+  instructionVersion   InstructionVersion @relation(fields: [instructionVersionId], references: [id], onDelete: Cascade)
+  market               Market             @relation(fields: [marketId], references: [id], onDelete: Restrict)
+
+  @@id([instructionVersionId, productRole, marketId])
+  @@index([productRole, marketId])
+}
+
+model TaskDefinition {
+  id                   String          @id @default(uuid()) @db.Uuid
+  key                  String          @unique @db.VarChar(140)
+  opportunityId        String?         @db.Uuid
+  partnerServiceId     String?         @db.Uuid
+  responsibleManagerId String?         @db.Uuid
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+  opportunity          Opportunity?    @relation(fields: [opportunityId], references: [id], onDelete: Restrict)
+  partnerService       PartnerService? @relation(fields: [partnerServiceId], references: [id], onDelete: Restrict)
+  responsibleManager   User?           @relation("TaskManager", fields: [responsibleManagerId], references: [id], onDelete: SetNull)
+  versions             TaskVersion[]
+  userTasks            UserTask[]
+
+  @@index([opportunityId])
+  @@index([responsibleManagerId])
+}
+
+model TaskVersion {
+  id                        String                @id @default(uuid()) @db.Uuid
+  taskDefinitionId          String                @db.Uuid
+  version                   Int
+  status                    PublicationStatus     @default(DRAFT)
+  title                     String                @db.VarChar(240)
+  summary                   String                @db.Text
+  requirements              Json
+  limitations               Json
+  resultRequirements        Json
+  pointsRuleKey             String?               @db.VarChar(120)
+  possibleRewardDescription String?               @db.Text
+  instructionVersionId      String?               @db.Uuid
+  reviewWindowMinutes       Int?
+  availableFrom             DateTime?
+  availableUntil            DateTime?
+  completionDeadline        DateTime?
+  resubmissionPolicy        String                @db.Text
+  termsHash                 String                @db.VarChar(128)
+  publishedAt               DateTime?
+  createdAt                 DateTime              @default(now())
+  taskDefinition            TaskDefinition        @relation(fields: [taskDefinitionId], references: [id], onDelete: Restrict)
+  instructionVersion        InstructionVersion?   @relation(fields: [instructionVersionId], references: [id], onDelete: Restrict)
+  audiences                 TaskVersionAudience[]
+  userTasks                 UserTask[]
+
+  @@unique([taskDefinitionId, version])
+  @@index([status, publishedAt])
+  @@index([instructionVersionId])
+}
+
+model TaskVersionAudience {
+  taskVersionId String      @db.Uuid
+  productRole   ProductRole
+  marketId      String      @db.Uuid
+  taskVersion   TaskVersion @relation(fields: [taskVersionId], references: [id], onDelete: Cascade)
+  market        Market      @relation(fields: [marketId], references: [id], onDelete: Restrict)
+
+  @@id([taskVersionId, productRole, marketId])
+  @@index([productRole, marketId])
+}
+
+model UserTask {
+  id               String                  @id @default(uuid()) @db.Uuid
+  userId           String                  @db.Uuid
+  taskDefinitionId String                  @db.Uuid
+  taskVersionId    String                  @db.Uuid
+  attemptNumber    Int                     @default(1)
+  status           UserTaskStatus          @default(AVAILABLE)
+  assignmentKey    String                  @unique @db.VarChar(160)
+  acceptedAt       DateTime?
+  startedAt        DateTime?
+  completedAt      DateTime?
+  expiresAt        DateTime?
+  cancelledAt      DateTime?
+  createdAt        DateTime                @default(now())
+  updatedAt        DateTime                @updatedAt
+  user             User                    @relation(fields: [userId], references: [id], onDelete: Restrict)
+  taskDefinition   TaskDefinition          @relation(fields: [taskDefinitionId], references: [id], onDelete: Restrict)
+  taskVersion      TaskVersion             @relation(fields: [taskVersionId], references: [id], onDelete: Restrict)
+  submissions      TaskSubmission[]
+  statusHistory    UserTaskStatusHistory[]
+  pointsEntries    VXPointsLedgerEntry[]
+  rewards          VXReward[]
+  appeals          Appeal[]
+
+  @@unique([userId, taskDefinitionId, attemptNumber])
+  @@index([userId, status, createdAt])
+  @@index([taskVersionId])
+}
+
+model UserTaskStatusHistory {
+  id         String          @id @default(uuid()) @db.Uuid
+  userTaskId String          @db.Uuid
+  fromStatus UserTaskStatus?
+  toStatus   UserTaskStatus
+  actorId    String?         @db.Uuid
+  reason     String          @db.VarChar(500)
+  occurredAt DateTime        @default(now())
+  userTask   UserTask        @relation(fields: [userTaskId], references: [id], onDelete: Restrict)
+
+  @@index([userTaskId, occurredAt])
+}
+
+model TaskSubmission {
+  id         String              @id @default(uuid()) @db.Uuid
+  userTaskId String              @db.Uuid
+  createdAt  DateTime            @default(now())
+  userTask   UserTask            @relation(fields: [userTaskId], references: [id], onDelete: Restrict)
+  versions   SubmissionVersion[]
+
+  @@unique([userTaskId])
+  @@index([userTaskId, createdAt])
+}
+
+model SubmissionVersion {
+  id               String             @id @default(uuid()) @db.Uuid
+  taskSubmissionId String             @db.Uuid
+  version          Int
+  status           SubmissionStatus   @default(DRAFT)
+  payload          Json
+  contentHash      String             @db.VarChar(128)
+  submittedAt      DateTime?
+  createdAt        DateTime           @default(now())
+  taskSubmission   TaskSubmission     @relation(fields: [taskSubmissionId], references: [id], onDelete: Restrict)
+  reviews          SubmissionReview[]
+
+  @@unique([taskSubmissionId, version])
+  @@index([status, submittedAt])
+}
+
+model SubmissionReview {
+  id                  String            @id @default(uuid()) @db.Uuid
+  submissionVersionId String            @db.Uuid
+  reviewerId          String            @db.Uuid
+  decision            ReviewDecision
+  reasonCode          String            @db.VarChar(120)
+  reason              String            @db.VarChar(1000)
+  comment             String?           @db.Text
+  decidedAt           DateTime          @default(now())
+  submissionVersion   SubmissionVersion @relation(fields: [submissionVersionId], references: [id], onDelete: Restrict)
+  reviewer            User              @relation("SubmissionReviewer", fields: [reviewerId], references: [id], onDelete: Restrict)
+  rewards             VXReward[]
+  appeals             Appeal[]
+
+  @@index([submissionVersionId, decidedAt])
+  @@index([reviewerId, decidedAt])
+}
+
+model VXPointsLedgerEntry {
+  id              String                @id @default(uuid()) @db.Uuid
+  userId          String                @db.Uuid
+  userTaskId      String?               @db.Uuid
+  delta           Int
+  status          PointsEntryStatus
+  sourceType      String                @db.VarChar(100)
+  sourceId        String                @db.VarChar(160)
+  reason          String                @db.VarChar(500)
+  ruleVersion     String                @db.VarChar(80)
+  idempotencyKey  String                @unique @db.VarChar(160)
+  reversesEntryId String?               @db.Uuid
+  occurredAt      DateTime              @default(now())
+  user            User                  @relation(fields: [userId], references: [id], onDelete: Restrict)
+  userTask        UserTask?             @relation(fields: [userTaskId], references: [id], onDelete: Restrict)
+  reversesEntry   VXPointsLedgerEntry?  @relation("PointsReversal", fields: [reversesEntryId], references: [id], onDelete: Restrict)
+  reversedBy      VXPointsLedgerEntry[] @relation("PointsReversal")
+
+  @@index([userId, occurredAt])
+  @@index([sourceType, sourceId])
+  @@index([userTaskId])
+}
+
+model RankDefinition {
+  id             String            @id @default(uuid()) @db.Uuid
+  code           RankCode
+  scopeKey       String            @db.VarChar(120)
+  version        Int
+  productRole    ProductRole?
+  marketId       String?           @db.Uuid
+  criteria       Json
+  benefits       Json
+  status         PublicationStatus @default(DRAFT)
+  effectiveFrom  DateTime?
+  effectiveUntil DateTime?
+  createdAt      DateTime          @default(now())
+  market         Market?           @relation(fields: [marketId], references: [id], onDelete: Restrict)
+  userRanks      UserRank[]
+
+  @@unique([code, scopeKey, version])
+  @@index([productRole, marketId, status])
+}
+
+model UserRank {
+  id               String         @id @default(uuid()) @db.Uuid
+  userId           String         @db.Uuid
+  rankDefinitionId String         @db.Uuid
+  previousRankId   String?        @db.Uuid
+  reason           String         @db.VarChar(500)
+  idempotencyKey   String         @unique @db.VarChar(160)
+  assignedById     String?        @db.Uuid
+  assignedAt       DateTime       @default(now())
+  user             User           @relation(fields: [userId], references: [id], onDelete: Restrict)
+  rankDefinition   RankDefinition @relation(fields: [rankDefinitionId], references: [id], onDelete: Restrict)
+  previousRank     UserRank?      @relation("UserRankChain", fields: [previousRankId], references: [id], onDelete: Restrict)
+  nextRanks        UserRank[]     @relation("UserRankChain")
+
+  @@index([userId, assignedAt])
+  @@index([rankDefinitionId])
+}
+
+model TrustScoreEvent {
+  id             String              @id @default(uuid()) @db.Uuid
+  userId         String              @db.Uuid
+  delta          Int
+  scoreBefore    Int
+  scoreAfter     Int
+  eventType      String              @db.VarChar(120)
+  sourceType     String              @db.VarChar(100)
+  sourceId       String              @db.VarChar(160)
+  reason         String              @db.VarChar(500)
+  ruleVersion    String              @db.VarChar(80)
+  isAppealable   Boolean             @default(false)
+  idempotencyKey String              @unique @db.VarChar(160)
+  occurredAt     DateTime            @default(now())
+  user           User                @relation(fields: [userId], references: [id], onDelete: Restrict)
+  snapshot       TrustScoreSnapshot?
+  appeals        Appeal[]
+
+  @@index([userId, occurredAt])
+  @@index([sourceType, sourceId])
+}
+
+model TrustScoreSnapshot {
+  id           String          @id @default(uuid()) @db.Uuid
+  userId       String          @unique @db.Uuid
+  score        Int
+  lastEventId  String          @unique @db.Uuid
+  calculatedAt DateTime        @default(now())
+  user         User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lastEvent    TrustScoreEvent @relation(fields: [lastEventId], references: [id], onDelete: Restrict)
+}
+
+model RewardType {
+  id          String            @id @default(uuid()) @db.Uuid
+  key         String            @unique @db.VarChar(120)
+  name        String            @db.VarChar(200)
+  valueKind   RewardValueKind
+  description String            @db.Text
+  status      PublicationStatus @default(DRAFT)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  rewards     VXReward[]
+}
+
+model VXReward {
+  id                 String                @id @default(uuid()) @db.Uuid
+  userId             String                @db.Uuid
+  rewardTypeId       String                @db.Uuid
+  userTaskId         String?               @db.Uuid
+  submissionReviewId String?               @db.Uuid
+  status             RewardStatus          @default(EXPECTED)
+  title              String                @db.VarChar(240)
+  description        String                @db.Text
+  amount             Decimal?              @db.Decimal(19, 4)
+  currency           String?               @db.Char(3)
+  nonMonetaryValue   Json?
+  validFrom          DateTime?
+  validUntil         DateTime?
+  provisionDueAt     DateTime?
+  idempotencyKey     String                @unique @db.VarChar(160)
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
+  user               User                  @relation(fields: [userId], references: [id], onDelete: Restrict)
+  rewardType         RewardType            @relation(fields: [rewardTypeId], references: [id], onDelete: Restrict)
+  userTask           UserTask?             @relation(fields: [userTaskId], references: [id], onDelete: Restrict)
+  submissionReview   SubmissionReview?     @relation(fields: [submissionReviewId], references: [id], onDelete: Restrict)
+  statusHistory      RewardStatusHistory[]
+  appeals            Appeal[]
+
+  @@index([userId, status, createdAt])
+  @@index([userTaskId])
+  @@index([submissionReviewId])
+}
+
+model RewardStatusHistory {
+  id         String        @id @default(uuid()) @db.Uuid
+  rewardId   String        @db.Uuid
+  fromStatus RewardStatus?
+  toStatus   RewardStatus
+  actorId    String?       @db.Uuid
+  reason     String        @db.VarChar(1000)
+  occurredAt DateTime      @default(now())
+  reward     VXReward      @relation(fields: [rewardId], references: [id], onDelete: Restrict)
+
+  @@index([rewardId, occurredAt])
+}
+
+model SupportConversation {
+  id                 String                    @id @default(uuid()) @db.Uuid
+  userId             String                    @db.Uuid
+  category           String                    @db.VarChar(80)
+  priority           SupportPriority           @default(NORMAL)
+  status             SupportConversationStatus @default(CREATED)
+  subject            String                    @db.VarChar(240)
+  context            Json
+  assignedToId       String?                   @db.Uuid
+  createdAt          DateTime                  @default(now())
+  updatedAt          DateTime                  @updatedAt
+  closedAt           DateTime?
+  user               User                      @relation(fields: [userId], references: [id], onDelete: Restrict)
+  assignedTo         User?                     @relation("SupportAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+  messages           SupportMessage[]
+  internalNotes      SupportInternalNote[]
+  statusHistory      SupportStatusHistory[]
+  appeals            Appeal[]
+  categoryDefinition SupportCategory           @relation(fields: [category], references: [key], onDelete: Restrict)
+
+  @@index([userId, updatedAt])
+  @@index([assignedToId, status, priority])
+}
+
+model SupportMessage {
+  id             String                   @id @default(uuid()) @db.Uuid
+  conversationId String                   @db.Uuid
+  authorType     SupportMessageAuthorType
+  authorId       String?                  @db.Uuid
+  bodyProtected  Json
+  createdAt      DateTime                 @default(now())
+  conversation   SupportConversation      @relation(fields: [conversationId], references: [id], onDelete: Restrict)
+  author         User?                    @relation("SupportMessageAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+
+  @@index([conversationId, createdAt])
+}
+
+model SupportInternalNote {
+  id             String              @id @default(uuid()) @db.Uuid
+  conversationId String              @db.Uuid
+  authorId       String              @db.Uuid
+  bodyProtected  Json
+  createdAt      DateTime            @default(now())
+  conversation   SupportConversation @relation(fields: [conversationId], references: [id], onDelete: Restrict)
+  author         User                @relation("SupportNoteAuthor", fields: [authorId], references: [id], onDelete: Restrict)
+
+  @@index([conversationId, createdAt])
+}
+
+model SupportStatusHistory {
+  id             String                     @id @default(uuid()) @db.Uuid
+  conversationId String                     @db.Uuid
+  fromStatus     SupportConversationStatus?
+  toStatus       SupportConversationStatus
+  actorId        String?                    @db.Uuid
+  reason         String                     @db.VarChar(500)
+  occurredAt     DateTime                   @default(now())
+  conversation   SupportConversation        @relation(fields: [conversationId], references: [id], onDelete: Restrict)
+
+  @@index([conversationId, occurredAt])
+}
+
+model Appeal {
+  id                 String                @id @default(uuid()) @db.Uuid
+  userId             String                @db.Uuid
+  conversationId     String?               @db.Uuid
+  userTaskId         String?               @db.Uuid
+  submissionReviewId String?               @db.Uuid
+  trustScoreEventId  String?               @db.Uuid
+  rewardId           String?               @db.Uuid
+  status             AppealStatus          @default(DRAFT)
+  reason             String                @db.Text
+  decisionReason     String?               @db.Text
+  reviewerId         String?               @db.Uuid
+  submittedAt        DateTime?
+  decidedAt          DateTime?
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
+  user               User                  @relation(fields: [userId], references: [id], onDelete: Restrict)
+  conversation       SupportConversation?  @relation(fields: [conversationId], references: [id], onDelete: Restrict)
+  userTask           UserTask?             @relation(fields: [userTaskId], references: [id], onDelete: Restrict)
+  submissionReview   SubmissionReview?     @relation(fields: [submissionReviewId], references: [id], onDelete: Restrict)
+  trustScoreEvent    TrustScoreEvent?      @relation(fields: [trustScoreEventId], references: [id], onDelete: Restrict)
+  reward             VXReward?             @relation(fields: [rewardId], references: [id], onDelete: Restrict)
+  reviewer           User?                 @relation("AppealReviewer", fields: [reviewerId], references: [id], onDelete: SetNull)
+  statusHistory      AppealStatusHistory[]
+
+  @@index([userId, status, createdAt])
+  @@index([reviewerId, status])
+  @@index([userTaskId])
+}
+
+model AppealStatusHistory {
+  id         String        @id @default(uuid()) @db.Uuid
+  appealId   String        @db.Uuid
+  fromStatus AppealStatus?
+  toStatus   AppealStatus
+  actorId    String?       @db.Uuid
+  reason     String        @db.VarChar(1000)
+  occurredAt DateTime      @default(now())
+  appeal     Appeal        @relation(fields: [appealId], references: [id], onDelete: Restrict)
+
+  @@index([appealId, occurredAt])
+}
+
+model Forecast {
+  id            String            @id @default(uuid()) @db.Uuid
+  key           String            @unique @db.VarChar(140)
+  title         String            @db.VarChar(240)
+  authorId      String            @db.Uuid
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  author        User              @relation("ForecastAuthor", fields: [authorId], references: [id], onDelete: Restrict)
+  versions      ForecastVersion[]
+  opportunities Opportunity[]
+}
+
+model ForecastVersion {
+  id          String                    @id @default(uuid()) @db.Uuid
+  forecastId  String                    @db.Uuid
+  version     Int
+  language    LanguageCode
+  status      ForecastPublicationStatus @default(DRAFT)
+  content     Json
+  contentHash String                    @db.VarChar(128)
+  disclaimer  String                    @db.Text
+  validFrom   DateTime
+  validUntil  DateTime
+  publishedAt DateTime?
+  createdAt   DateTime                  @default(now())
+  forecast    Forecast                  @relation(fields: [forecastId], references: [id], onDelete: Restrict)
+  accessRules ForecastAccessRule[]
+
+  @@unique([forecastId, version, language])
+  @@index([status, validFrom, validUntil])
+}
+
+model ForecastAccessRule {
+  id                String          @id @default(uuid()) @db.Uuid
+  forecastVersionId String          @db.Uuid
+  productRole       ProductRole
+  marketId          String          @db.Uuid
+  minimumRank       RankCode?
+  userId            String?         @db.Uuid
+  ruleVersion       String          @db.VarChar(80)
+  forecastVersion   ForecastVersion @relation(fields: [forecastVersionId], references: [id], onDelete: Cascade)
+  market            Market          @relation(fields: [marketId], references: [id], onDelete: Restrict)
+  user              User?           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([productRole, marketId, minimumRank])
+  @@index([userId])
+}
+
+model Promocode {
+  id               String                @id @default(uuid()) @db.Uuid
+  key              String                @unique @db.VarChar(140)
+  partnerServiceId String                @db.Uuid
+  opportunityId    String?               @db.Uuid
+  marketId         String                @db.Uuid
+  productRole      ProductRole
+  codeProtected    Json
+  codeFingerprint  String                @unique @db.VarChar(128)
+  instructions     String                @db.Text
+  validFrom        DateTime
+  validUntil       DateTime
+  status           PublicationStatus     @default(DRAFT)
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+  partnerService   PartnerService        @relation(fields: [partnerServiceId], references: [id], onDelete: Restrict)
+  opportunity      Opportunity?          @relation(fields: [opportunityId], references: [id], onDelete: Restrict)
+  market           Market                @relation(fields: [marketId], references: [id], onDelete: Restrict)
+  activations      PromocodeActivation[]
+
+  @@index([productRole, marketId, status])
+  @@index([partnerServiceId, status])
+}
+
+model PromocodeActivation {
+  id             String                       @id @default(uuid()) @db.Uuid
+  promocodeId    String                       @db.Uuid
+  userId         String                       @db.Uuid
+  status         PromocodeActivationStatus    @default(ACTIVE)
+  activatedAt    DateTime                     @default(now())
+  usedAt         DateTime?
+  expiresAt      DateTime
+  idempotencyKey String                       @unique @db.VarChar(160)
+  promocode      Promocode                    @relation(fields: [promocodeId], references: [id], onDelete: Restrict)
+  user           User                         @relation(fields: [userId], references: [id], onDelete: Restrict)
+  history        PromocodeActivationHistory[]
+
+  @@unique([promocodeId, userId])
+  @@index([userId, status, activatedAt])
+  @@index([promocodeId, status])
+}
+
+model PromocodeActivationHistory {
+  id           String                     @id @default(uuid()) @db.Uuid
+  activationId String                     @db.Uuid
+  fromStatus   PromocodeActivationStatus?
+  toStatus     PromocodeActivationStatus
+  actorId      String?                    @db.Uuid
+  reason       String                     @db.VarChar(500)
+  occurredAt   DateTime                   @default(now())
+  activation   PromocodeActivation        @relation(fields: [activationId], references: [id], onDelete: Restrict)
+
+  @@index([activationId, occurredAt])
+}
+
+model Notification {
+  id             String                      @id @default(uuid()) @db.Uuid
+  userId         String                      @db.Uuid
+  type           String                      @db.VarChar(120)
+  channel        NotificationChannel
+  status         NotificationStatus          @default(PENDING)
+  title          String                      @db.VarChar(240)
+  body           String                      @db.Text
+  relatedType    String?                     @db.VarChar(100)
+  relatedId      String?                     @db.VarChar(160)
+  idempotencyKey String                      @unique @db.VarChar(160)
+  scheduledAt    DateTime?
+  sentAt         DateTime?
+  readAt         DateTime?
+  createdAt      DateTime                    @default(now())
+  user           User                        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  statusHistory  NotificationStatusHistory[]
+  batchId        String?                     @db.Uuid
+  batch          NotificationBatch?          @relation(fields: [batchId], references: [id], onDelete: SetNull)
+
+  @@index([userId, status, createdAt])
+  @@index([scheduledAt, status])
+  @@index([batchId])
+}
+
+model NotificationBatch {
+  id             String         @id @default(uuid()) @db.Uuid
+  actorId        String         @db.Uuid
+  audience       Json
+  type           String         @db.VarChar(120)
+  title          String         @db.VarChar(240)
+  body           String         @db.Text
+  recipientCount Int
+  idempotencyKey String         @unique @db.VarChar(160)
+  createdAt      DateTime       @default(now())
+  actor          User           @relation("NotificationBatchActor", fields: [actorId], references: [id], onDelete: Restrict)
+  notifications  Notification[]
+
+  @@index([actorId, createdAt])
+}
+
+model NotificationStatusHistory {
+  id             String              @id @default(uuid()) @db.Uuid
+  notificationId String              @db.Uuid
+  fromStatus     NotificationStatus?
+  toStatus       NotificationStatus
+  actorId        String?             @db.Uuid
+  reason         String              @db.VarChar(500)
+  occurredAt     DateTime            @default(now())
+  notification   Notification        @relation(fields: [notificationId], references: [id], onDelete: Restrict)
+
+  @@index([notificationId, occurredAt])
+}

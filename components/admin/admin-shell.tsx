@@ -20,7 +20,6 @@ import { WorkspaceShell } from "@/components/dashboard/workspace-shell";
 import type { DashboardPreferences } from "@/lib/dashboard-data";
 
 const adminPreferences: DashboardPreferences = {
-  displayName: "Демо-администратор",
   reducedMotion: false,
 };
 
@@ -80,8 +79,7 @@ const adminConfig = {
     "/admin/audit/": "Запись аудита",
     "/admin/settings/": "Системная настройка",
   },
-  demoText: "Панель показывает только frontend-структуру. Реальных пользователей, статистики, финансовых данных и действующей конфигурации нет.",
-  notificationText: "Системные уведомления появятся только после подключения backend, прав сотрудников и журнала действий.",
+  notificationText: "Административные события доступны в журнале аудита.",
 };
 
 export function AdminShell({ children }: { children: React.ReactNode }) {

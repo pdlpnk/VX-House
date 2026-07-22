@@ -4,9 +4,9 @@ import { ArrowLeft, Check, CircleUserRound, Handshake } from "lucide-react";
 import styles from "@/app/access/access.module.css";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import type { AccessScenario } from "@/lib/access-draft";
+import type { AccessScenario } from "@/lib/access-types";
 
-export type { AccessScenario } from "@/lib/access-draft";
+export type { AccessScenario } from "@/lib/access-types";
 
 type AccessScenarioStepProps = {
   selectedScenario: AccessScenario | null;

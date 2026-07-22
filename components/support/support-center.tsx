@@ -1,45 +1,20 @@
-"use client";
-
-import { ArrowRight, CircleHelp, FileSearch, FolderKanban, Gavel, Gift, KeyRound, MessageSquareText, Plus, Search, Settings, ShieldCheck, type LucideIcon } from "lucide-react";
+import { ArrowRight, CircleHelp, FileSearch, FolderKanban, Gavel, Gift, KeyRound, MessageSquareText, Plus, Settings, ShieldCheck, type LucideIcon } from "lucide-react";
 import Link from "next/link";
-
 import styles from "@/app/dashboard/dashboard.module.css";
 import { DashboardHeading, DashboardPage, StatusPill } from "@/components/dashboard/dashboard-ui";
 import { SupportStatusGuide } from "@/components/support/support-status-guide";
 import { SupportStatusPill } from "@/components/support/support-status";
 import { buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import type { EconomyRole } from "@/lib/economy-data";
-import { getSupportCategory, getSupportTickets, supportCategories, supportPriorityLabels, type SupportCategoryId } from "@/lib/support-data";
+import type { SupportCategoryView, SupportConversationView } from "@/lib/support";
+import { supportPriorityLabels } from "@/lib/support-data";
 import { cn } from "@/lib/utils";
 
-const categoryIcons: Record<SupportCategoryId, LucideIcon> = {
-  access: KeyRound,
-  task: FolderKanban,
-  review: FileSearch,
-  reward: Gift,
-  account: Settings,
-  appeal: Gavel,
-  partnership: ShieldCheck,
-};
-
-export function SupportCenter({ role, basePath }: { role: EconomyRole; basePath: string }) {
-  const tickets = getSupportTickets(role);
-  const categories = supportCategories.filter((category) => category.roles.includes(role));
-  return <DashboardPage>
-    <DashboardHeading eyebrow="Центр поддержки" title="Помощь с сохранением контекста" description="Будущий единый канал самообслуживания и диалога. Все обращения и сообщения на экране — только демонстрация интерфейса." action={<StatusPill tone="neutral">Сервис не подключён</StatusPill>} />
-    <section className={styles.supportHero} aria-labelledby="support-hero-title"><div><span><CircleHelp aria-hidden="true" /></span><div><small>Сначала — понятный ответ</small><h2 id="support-hero-title">Не нужно пересказывать известные данные</h2><p>После подключения сервиса обращение сможет получить только разрешённый контекст роли, рынка, задания, результата или Reward.</p></div></div><Link className={cn(buttonVariants(), styles.supportNewLink)} href={`${basePath}/new`}><Plus aria-hidden="true" />Новое обращение</Link></section>
-
-    <section className={styles.supportWorkspace} aria-labelledby="support-list-title">
-      <div className={styles.supportListColumn}>
-        <header><div><span>Демонстрационный список</span><h2 id="support-list-title">Обращения</h2><p>Это примеры композиции, а не реальные запросы пользователя.</p></div><StatusPill tone="neutral">{tickets.length} сценария интерфейса</StatusPill></header>
-        <label className={styles.supportSearch}><Search aria-hidden="true" /><span className="sr-only">Поиск обращений</span><input type="search" disabled placeholder="Поиск будет доступен после подключения сервиса" /></label>
-        <div className={styles.supportTicketList}>{tickets.map((ticket) => { const category = getSupportCategory(ticket.category); return <Link key={ticket.id} href={`${basePath}/${ticket.id}`}><div><small>Демонстрационное обращение</small><SupportStatusPill status={ticket.status} /></div><h3>{ticket.title}</h3><p>{ticket.summary}</p><dl><div><dt>Категория</dt><dd>{category.title}</dd></div><div><dt>Приоритет</dt><dd>{supportPriorityLabels[ticket.priority]}</dd></div><div><dt>Последний ответ</dt><dd>Время не задано</dd></div></dl><span>Открыть структуру <ArrowRight aria-hidden="true" /></span></Link>; })}</div>
-      </div>
-      <aside className={styles.supportAvailability}><MessageSquareText aria-hidden="true" /><small>Доступность команды</small><h2>График не подключён</h2><p>Интерфейс не обещает круглосуточную поддержку или конкретное время ответа без операционного подтверждения.</p><dl><div><dt>Канал</dt><dd>Внутренний диалог</dd></div><div><dt>Ориентир ответа</dt><dd>Нет данных</dd></div><div><dt>Оператор</dt><dd>Не назначен</dd></div></dl></aside>
-    </section>
-
-    <section className={styles.supportCategorySection} aria-labelledby="support-category-title"><header><span>Категории</span><h2 id="support-category-title">Контекст определяется до сообщения</h2><p>Категория помогает приложить только релевантные данные и не передавать лишнюю информацию.</p></header><div>{categories.map((category) => { const Icon = categoryIcons[category.id]; return <Card key={category.id} className={styles.supportCategoryCard}><Icon aria-hidden="true" /><h3>{category.title}</h3><p>{category.description}</p><small>Выбор будет доступен в реальном обращении</small></Card>; })}</div></section>
-    <SupportStatusGuide />
+const categoryIcons: Record<string, LucideIcon> = { access: KeyRound, task: FolderKanban, review: FileSearch, reward: Gift, account: Settings, appeal: Gavel, partnership: ShieldCheck };
+export function SupportCenter({ categories, tickets, basePath }: { categories: SupportCategoryView[]; tickets: SupportConversationView[]; basePath: string }) {
+  return <DashboardPage><DashboardHeading eyebrow="Центр поддержки" title="Помощь с сохранением контекста" description="Единый канал диалога: сообщения, статус и разрешённый контекст сохраняются сервером." action={<StatusPill tone="success">Серверные данные</StatusPill>} />
+    <section className={styles.supportHero} aria-labelledby="support-hero-title"><div><span><CircleHelp aria-hidden="true" /></span><div><small>Сначала — понятный ответ</small><h2 id="support-hero-title">Не нужно пересказывать известные данные</h2><p>Обращение получает только проверенный контекст роли, рынка и выбранной сущности.</p></div></div><Link className={cn(buttonVariants(), styles.supportNewLink)} href={`${basePath}/new`}><Plus aria-hidden="true" />Новое обращение</Link></section>
+    <section className={styles.supportWorkspace} aria-labelledby="support-list-title"><div className={styles.supportListColumn}><header><div><span>Ваши обращения</span><h2 id="support-list-title">Обращения</h2><p>Статусы и время обновления приходят с сервера.</p></div><StatusPill tone="neutral">{tickets.length}</StatusPill></header><div className={styles.supportTicketList}>{tickets.length === 0 ? <Card className={styles.noDataPanel}><MessageSquareText aria-hidden="true" /><h2>Обращений пока нет</h2><p>Создайте обращение, если вопрос не удалось решить самостоятельно.</p></Card> : tickets.map((ticket) => <Link key={ticket.id} href={`${basePath}/${ticket.id}`}><div><small>{new Intl.DateTimeFormat("ru", { dateStyle: "medium", timeStyle: "short" }).format(new Date(ticket.updatedAt))}</small><SupportStatusPill status={ticket.status} /></div><h3>{ticket.subject}</h3><p>{ticket.messages.at(-1)?.body ?? ticket.category.description}</p><dl><div><dt>Категория</dt><dd>{ticket.category.title}</dd></div><div><dt>Приоритет</dt><dd>{supportPriorityLabels[ticket.priority]}</dd></div><div><dt>Сообщений</dt><dd>{ticket.messages.length}</dd></div></dl><span>Открыть обращение <ArrowRight aria-hidden="true" /></span></Link>)}</div></div><aside className={styles.supportAvailability}><MessageSquareText aria-hidden="true" /><small>Доступность команды</small><h2>Без ложных обещаний</h2><p>Конкретное время ответа не показывается без операционного подтверждения.</p><dl><div><dt>Канал</dt><dd>Внутренний диалог</dd></div><div><dt>Ориентир ответа</dt><dd>Не опубликован</dd></div><div><dt>Источник</dt><dd>Сервер VX House</dd></div></dl></aside></section>
+    <section className={styles.supportCategorySection} aria-labelledby="support-category-title"><header><span>Категории</span><h2 id="support-category-title">Контекст определяется до сообщения</h2><p>Сервер показывает только категории, разрешённые для роли и рынка.</p></header><div>{categories.map((category) => { const Icon = categoryIcons[category.key] ?? MessageSquareText; return <Card key={category.key} className={styles.supportCategoryCard}><Icon aria-hidden="true" /><h3>{category.title}</h3><p>{category.description}</p><small>Доступно для обращения</small></Card>; })}</div></section><SupportStatusGuide />
   </DashboardPage>;
 }

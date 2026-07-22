@@ -4,7 +4,7 @@ import { ArrowLeft, ArrowRight, Check, Globe2, Languages, MapPin } from "lucide-
 import styles from "@/app/access/access.module.css";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import type { AccessCountry, AccessLanguage } from "@/lib/access-draft";
+import type { AccessCountry, AccessLanguage } from "@/lib/access-types";
 
 type AccessMarketStepProps = {
   country: AccessCountry | null;

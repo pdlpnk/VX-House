@@ -1,0 +1,2 @@
+import { errorResponse, getSupportNotificationService, json, readJsonBody, requireRequestPrincipal, requireTrustedOrigin } from "@/lib/server";
+export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) { try { requireTrustedOrigin(request); const principal = await requireRequestPrincipal(request); const body = await readJsonBody(request); return json(await getSupportNotificationService().markNotificationRead(principal, (await params).id, String(body.idempotencyKey ?? ""))); } catch (error) { return errorResponse(error); } }

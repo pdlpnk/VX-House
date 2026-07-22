@@ -1,15 +1,16 @@
 import { CheckCircle2, CircleDotDashed, CircleX, Clock3, Inbox, UserRound, type LucideIcon } from "lucide-react";
 
 import styles from "@/app/dashboard/dashboard.module.css";
-import { supportStatuses, type SupportStatus } from "@/lib/support-data";
+import { supportStatuses } from "@/lib/support-data";
+import type { SupportStatus } from "@/lib/support";
 
 const statusIcons: Record<SupportStatus, LucideIcon> = {
-  new: CircleDotDashed,
-  open: Inbox,
-  "waiting-user": UserRound,
-  "waiting-operator": Clock3,
-  resolved: CheckCircle2,
-  closed: CircleX,
+  CREATED: CircleDotDashed,
+  ASSIGNED: Inbox,
+  WAITING_USER: UserRound,
+  WAITING_OPERATOR: Clock3,
+  RESOLVED: CheckCircle2,
+  CLOSED: CircleX,
 };
 
 export function SupportStatusGuide() {

@@ -1,0 +1,38 @@
+name: vx-house-database
+
+services:
+  postgres-dev:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: vx_house_dev
+      POSTGRES_USER: vx_house_dev
+      POSTGRES_PASSWORD: vx_house_dev_only
+    ports:
+      - "127.0.0.1:55432:5432"
+    volumes:
+      - vx_house_postgres_dev:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vx_house_dev -d vx_house_dev"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  postgres-test:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: vx_house_test
+      POSTGRES_USER: vx_house_test
+      POSTGRES_PASSWORD: vx_house_test_only
+    ports:
+      - "127.0.0.1:55433:5432"
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vx_house_test -d vx_house_test"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  vx_house_postgres_dev:

@@ -4,6 +4,8 @@ import { Activity, ChartNoAxesCombined, Compass, Gift, Headphones, House, Settin
 
 import { WorkspaceShell } from "@/components/dashboard/workspace-shell";
 import { DASHBOARD_PREFERENCES_KEY, defaultDashboardPreferences } from "@/lib/dashboard-data";
+import type { SafeProfileDTO } from "@/lib/repositories";
+import type { NotificationView } from "@/lib/support";
 
 const playerConfig = {
   kind: "player" as const,
@@ -43,10 +45,9 @@ const playerConfig = {
     "/dashboard/rewards/": "Карточка VX Reward",
     "/dashboard/support/": "Обращение",
   },
-  demoText: "Показатели ниже — пример интерфейса, а не достижения или активность пользователя.",
-  notificationText: "Здесь появятся только реальные изменения профиля, заданий и проверок после подключения серверных данных.",
+  notificationText: "Новых событий пока нет.",
 };
 
-export function DashboardShell({ children }: { children: React.ReactNode }) {
-  return <WorkspaceShell config={playerConfig}>{children}</WorkspaceShell>;
+export function DashboardShell({ children, profile, notifications }: { children: React.ReactNode; profile?: SafeProfileDTO; notifications?: NotificationView[] }) {
+  return <WorkspaceShell config={playerConfig} profile={profile} notifications={notifications}>{children}</WorkspaceShell>;
 }

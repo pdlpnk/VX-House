@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { Bell, ChevronRight, Grid2X2, Info, Menu, X, type LucideIcon } from "lucide-react";
+import { Bell, ChevronRight, Grid2X2, LogOut, Menu, Search, X, type LucideIcon } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -10,6 +10,9 @@ import { type CSSProperties, useEffect, useRef, useState } from "react";
 import styles from "@/app/dashboard/dashboard.module.css";
 import { DashboardProvider, useDashboard } from "@/components/dashboard/dashboard-provider";
 import type { DashboardPreferences } from "@/lib/dashboard-data";
+import type { SafeProfileDTO } from "@/lib/repositories";
+import type { NotificationView } from "@/lib/support";
+import type { GlobalSearchResult } from "@/lib/platform-operations";
 
 export type WorkspaceNavigationItem = {
   label: string;
@@ -29,7 +32,6 @@ type WorkspaceShellConfig = {
   pageTitlePrefixes?: Record<string, string>;
   storageKey: string;
   defaultPreferences: DashboardPreferences;
-  demoText: string;
   notificationText: string;
 };
 
@@ -43,7 +45,8 @@ function WorkspaceNavigation({
   mobile?: boolean;
 }) {
   const pathname = usePathname();
-  const { preferences, shouldReduceMotion } = useDashboard();
+  const { profile, shouldReduceMotion } = useDashboard();
+  const displayName = profile?.user.displayName ?? config.profileRole;
 
   return (
     <div className={styles.navigationInner}>
@@ -76,20 +79,26 @@ function WorkspaceNavigation({
         <Link href="/" className={styles.publicLink} onClick={onNavigate}>
           <Grid2X2 aria-hidden="true" />Публичная страница<ChevronRight aria-hidden="true" />
         </Link>
+        {profile ? <button type="button" className={styles.publicLink} onClick={async () => { await fetch("/api/auth/logout", { method: "POST", headers: { "content-type": "application/json" }, body: "{}" }); window.location.assign("/access?mode=login"); }}><LogOut aria-hidden="true" />Выйти<ChevronRight aria-hidden="true" /></button> : null}
         <Link href={config.profileHref} className={styles.sidebarProfile} onClick={onNavigate}>
-          <span>{preferences.displayName.charAt(0).toLocaleUpperCase("ru") || "Д"}</span>
-          <div><strong>{preferences.displayName}</strong><small>{config.profileRole} · демонстрация</small></div>
+          <span>{displayName.charAt(0).toLocaleUpperCase("ru") || "Д"}</span>
+          <div><strong>{displayName}</strong><small>{config.profileRole}</small></div>
         </Link>
       </div>
     </div>
   );
 }
 
-function WorkspaceShellContent({ children, config }: { children: React.ReactNode; config: WorkspaceShellConfig }) {
+function WorkspaceShellContent({ children, config, initialNotifications }: { children: React.ReactNode; config: WorkspaceShellConfig; initialNotifications: NotificationView[] }) {
   const pathname = usePathname();
-  const { preferences, shouldReduceMotion } = useDashboard();
+  const { profile, shouldReduceMotion } = useDashboard();
+  const displayName = profile?.user.displayName ?? config.profileRole;
   const [menuOpen, setMenuOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [notifications, setNotifications] = useState(initialNotifications);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [searchResults, setSearchResults] = useState<GlobalSearchResult[]>([]);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const mobileCloseRef = useRef<HTMLButtonElement>(null);
   const mainRef = useRef<HTMLElement>(null);
@@ -98,10 +107,32 @@ function WorkspaceShellContent({ children, config }: { children: React.ReactNode
   const pageTitle = config.pageTitles[pathname]
     ?? Object.entries(config.pageTitlePrefixes ?? {}).find(([prefix]) => pathname.startsWith(prefix))?.[1]
     ?? "VX House";
+  const unreadCount = notifications.filter((item) => item.status !== "READ").length;
+
+  async function readNotification(id: string) {
+    const current = notifications.find((item) => item.id === id); if (!current || current.status === "READ") return;
+    const response = await fetch(`/api/notifications/${id}/read`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ idempotencyKey: `notification-read-${id}` }) });
+    if (response.ok) setNotifications((items) => items.map((item) => item.id === id ? { ...item, status: "READ", readAt: new Date().toISOString() } : item));
+  }
+
+  useEffect(() => {
+    const query = searchTerm.trim();
+    if (query.length < 2) {
+      const resetTimer = window.setTimeout(() => setSearchResults([]), 0);
+      return () => window.clearTimeout(resetTimer);
+    }
+    const controller = new AbortController();
+    const timer = window.setTimeout(async () => {
+      const response = await fetch(`/api/search?q=${encodeURIComponent(query)}`, { signal: controller.signal });
+      if (response.ok) setSearchResults(((await response.json()) as { items: GlobalSearchResult[] }).items);
+    }, 250);
+    return () => { controller.abort(); window.clearTimeout(timer); };
+  }, [searchTerm]);
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
       if (event.key !== "Escape") return;
+      if (searchOpen) setSearchOpen(false);
       if (notificationsOpen) setNotificationsOpen(false);
       if (menuOpen) {
         setMenuOpen(false);
@@ -110,7 +141,7 @@ function WorkspaceShellContent({ children, config }: { children: React.ReactNode
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [menuOpen, notificationsOpen]);
+  }, [menuOpen, notificationsOpen, searchOpen]);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -159,8 +190,12 @@ function WorkspaceShellContent({ children, config }: { children: React.ReactNode
           </div>
 
           <div className={styles.topbarActions}>
+            {config.kind !== "admin" ? <div className={styles.globalSearch} data-open={searchOpen || undefined}>
+              <button type="button" aria-label="Открыть глобальный поиск" aria-expanded={searchOpen} onClick={() => setSearchOpen((open) => !open)}><Search aria-hidden="true" /></button>
+              {searchOpen ? <div className={styles.globalSearchPanel}><label><Search aria-hidden="true" /><span className="sr-only">Поиск по VX House</span><input autoFocus value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="Возможности, задания, прогнозы…" /></label>{searchTerm.trim().length < 2 ? <p>Введите минимум два символа.</p> : searchResults.length ? <div>{searchResults.map((item) => <Link key={`${item.type}:${item.id}`} href={item.href} onClick={() => setSearchOpen(false)}><small>{item.type}</small><strong>{item.title}</strong><span>{item.description}</span></Link>)}</div> : <p>Ничего не найдено.</p>}</div> : null}
+            </div> : null}
             <div className={styles.notificationsWrap}>
-              <button type="button" className={styles.notificationButton} aria-label="Уведомлений пока нет" aria-expanded={notificationsOpen} aria-controls={notificationsId} onClick={() => setNotificationsOpen((open) => !open)}><Bell aria-hidden="true" /></button>
+              <button type="button" className={styles.notificationButton} aria-label={unreadCount ? `Непрочитанных уведомлений: ${unreadCount}` : "Новых уведомлений нет"} aria-expanded={notificationsOpen} aria-controls={notificationsId} onClick={() => setNotificationsOpen((open) => !open)}><Bell aria-hidden="true" />{unreadCount ? <i aria-hidden="true">{unreadCount}</i> : null}</button>
               <AnimatePresence>
                 {notificationsOpen ? (
                   <motion.div
@@ -172,24 +207,19 @@ function WorkspaceShellContent({ children, config }: { children: React.ReactNode
                     role="region"
                     aria-label="Уведомления"
                   >
-                    <div className={styles.notificationsHeader}><strong>Уведомления</strong><span>Пустое состояние</span></div>
-                    <div className={styles.notificationsEmpty}><Bell aria-hidden="true" /><strong>Уведомлений пока нет</strong><p>{config.notificationText}</p></div>
+                    <div className={styles.notificationsHeader}><strong>Уведомления</strong><span>{unreadCount ? `${unreadCount} непрочитано` : "Всё прочитано"}</span></div>
+                    {notifications.length ? <div className={styles.notificationsList}>{notifications.map((item) => <button type="button" key={item.id} data-unread={item.status !== "READ" || undefined} onClick={() => readNotification(item.id)}><span>{item.category}</span><strong>{item.title}</strong><p>{item.body}</p><small>{new Intl.DateTimeFormat("ru", { dateStyle: "medium", timeStyle: "short" }).format(new Date(item.createdAt))}</small></button>)}</div> : <div className={styles.notificationsEmpty}><Bell aria-hidden="true" /><strong>Уведомлений пока нет</strong><p>{config.notificationText}</p></div>}
                   </motion.div>
                 ) : null}
               </AnimatePresence>
             </div>
 
             <Link href={config.profileHref} className={styles.topbarProfile} aria-label={`Открыть профиль: ${config.profileRole.toLocaleLowerCase("ru")}`}>
-              <span>{preferences.displayName.charAt(0).toLocaleUpperCase("ru") || "Д"}</span>
-              <div><strong>{preferences.displayName}</strong><small>Демо-режим</small></div>
+              <span>{displayName.charAt(0).toLocaleUpperCase("ru") || "Д"}</span>
+              <div><strong>{displayName}</strong><small>{config.profileRole}</small></div>
             </Link>
           </div>
         </header>
-
-        <div className={styles.demoBanner} role="note">
-          <Info aria-hidden="true" />
-          <p><strong>Демонстрационное пространство.</strong> {config.demoText}</p>
-        </div>
 
         <main ref={mainRef} id="main-content" className={styles.dashboardMain}>{children}</main>
 
@@ -208,10 +238,10 @@ function WorkspaceShellContent({ children, config }: { children: React.ReactNode
   );
 }
 
-export function WorkspaceShell({ children, config }: { children: React.ReactNode; config: WorkspaceShellConfig }) {
+export function WorkspaceShell({ children, config, profile, notifications = [] }: { children: React.ReactNode; config: WorkspaceShellConfig; profile?: SafeProfileDTO; notifications?: NotificationView[] }) {
   return (
-    <DashboardProvider storageKey={config.storageKey} defaultPreferences={config.defaultPreferences}>
-      <WorkspaceShellContent config={config}>{children}</WorkspaceShellContent>
+    <DashboardProvider storageKey={config.storageKey} defaultPreferences={config.defaultPreferences} profile={profile}>
+      <WorkspaceShellContent config={config} initialNotifications={notifications}>{children}</WorkspaceShellContent>
     </DashboardProvider>
   );
 }

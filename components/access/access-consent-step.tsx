@@ -1,25 +1,25 @@
 import { motion } from "framer-motion";
-import { ArrowLeft, ArrowRight, Check, ExternalLink, ShieldCheck } from "lucide-react";
-import Link from "next/link";
+import { ArrowLeft, ArrowRight, Check, ShieldCheck } from "lucide-react";
 
 import styles from "@/app/access/access.module.css";
 import type { AccessScenario } from "@/components/access/access-scenario-step";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import type { AccessCountry } from "@/lib/access-draft";
+import type { AccessCountry } from "@/lib/access-types";
 
 type AccessConsentStepProps = {
   scenario: AccessScenario;
   country: AccessCountry;
   isAdult: boolean;
-  acceptedRules: boolean;
-  acceptedPrivacy: boolean;
+  consents: readonly { id: string; title: string; version: number; accepted: boolean }[];
+  selectedConsentIds: readonly string[];
   onAdultChange: (value: boolean) => void;
-  onRulesChange: (value: boolean) => void;
-  onPrivacyChange: (value: boolean) => void;
-  onContinue: () => void;
+  onConsentChange: (id: string, value: boolean) => void;
+  onContinue: () => Promise<void>;
   onBack: () => void;
   reducedMotion: boolean;
+  pending?: boolean;
+  error?: string | null;
 };
 
 const roleLabels: Record<AccessScenario, string> = { player: "Игрок", partner: "Партнёр" };
@@ -29,23 +29,24 @@ export function AccessConsentStep({
   scenario,
   country,
   isAdult,
-  acceptedRules,
-  acceptedPrivacy,
+  consents,
+  selectedConsentIds,
   onAdultChange,
-  onRulesChange,
-  onPrivacyChange,
+  onConsentChange,
   onContinue,
   onBack,
   reducedMotion,
+  pending = false,
+  error,
 }: AccessConsentStepProps) {
-  const canContinue = isAdult && acceptedRules && acceptedPrivacy;
+  const canContinue = isAdult && consents.length > 0 && consents.every(({ id }) => selectedConsentIds.includes(id));
 
   return (
     <div className={styles.consentContent}>
       <header className={styles.stepHeading}>
         <span className={styles.scenarioEyebrow}>Обязательные подтверждения</span>
         <h1 tabIndex={-1}>Проверьте выбор и подтвердите условия</h1>
-        <p>Без этих подтверждений продолжить нельзя. Они действуют только в текущей вкладке и не отправляются на сервер.</p>
+        <p>Фиксируются только опубликованные версии обязательных документов для выбранного рынка и языка.</p>
       </header>
 
       <motion.div
@@ -55,7 +56,7 @@ export function AccessConsentStep({
         transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
       >
         <Card className={styles.consentCard}>
-          <div className={styles.consentHeading}><ShieldCheck aria-hidden="true" /><div><h2>Подтверждения</h2><p>Три обязательных пункта</p></div></div>
+          <div className={styles.consentHeading}><ShieldCheck aria-hidden="true" /><div><h2>Подтверждения</h2><p>Актуальные версии документов</p></div></div>
 
           <label className={styles.checkRow} data-checked={isAdult || undefined}>
             <input type="checkbox" checked={isAdult} onChange={(event) => onAdultChange(event.target.checked)} />
@@ -63,22 +64,12 @@ export function AccessConsentStep({
             <span><strong>Мне исполнилось 18 лет</strong><small>VX House предназначен только для совершеннолетних пользователей.</small></span>
           </label>
 
-          <label className={styles.checkRow} data-checked={acceptedRules || undefined}>
-            <input type="checkbox" checked={acceptedRules} onChange={(event) => onRulesChange(event.target.checked)} />
-            <span className={styles.checkbox} aria-hidden="true">{acceptedRules ? <Check /> : null}</span>
-            <span><strong>Я принимаю правила использования</strong><small>Мне понятны границы платформы и отсутствие гарантий результата.</small></span>
-          </label>
-
-          <label className={styles.checkRow} data-checked={acceptedPrivacy || undefined}>
-            <input type="checkbox" checked={acceptedPrivacy} onChange={(event) => onPrivacyChange(event.target.checked)} />
-            <span className={styles.checkbox} aria-hidden="true">{acceptedPrivacy ? <Check /> : null}</span>
-            <span><strong>Я ознакомился с политикой конфиденциальности</strong><small>Понимаю, какие данные будут нужны при создании настоящего профиля.</small></span>
-          </label>
-
-          <div className={styles.legalLinks}>
-            <Link href="/#responsible-use" target="_blank">Ответственное использование <ExternalLink aria-hidden="true" /></Link>
-            <Link href="/#privacy" target="_blank">Приватность <ExternalLink aria-hidden="true" /></Link>
-          </div>
+          {consents.map((consent) => {
+            const checked = selectedConsentIds.includes(consent.id);
+            return <label key={consent.id} className={styles.checkRow} data-checked={checked || undefined}><input type="checkbox" checked={checked} onChange={(event) => onConsentChange(consent.id, event.target.checked)} /><span className={styles.checkbox} aria-hidden="true">{checked ? <Check /> : null}</span><span><strong>{consent.title}</strong><small>Версия {consent.version}. Согласие будет связано именно с этой опубликованной версией.</small></span></label>;
+          })}
+          {consents.length === 0 ? <p className={styles.fieldError} role="alert">Для выбранного рынка не опубликованы обязательные документы. Продолжение безопасно заблокировано.</p> : null}
+          {error ? <p className={styles.fieldError} role="alert">{error}</p> : null}
         </Card>
 
         <Card className={styles.reviewCard}>
@@ -89,10 +80,10 @@ export function AccessConsentStep({
         </Card>
       </motion.div>
 
-      <p className={styles.consentStatus} role="status">{canContinue ? "Все обязательные подтверждения отмечены." : "Чтобы продолжить, отметьте все три пункта."}</p>
+      <p className={styles.consentStatus} role="status">{canContinue ? "Все обязательные подтверждения отмечены." : "Чтобы продолжить, подтвердите возраст и все документы."}</p>
 
       <div className={styles.stepActions}>
-        <Button type="button" size="lg" disabled={!canContinue} onClick={onContinue}>Завершить знакомство <ArrowRight aria-hidden="true" /></Button>
+        <Button type="button" size="lg" disabled={!canContinue || pending} onClick={() => void onContinue()}>{pending ? "Завершаем…" : "Завершить настройку"} <ArrowRight aria-hidden="true" /></Button>
         <button type="button" className={styles.stepBackButton} onClick={onBack}><ArrowLeft aria-hidden="true" />Назад</button>
       </div>
     </div>

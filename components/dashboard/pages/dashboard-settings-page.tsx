@@ -25,7 +25,7 @@ export function DashboardSettingsPage() {
       <DashboardHeading
         eyebrow="Параметры интерфейса"
         title="Настройки"
-        description="Только локальные предпочтения демонстрационного кабинета игрока. Продуктовые настройки ещё не подключены."
+        description="Локальные предпочтения интерфейса этого устройства. Продуктовые данные всегда загружаются с сервера."
         action={<StatusPill tone="neutral">Локально</StatusPill>}
       />
 
@@ -44,7 +44,7 @@ export function DashboardSettingsPage() {
         <DashboardCard icon={Database} label="Локальные данные" title="Настройки этого устройства">
           <div className={styles.localDataCard}>
             <ShieldCheck aria-hidden="true" />
-            <div><strong>Сохраняются только предпочтения интерфейса</strong><p>Отображаемое имя и настройка движения остаются в браузере. Ранг, Trust Score и VX Points не сохраняются как данные пользователя.</p></div>
+            <div><strong>Сохраняется только предпочтение движения</strong><p>Профиль, ранг, Trust Score, VX Points и другие продуктовые данные не сохраняются в браузере как источник истины.</p></div>
           </div>
           <Button type="button" variant="outline" onClick={resetPreferences}><RotateCcw aria-hidden="true" /> Сбросить локальные настройки</Button>
         </DashboardCard>
@@ -52,9 +52,9 @@ export function DashboardSettingsPage() {
         <DashboardCard icon={UserRound} label="Текущая конфигурация" title="Кабинет игрока">
           <dl className={styles.settingsSummary}>
             <div><dt>Роль интерфейса</dt><dd>Игрок</dd></div>
-            <div><dt>Источник прогресса</dt><dd>Демо-конфигурация</dd></div>
+            <div><dt>Источник прогресса</dt><dd>Сервер VX House</dd></div>
             <div><dt>Движение</dt><dd>{preferences.reducedMotion ? "Уменьшено" : "Системное"}</dd></div>
-            <div><dt>Серверная синхронизация</dt><dd>Не подключена</dd></div>
+            <div><dt>Серверная синхронизация</dt><dd>Подключена</dd></div>
           </dl>
         </DashboardCard>
       </div>

@@ -1,20 +1,12 @@
 export type DashboardPreferences = {
-  displayName: string;
   reducedMotion: boolean;
 };
 
 export const DASHBOARD_PREFERENCES_KEY = "vx-house-player-dashboard-preferences";
 
 export const defaultDashboardPreferences: DashboardPreferences = {
-  displayName: "Демо-профиль",
   reducedMotion: false,
 };
-
-function pickDisplayName(value: unknown, fallback: DashboardPreferences) {
-  return typeof value === "string" && value.trim()
-    ? value.trim().slice(0, 48)
-    : fallback.displayName;
-}
 
 export function readDashboardPreferences(
   storageKey = DASHBOARD_PREFERENCES_KEY,
@@ -31,7 +23,6 @@ export function readDashboardPreferences(
 
     const source = parsed as Partial<DashboardPreferences>;
     return {
-      displayName: pickDisplayName(source.displayName, fallback),
       reducedMotion:
         typeof source.reducedMotion === "boolean"
           ? source.reducedMotion

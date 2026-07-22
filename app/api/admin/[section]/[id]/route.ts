@@ -1,0 +1,7 @@
+import { adminSectionIds, type AdminCommand, type AdminSectionId } from "@/lib/admin";
+import { ApplicationError } from "@/lib/application";
+import { deriveNetworkIdentifier, errorResponse, getAdminService, json, limitRequest, readJsonBody, requireAdminRequestPrincipal, requireTrustedOrigin } from "@/lib/server";
+
+function section(value: string): AdminSectionId { if (!adminSectionIds.includes(value as AdminSectionId)) throw new ApplicationError("NOT_FOUND", "Раздел не найден"); return value as AdminSectionId; }
+export async function GET(request: Request, context: { params: Promise<{ section: string; id: string }> }) { try { const principal = await requireAdminRequestPrincipal(request); const params = await context.params; return json(await getAdminService().get(principal, section(params.section), params.id)); } catch (error) { return errorResponse(error); } }
+export async function PATCH(request: Request, context: { params: Promise<{ section: string; id: string }> }) { try { requireTrustedOrigin(request); const principal = await requireAdminRequestPrincipal(request); await limitRequest({ namespace: "admin.command", key: `${principal.userId}:${deriveNetworkIdentifier(request)}`, limit: 120, windowSeconds: 60 }); const params = await context.params; const body = await readJsonBody(request); return json(await getAdminService().execute(principal, section(params.section), params.id, body as unknown as AdminCommand)); } catch (error) { return errorResponse(error); } }

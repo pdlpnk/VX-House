@@ -1,93 +1,50 @@
 "use client";
 
-import { ArrowLeft, ArrowRight, BadgeCheck, BookOpenCheck, Gift, MapPin, ShieldCheck, Tag, UserRound } from "lucide-react";
+import { ArrowLeft, BadgeCheck, BookOpenCheck, CalendarClock, MapPin, ShieldCheck, Tag, UserRound } from "lucide-react";
 import Link from "next/link";
+import { useState } from "react";
 
 import styles from "@/app/dashboard/dashboard.module.css";
 import { DashboardCard, DashboardGrid, DashboardGridItem, DashboardHeading, DashboardPage, StatusPill } from "@/components/dashboard/dashboard-ui";
 import { OpportunityStatusBadge } from "@/components/opportunities/opportunity-status";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { cn } from "@/lib/utils";
-import { getOpportunity, opportunityRoleLabels, type OpportunityRole } from "@/lib/opportunity-data";
+import type { OpportunityView } from "@/lib/opportunities/types";
 
-export function OpportunityDetail({ id, role, basePath, taskBasePath }: { id: string; role: OpportunityRole; basePath: string; taskBasePath: string }) {
-  const opportunity = getOpportunity(id, role);
+const roleLabels = { PLAYER: "Игрок", PARTNER: "Партнёр" } as const;
+const typeLabels = { TASK: "Задание", INSTRUCTION: "Инструкция", PROMOCODE: "Промокод", FORECAST: "Прогноз", PERSONAL_CONDITION: "Персональное условие" } as const;
 
-  if (!opportunity) {
-    return (
-      <DashboardPage>
-        <DashboardHeading eyebrow="Возможности" title="Нет данных" description="Карточка не найдена или недоступна для выбранной роли." action={<OpportunityStatusBadge status="no-data" />} />
-        <Card className={styles.noDataPanel}><ShieldCheck aria-hidden="true" /><h2>Возможность не найдена</h2><p>Вернитесь в каталог и выберите доступную демонстрационную карточку.</p></Card>
-        <Link className={styles.pageBackLink} href={basePath}><ArrowLeft aria-hidden="true" /> Вернуться к возможностям</Link>
-      </DashboardPage>
-    );
+export function OpportunityDetail({ opportunity, basePath, taskBasePath }: { opportunity: OpportunityView | null; basePath: string; taskBasePath: string }) {
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  if (!opportunity) return <DashboardPage><DashboardHeading eyebrow="Возможности" title="Нет данных" description="Карточка не найдена или недоступна для вашего профиля." action={<OpportunityStatusBadge status="NO_DATA" />} /><Card className={styles.noDataPanel}><ShieldCheck aria-hidden="true" /><h2>Возможность недоступна</h2><p>Сервер учитывает роль, рынок, публикацию и архивный статус.</p></Card><Link className={styles.pageBackLink} href={basePath}><ArrowLeft aria-hidden="true" /> Вернуться к возможностям</Link></DashboardPage>;
+
+  async function accept() {
+    setPending(true); setError(null);
+    try {
+      const response = await fetch(`/api/opportunities/${opportunity!.id}/accept`, { method: "POST", credentials: "same-origin", headers: { "Idempotency-Key": crypto.randomUUID() } });
+      const body = await response.json() as { id?: string; message?: string };
+      if (!response.ok || !body.id) throw new Error(body.message ?? "Не удалось начать задание");
+      window.location.assign(`${taskBasePath}/${body.id}`);
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "Не удалось начать задание"); setPending(false); }
   }
 
-  return (
-    <DashboardPage>
-      <DashboardHeading
-        eyebrow="Карточка возможности"
-        title={opportunity.title}
-        description={opportunity.description}
-        action={<OpportunityStatusBadge status={opportunity.status} />}
-      />
-
-      <section className={styles.opportunityDetailHero}>
-        <div>
-          <span>Демонстрационный пример</span>
-          <h2>Статус и следующий шаг без ложных обещаний</h2>
-          <p>Эта карточка показывает будущую структуру продукта. Возможность не назначена пользователю, а её выполнение не запущено.</p>
-        </div>
-        <Button disabled aria-describedby="backend-unavailable">Начать действие</Button>
-      </section>
-
-      <DashboardGrid className={styles.opportunityDetailGrid}>
-        <DashboardGridItem className={styles.opportunityFactsItem}>
-          <DashboardCard label="Параметры" title="Область применения" icon={Tag}>
-            <dl className={styles.opportunityFacts}>
-              <div><dt><UserRound aria-hidden="true" /> Роль</dt><dd>{opportunityRoleLabels[opportunity.role]}</dd></div>
-              <div><dt><MapPin aria-hidden="true" /> Рынок</dt><dd>{opportunity.markets.join(" · ")}</dd></div>
-              <div><dt><Tag aria-hidden="true" /> Тип</dt><dd>{opportunity.type}</dd></div>
-              <div><dt><BadgeCheck aria-hidden="true" /> Статус</dt><dd>{<OpportunityStatusBadge status={opportunity.status} />}</dd></div>
-            </dl>
-          </DashboardCard>
-        </DashboardGridItem>
-
-        <DashboardGridItem className={styles.opportunityNextItem}>
-          <DashboardCard label="Навигация" title="Следующий шаг" icon={ArrowRight}>
-            <p className={styles.detailLead}>{opportunity.nextStep}</p>
-            <p className={styles.detailHint} id="backend-unavailable">Основное действие будет доступно после подключения backend и серверной проверки доступа.</p>
-          </DashboardCard>
-        </DashboardGridItem>
-      </DashboardGrid>
-
-      <DashboardGrid className={styles.futureSlotsGrid}>
-        <DashboardGridItem><FutureSlot icon={BookOpenCheck} title="Инструкция" state="Ожидает подключения" description="Актуальная версия, требования и порядок действий появятся из управляемого источника." /></DashboardGridItem>
-        <DashboardGridItem><FutureSlot icon={Tag} title="Промокод" state="Нет данных" description="Код, рынок, владелец и срок действия не заданы." /></DashboardGridItem>
-        <DashboardGridItem><FutureSlot icon={ShieldCheck} title="Проверка результата" state="Ожидает подключения" description="Здесь появятся формат результата, статус проверки и объяснение решения." /></DashboardGridItem>
-        <DashboardGridItem><FutureSlot icon={Gift} title="VX Rewards" state="Нет данных" description="Награда не обещана и будет показана только после подтверждения условий." /></DashboardGridItem>
-      </DashboardGrid>
-
-      <div className={styles.detailActions}>
-        {opportunity.taskId ? (
-          <Link className={cn(buttonVariants({ variant: "outline" }), styles.structureLink)} href={`${taskBasePath}/${opportunity.taskId}`}>
-            Посмотреть структуру задания <ArrowRight aria-hidden="true" />
-          </Link>
-        ) : <StatusPill tone="neutral">Задание не предусмотрено</StatusPill>}
-        <Link className={styles.pageBackLink} href={basePath}><ArrowLeft aria-hidden="true" /> Вернуться к возможностям</Link>
-      </div>
-    </DashboardPage>
-  );
+  const instruction = opportunity.task?.instruction ?? opportunity.instruction;
+  return <DashboardPage>
+    <DashboardHeading eyebrow="Карточка возможности" title={opportunity.title} description={opportunity.description} action={<OpportunityStatusBadge status={opportunity.availability} />} />
+    <section className={styles.opportunityDetailHero}><div><span>Серверная доступность</span><h2>{opportunity.nextStep}</h2><p>{opportunity.availabilityReason}</p></div><Button onClick={accept} disabled={pending || opportunity.availability !== "AVAILABLE" || !opportunity.task}>{pending ? "Подготавливаем…" : "Принять участие"}</Button></section>
+    {error ? <p className={styles.systemDisclosure} role="alert">{error}</p> : null}
+    <DashboardGrid className={styles.opportunityDetailGrid}>
+      <DashboardGridItem className={styles.opportunityFactsItem}><DashboardCard label="Параметры" title="Область применения" icon={Tag}><dl className={styles.opportunityFacts}><div><dt><UserRound aria-hidden="true" /> Роль</dt><dd>{roleLabels[opportunity.role]}</dd></div><div><dt><MapPin aria-hidden="true" /> Рынок</dt><dd>{opportunity.market.name}</dd></div><div><dt><Tag aria-hidden="true" /> Тип</dt><dd>{typeLabels[opportunity.type]}</dd></div><div><dt><BadgeCheck aria-hidden="true" /> Статус</dt><dd><OpportunityStatusBadge status={opportunity.availability} /></dd></div></dl></DashboardCard></DashboardGridItem>
+      <DashboardGridItem className={styles.opportunityNextItem}><DashboardCard label="Условия" title="Актуальная версия" icon={CalendarClock}><p className={styles.detailLead}>{opportunity.task ? `Задание, версия ${opportunity.task.version}` : "Отдельное задание не предусмотрено"}</p><p className={styles.detailHint}>{opportunity.task?.availableUntil ? `Доступно до ${new Date(opportunity.task.availableUntil).toLocaleDateString("ru-RU")}` : "Срок доступности не ограничен опубликованной версией."}</p></DashboardCard></DashboardGridItem>
+    </DashboardGrid>
+    {opportunity.task ? <DashboardGrid className={styles.futureSlotsGrid}><DashboardGridItem><RequirementCard title="Требования" items={opportunity.task.requirements} /></DashboardGridItem><DashboardGridItem><RequirementCard title="Ограничения" items={opportunity.task.limitations} /></DashboardGridItem></DashboardGrid> : null}
+    <Card className={styles.futureSlot}><div><span><BookOpenCheck aria-hidden="true" /></span><StatusPill tone={instruction ? "success" : "neutral"}>{instruction ? `Версия ${instruction.version}` : "Нет данных"}</StatusPill></div><h2>{instruction?.title ?? "Инструкция"}</h2><p>{instruction?.summary ?? "Для этой возможности опубликованная инструкция пока не предусмотрена."}</p>{instruction?.sections.map((section) => <section key={section.id} className={styles.opportunityNextStep}><span>{section.title}</span><p>{section.body}</p></section>)}{instruction?.steps.map((step) => <div key={step.id} className={styles.opportunityNextStep}><span>{step.position}. {step.title}</span><p>{step.body}</p></div>)}</Card>
+    <div className={styles.detailActions}><Link className={styles.pageBackLink} href={basePath}><ArrowLeft aria-hidden="true" /> Вернуться к возможностям</Link></div>
+  </DashboardPage>;
 }
 
-function FutureSlot({ icon: Icon, title, state, description }: { icon: typeof Gift; title: string; state: string; description: string }) {
-  return (
-    <Card className={styles.futureSlot}>
-      <div><span><Icon aria-hidden="true" /></span><StatusPill tone="neutral">{state}</StatusPill></div>
-      <h2>{title}</h2>
-      <p>{description}</p>
-      <Button variant="ghost" disabled>Функция недоступна</Button>
-    </Card>
-  );
+function RequirementCard({ title, items }: { title: string; items: string[] }) {
+  return <Card className={styles.futureSlot}><h2>{title}</h2>{items.length ? <ul>{items.map((item) => <li key={item}>{item}</li>)}</ul> : <p>Дополнительные условия не указаны.</p>}</Card>;
 }

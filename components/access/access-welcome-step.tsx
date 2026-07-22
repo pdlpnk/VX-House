@@ -8,10 +8,11 @@ import { fadeUp, staggerContainer } from "@/lib/motion";
 
 type AccessWelcomeStepProps = {
   onStart: () => void;
+  onLogin: () => void;
   reducedMotion: boolean;
 };
 
-export function AccessWelcomeStep({ onStart, reducedMotion }: AccessWelcomeStepProps) {
+export function AccessWelcomeStep({ onStart, onLogin, reducedMotion }: AccessWelcomeStepProps) {
   const contentVariants = reducedMotion
     ? { hidden: { opacity: 1 }, visible: { opacity: 1 } }
     : staggerContainer(0.09, 0.04);
@@ -52,8 +53,8 @@ export function AccessWelcomeStep({ onStart, reducedMotion }: AccessWelcomeStepP
         variants={reducedMotion ? undefined : fadeUp}
         className={styles.duration}
       >
-        Аккаунт пока не создаётся. Перед отправкой данных потребуется настоящая
-        авторизация и подтверждение контакта на следующем этапе разработки.
+        Создание профиля займёт несколько минут: вы выберете роль и рынок,
+        подтвердите электронную почту и примете актуальные условия.
       </motion.p>
 
       <motion.div
@@ -72,6 +73,7 @@ export function AccessWelcomeStep({ onStart, reducedMotion }: AccessWelcomeStepP
         <Link href="/" className={styles.backLink}>
           Вернуться
         </Link>
+        <button type="button" className={styles.backLink} onClick={onLogin}>У меня уже есть профиль</button>
       </motion.div>
 
       <motion.div
@@ -83,7 +85,7 @@ export function AccessWelcomeStep({ onStart, reducedMotion }: AccessWelcomeStepP
         <i aria-hidden="true" />
         <span><MapPin aria-hidden="true" /> Учёт страны и языка</span>
         <i aria-hidden="true" />
-        <span><KeyRound aria-hidden="true" /> Без ложного создания аккаунта</span>
+        <span><KeyRound aria-hidden="true" /> Защищённый вход</span>
       </motion.div>
     </motion.div>
   );
