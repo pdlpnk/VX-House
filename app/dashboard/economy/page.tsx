@@ -3,5 +3,7 @@ import { getEconomyRewardService, requireProductWorkspaceContext } from "@/lib/s
 
 export default async function EconomyPage() {
   const { principal } = await requireProductWorkspaceContext("PLAYER", "/dashboard/economy");
-  return <EconomyOverview snapshot={await getEconomyRewardService().getSnapshot(principal)} historyHref="/dashboard/economy/history" rewardsHref="/dashboard/rewards" />;
+  const service = getEconomyRewardService();
+  const [snapshot, history] = await Promise.all([service.getSnapshot(principal), service.getHistory(principal)]);
+  return <EconomyOverview snapshot={snapshot} history={history} historyHref="/dashboard/economy/history" rewardsHref="/dashboard/rewards" />;
 }

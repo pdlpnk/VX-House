@@ -1,4 +1,4 @@
-import { deriveNetworkIdentifier, errorResponse, getIdentitySystem, json, limitRequest, requireRequestPrincipal, requireTrustedOrigin } from "@/lib/server";
+import { deriveNetworkIdentifier, errorResponse, getIdentitySystem, json, limitRequest, requireRequestPrincipal, requireTrustedOrigin } from "@/lib/server/identity-delivery";
 
 export async function POST(request: Request) {
   try {

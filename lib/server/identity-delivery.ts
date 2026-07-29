@@ -4,13 +4,16 @@ import type { AuthenticatedPrincipal } from "@/lib/auth";
 import { hasTrustedRequestOrigin, normalizeEmail } from "@/lib/auth";
 import { ApplicationError } from "@/lib/application";
 import { getServerConfig } from "@/lib/config";
-import { getDatabase } from "@/lib/db";
+import { getDatabase, Prisma } from "@/lib/db";
 import { PrismaAuditRepository } from "@/lib/repositories";
 import { SECURITY_EVENT_TYPES } from "@/lib/security";
 import { AuditService, PermissionEvaluationService, SecurityEventService } from "@/lib/services";
 import { createLogger } from "@/lib/logger";
+import { EnvironmentValidationError } from "@/lib/validation";
 import { createSecurityInfrastructure } from "./security-infrastructure";
 import { getIdentitySystem } from "./identity-onboarding";
+
+export { getIdentitySystem };
 
 const JSON_LIMIT = 16_384;
 
@@ -50,7 +53,20 @@ export function errorResponse(error: unknown) {
     );
   }
   createLogger({ level: "error", context: { component: "identity-delivery" } }).error("Identity delivery failed", { error });
-  return json({ error: "SERVER_ERROR", message: "Не удалось выполнить операцию. Повторите позже." }, { status: 500 });
+  if (
+    error instanceof EnvironmentValidationError ||
+    error instanceof Prisma.PrismaClientInitializationError ||
+    (error instanceof Prisma.PrismaClientKnownRequestError && ["P2024", "P2037"].includes(error.code))
+  ) {
+    return json(
+      { error: "SERVICE_UNAVAILABLE", message: "Сервис временно недоступен. Повторите попытку позже." },
+      { status: 503, headers: { "retry-after": "30" } },
+    );
+  }
+  return json(
+    { error: "SERVICE_UNAVAILABLE", message: "Сервис временно недоступен. Повторите попытку позже." },
+    { status: 503, headers: { "retry-after": "30" } },
+  );
 }
 
 export function deriveNetworkIdentifier(request: Request) {

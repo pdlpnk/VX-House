@@ -1,5 +1,5 @@
 import { SECURITY_EVENT_TYPES } from "@/lib/security";
-import { errorResponse, getIdentitySystem, json, requireTrustedOrigin, securityServices } from "@/lib/server";
+import { errorResponse, getIdentitySystem, json, requireTrustedOrigin, securityServices } from "@/lib/server/identity-delivery";
 
 export async function POST(request: Request) {
   try {

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
 import styles from "@/app/dashboard/dashboard.module.css";
-import { getSupportNotificationService, requireProductWorkspaceContext } from "@/lib/server";
+import { getEconomyRewardService, getSupportNotificationService, requireProductWorkspaceContext } from "@/lib/server";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +13,9 @@ export const metadata: Metadata = {
 };
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const { principal, profile } = await requireProductWorkspaceContext("PLAYER", "/dashboard");
-  return <div className={styles.dashboardRoot}><DashboardShell profile={profile} notifications={await getSupportNotificationService().listNotifications(principal)}>{children}</DashboardShell></div>;
+  const { principal, profile, database } = await requireProductWorkspaceContext("PLAYER", "/dashboard");
+  const notifications = await getSupportNotificationService(database).listNotifications(principal);
+  const personalConversation = await getSupportNotificationService(database).getPersonalConversation(principal);
+  const economy = await getEconomyRewardService(database).getSnapshot(principal);
+  return <div className={styles.dashboardRoot}><DashboardShell profile={profile} notifications={notifications} personalConversation={personalConversation} economy={economy} canAdmin={principal.roleKeys.includes("admin")}>{children}</DashboardShell></div>;
 }

@@ -1,5 +1,5 @@
 import { DevelopmentEmailProvider } from "@/lib/services";
-import { errorResponse, getIdentitySystem, json, requireRequestPrincipal } from "@/lib/server";
+import { errorResponse, getIdentitySystem, json, requireRequestPrincipal } from "@/lib/server/identity-delivery";
 
 export async function GET(request: Request) {
   try {

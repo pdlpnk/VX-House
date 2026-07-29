@@ -35,9 +35,13 @@ import {
 import { hashPassword } from "@/lib/auth/password";
 import { SECURITY_EVENT_TYPES } from "@/lib/security";
 import { validateRegistrationInput } from "@/lib/validation";
+import { validateCreateProfileInput } from "@/lib/validation";
 import type { EmailProvider } from "./email-provider";
+import { createLogger } from "@/lib/logger";
+import { createProductNotification } from "./product-notification";
 
 const IDEMPOTENCY_KEY = /^[A-Za-z0-9_.:-]{8,160}$/;
+const logger = createLogger({ level: "info", context: { component: "identity-onboarding" } });
 
 export interface IdentityOnboardingConfig {
   readonly sessionIdleTtlSeconds: number;
@@ -52,9 +56,9 @@ export interface RegistrationCommand {
   readonly displayName: string;
   readonly email: string;
   readonly password: string;
-  readonly productRole: ProductRole;
-  readonly marketCode: MarketCode;
-  readonly preferredLanguage: LanguageCode;
+  readonly productRole?: ProductRole;
+  readonly marketCode?: MarketCode;
+  readonly preferredLanguage?: LanguageCode;
 }
 
 function addSeconds(date: Date, seconds: number) {
@@ -97,7 +101,11 @@ export class IdentityOnboardingService {
     command: unknown;
     idempotencyKey: string;
     now?: Date;
+    correlationId?: string;
   }) {
+    await this.purgeExpiredUnverifiedAccounts();
+    const correlationId = input.correlationId ?? randomUUID();
+    logger.info("registration_started", { correlationId });
     requireIdempotencyKey(input.idempotencyKey);
     const command = validateRegistrationInput(input.command);
     const normalizedEmail = normalizeEmail(command.email);
@@ -105,9 +113,9 @@ export class IdentityOnboardingService {
     const requestHash = hashCommandPayload({
       displayName: command.displayName,
       email: normalizedEmail,
-      productRole: command.productRole,
-      marketCode: command.marketCode,
-      preferredLanguage: command.preferredLanguage,
+      productRole: command.productRole ?? null,
+      marketCode: command.marketCode ?? null,
+      preferredLanguage: command.preferredLanguage ?? null,
     });
     const challengeId = randomUUID();
     const verificationCode = createVerificationCode();
@@ -122,24 +130,28 @@ export class IdentityOnboardingService {
         if (receipt.requestHash !== requestHash) {
           throw new ApplicationError("IDEMPOTENCY_CONFLICT", "Команда регистрации уже использована");
         }
+        const existingUser = await new PrismaIdentityUserRepository(database).findSafeById(receipt.actorId);
+        if (!existingUser) throw new ApplicationError("CONFLICT", "Регистрация недоступна");
         const existingProfile = await new PrismaUserProfileRepository(database).findByUserId(receipt.actorId);
-        if (!existingProfile) throw new ApplicationError("CONFLICT", "Регистрация недоступна");
         const session = await new PrismaAuthRepository(database).createSession({
           userId: receipt.actorId,
           tokenHash: token.hash,
           expiresAt: addSeconds(occurredAt, this.config.sessionIdleTtlSeconds),
           absoluteExpiresAt: addSeconds(occurredAt, this.config.sessionAbsoluteTtlSeconds),
         });
-        return { userId: receipt.actorId, session, profile: existingProfile, replayed: true };
+        return {
+          userId: receipt.actorId,
+          user: existingUser,
+          session,
+          profile: existingProfile as NonNullable<typeof existingProfile>,
+          replayed: true,
+        };
       }
 
       const users = new PrismaIdentityUserRepository(database);
       if (await users.findSafeByEmail(normalizedEmail)) {
         throw new ApplicationError("CONFLICT", "Не удалось создать доступ с указанными данными");
       }
-      const market = await new PrismaMarketRepository(database).findActiveByCode(command.marketCode);
-      if (!market) throw new ApplicationError("VALIDATION", "Выбранный рынок сейчас недоступен");
-
       const user = await users.create({
         id: randomUUID(),
         email: normalizedEmail,
@@ -147,17 +159,23 @@ export class IdentityOnboardingService {
         passwordHash,
         createdAt: occurredAt,
       });
+      logger.info("user_created", { correlationId, userId: user.id });
       const profiles = new PrismaUserProfileRepository(database);
-      const profile = await profiles.create({
-        userId: user.id,
-        productRole: command.productRole,
-        marketId: market.id,
-        preferredLanguage: command.preferredLanguage,
-      });
-      if (command.productRole === "PLAYER") {
-        await new PrismaPlayerProfileRepository(database).createPending(profile.id);
-      } else {
-        await new PrismaPartnerProfileRepository(database).createPending(profile.id);
+      if (command.productRole && command.marketCode && command.preferredLanguage) {
+        const market = await new PrismaMarketRepository(database).findActiveByCode(command.marketCode);
+        if (!market) throw new ApplicationError("VALIDATION", "Выбранный рынок сейчас недоступен");
+        const profile = await profiles.create({
+          userId: user.id,
+          productRole: command.productRole,
+          marketId: market.id,
+          preferredLanguage: command.preferredLanguage,
+        });
+        logger.info("profile_created", { correlationId, userId: user.id, productRole: command.productRole });
+        if (command.productRole === "PLAYER") {
+          await new PrismaPlayerProfileRepository(database).createPending(profile.id);
+        } else {
+          await new PrismaPartnerProfileRepository(database).createPending(profile.id);
+        }
       }
       await new PrismaOnboardingRepository(database).create(user.id, "CONTACT_PENDING");
       const expiresAt = addSeconds(occurredAt, this.config.verificationTtlSeconds);
@@ -176,13 +194,17 @@ export class IdentityOnboardingService {
         expiresAt: addSeconds(occurredAt, this.config.sessionIdleTtlSeconds),
         absoluteExpiresAt: addSeconds(occurredAt, this.config.sessionAbsoluteTtlSeconds),
       });
+      logger.info("session_created", { correlationId, userId: user.id, sessionId: session.sessionId });
       const events = createTransactionalEventServices(database, occurredAt);
       const actor = { type: "user" as const, id: user.id, sessionId: session.sessionId };
       await events.security.record({
         type: SECURITY_EVENT_TYPES.registrationCreated,
         actor,
         target: { type: "user", id: user.id },
-        metadata: { productRole: command.productRole, market: command.marketCode },
+        metadata: {
+          productRole: command.productRole ?? "UNSELECTED",
+          market: command.marketCode ?? "UNSELECTED",
+        },
       });
       await events.security.record({
         type: SECURITY_EVENT_TYPES.emailCodeRequested,
@@ -201,8 +223,19 @@ export class IdentityOnboardingService {
       });
       shouldDeliverCode = true;
       const safeProfile = await profiles.findByUserId(user.id);
-      if (!safeProfile) throw new ApplicationError("CONFLICT", "Профиль не создан");
-      return { userId: user.id, session, profile: safeProfile, replayed: false, expiresAt };
+      return {
+        userId: user.id,
+        user,
+        session,
+        profile: safeProfile as NonNullable<typeof safeProfile>,
+        replayed: false,
+        expiresAt,
+      };
+    });
+    logger.info("registration_committed", {
+      correlationId,
+      userId: result.userId,
+      replayed: result.replayed,
     });
 
     let deliveryAvailable = true;
@@ -226,14 +259,36 @@ export class IdentityOnboardingService {
     };
   }
 
+  async purgeExpiredUnverifiedAccounts(now = new Date()) {
+    const cutoff = new Date(now.getTime() - 12 * 60 * 60 * 1000);
+    const candidates = await this.database.user.findMany({
+      where: {
+        createdAt: { lt: cutoff },
+        onboardingProgress: { status: { in: ["ACCOUNT_CREATED", "CONTACT_PENDING"] } },
+      },
+      select: { id: true },
+      take: 250,
+    });
+    if (!candidates.length) return 0;
+    const ids = candidates.map(({ id }) => id);
+    const result = await this.transactions.run(async ({ database }) => {
+      await database.idempotencyRecord.deleteMany({ where: { actorId: { in: ids } } });
+      return database.user.deleteMany({ where: { id: { in: ids } } });
+    });
+    logger.info("expired_unverified_accounts_removed", { count: result.count });
+    return result.count;
+  }
+
   async requestVerificationCode(input: { principal: AuthenticatedPrincipal; now?: Date }) {
     const challengeId = randomUUID();
     const code = createVerificationCode();
     const codeHash = await this.codes.hash(challengeId, code);
     const result = await this.transactions.run(async ({ database, occurredAt }) => {
+      const user = await new PrismaIdentityUserRepository(database).findSafeById(input.principal.userId);
+      if (!user) throw new ApplicationError("NOT_FOUND", "Профиль не найден");
       const profile = await new PrismaUserProfileRepository(database).findByUserId(input.principal.userId);
-      if (!profile) throw new ApplicationError("NOT_FOUND", "Профиль не найден");
-      if (profile.contactVerificationStatus === "VERIFIED") {
+      const progress = await new PrismaOnboardingRepository(database).findByUserId(input.principal.userId);
+      if (profile?.contactVerificationStatus === "VERIFIED" || progress?.status !== "CONTACT_PENDING") {
         throw new ApplicationError("CONFLICT", "Контакт уже подтверждён");
       }
       const challenges = new PrismaEmailVerificationRepository(database);
@@ -262,7 +317,7 @@ export class IdentityOnboardingService {
         target: { type: "email-verification", id: challengeId },
         metadata: { reason: "resend" },
       });
-      return { email: profile.user.email, expiresAt, resendAvailableAt };
+      return { email: user.email, expiresAt, resendAvailableAt };
     });
     let deliveryAvailable = true;
     try {
@@ -314,9 +369,23 @@ export class IdentityOnboardingService {
         return { ok: false as const, code: "INVALID_CODE" as const };
       }
       await challenges.revokeActive(input.principal.userId, occurredAt);
-      await new PrismaUserProfileRepository(database).markContactVerified(input.principal.userId, occurredAt);
+      const profile = await new PrismaUserProfileRepository(database).findByUserId(input.principal.userId);
+      if (profile) {
+        await new PrismaUserProfileRepository(database).markContactVerified(input.principal.userId, occurredAt);
+        await createProductNotification(database, {
+          userId: input.principal.userId,
+          type: "identity.email_verified",
+          title: "Электронная почта подтверждена",
+          body: "Спасибо! Ваш аккаунт подтверждён.",
+          relatedType: "USER_PROFILE",
+          relatedId: profile.id,
+          idempotencyKey: `email-verified:${challenge.id}`,
+          actorId: input.principal.userId,
+          occurredAt,
+        });
+      }
       await new PrismaOnboardingRepository(database).update(input.principal.userId, {
-        status: "CONSENTS_PENDING",
+        status: profile ? "CONSENTS_PENDING" : "CONTACT_VERIFIED",
       });
       await events.security.record({
         type: SECURITY_EVENT_TYPES.emailVerificationSucceeded,
@@ -330,9 +399,22 @@ export class IdentityOnboardingService {
   }
 
   async getSnapshot(principal: AuthenticatedPrincipal, at = new Date()) {
+    await this.purgeExpiredUnverifiedAccounts(at);
+    const user = await new PrismaIdentityUserRepository(this.database).findSafeById(principal.userId);
     const profile = await new PrismaUserProfileRepository(this.database).findByUserId(principal.userId);
     const progress = await new PrismaOnboardingRepository(this.database).findByUserId(principal.userId);
-    if (!profile || !progress) throw new ApplicationError("NOT_FOUND", "Профиль не найден");
+    if (!user || !progress) throw new ApplicationError("NOT_FOUND", "Профиль не найден");
+    if (!profile) {
+      const latestChallenge = await new PrismaEmailVerificationRepository(this.database).findLatest(principal.userId);
+      return {
+        status: progress.status,
+        user,
+        profile: null,
+        requiredConsents: [],
+        resendAvailableAt: latestChallenge?.resendAvailableAt ?? null,
+        redirectTo: "/access",
+      };
+    }
     const versions = await new PrismaConsentVersionRepository(this.database).listPublished({
       marketId: profile.market.id,
       language: profile.preferredLanguage,
@@ -346,6 +428,7 @@ export class IdentityOnboardingService {
     const latestChallenge = await new PrismaEmailVerificationRepository(this.database).findLatest(principal.userId);
     return {
       status: progress.status,
+      user,
       profile,
       requiredConsents: required.map((version) => ({
         id: version.id,
@@ -358,6 +441,50 @@ export class IdentityOnboardingService {
       resendAvailableAt: latestChallenge?.resendAvailableAt ?? null,
       redirectTo: this.resolveDestination(profile.productRole, progress.status, profile.accountStatus),
     };
+  }
+
+  async configureProfile(input: {
+    principal: AuthenticatedPrincipal;
+    command: unknown;
+  }) {
+    const command = validateCreateProfileInput(input.command);
+    await this.transactions.run(async ({ database, occurredAt }) => {
+      const progress = await new PrismaOnboardingRepository(database).findByUserId(input.principal.userId);
+      if (!progress || !["CONTACT_VERIFIED", "CONSENTS_PENDING", "PROFILE_READY"].includes(progress.status)) {
+        throw new ApplicationError("FORBIDDEN", "Сначала подтвердите электронную почту");
+      }
+      const profiles = new PrismaUserProfileRepository(database);
+      const existing = await profiles.findByUserId(input.principal.userId);
+      if (existing) {
+        if (
+          existing.productRole !== command.productRole ||
+          existing.market.code !== command.marketCode ||
+          existing.preferredLanguage !== command.preferredLanguage
+        ) {
+          throw new ApplicationError("CONFLICT", "Параметры пространства уже сохранены");
+        }
+        return;
+      }
+      const market = await new PrismaMarketRepository(database).findActiveByCode(command.marketCode);
+      if (!market) throw new ApplicationError("VALIDATION", "Выбранный рынок сейчас недоступен");
+      const profile = await profiles.create({
+        userId: input.principal.userId,
+        productRole: command.productRole,
+        marketId: market.id,
+        preferredLanguage: command.preferredLanguage,
+      });
+      await profiles.markContactVerified(input.principal.userId, occurredAt);
+      if (command.productRole === "PLAYER") {
+        await new PrismaPlayerProfileRepository(database).createPending(profile.id);
+      } else {
+        await new PrismaPartnerProfileRepository(database).createPending(profile.id);
+      }
+      await new PrismaOnboardingRepository(database).update(input.principal.userId, {
+        status: "CONSENTS_PENDING",
+        profileReadyAt: occurredAt,
+      });
+    });
+    return this.getSnapshot(input.principal);
   }
 
   async complete(input: {
@@ -421,6 +548,19 @@ export class IdentityOnboardingService {
         ageConfirmedAt: occurredAt,
         profileReadyAt: occurredAt,
         completedAt: occurredAt,
+      });
+      await createProductNotification(database, {
+        userId: input.principal.userId,
+        type: "onboarding.completed",
+        title: "Пространство VX House открыто",
+        body: profile.productRole === "PLAYER"
+          ? "Теперь можно знакомиться с возможностями и выполнять задания."
+          : "Профиль передан на проверку. Менеджер сообщит о следующем шаге здесь.",
+        relatedType: "ONBOARDING",
+        relatedId: input.principal.userId,
+        idempotencyKey: `onboarding-completed:${input.principal.userId}`,
+        actorId: input.principal.userId,
+        occurredAt,
       });
       const events = createTransactionalEventServices(database, occurredAt);
       await events.security.record({

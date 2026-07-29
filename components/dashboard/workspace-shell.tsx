@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { Bell, ChevronRight, Grid2X2, LogOut, Menu, Search, X, type LucideIcon } from "lucide-react";
+import { Bell, ChevronRight, Coins, Grid2X2, LogOut, Medal, Menu, Search, ShieldCheck, X, type LucideIcon } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -9,10 +9,12 @@ import { type CSSProperties, useEffect, useRef, useState } from "react";
 
 import styles from "@/app/dashboard/dashboard.module.css";
 import { DashboardProvider, useDashboard } from "@/components/dashboard/dashboard-provider";
+import { PersonalMessengerExperience } from "@/components/messenger/personal-messenger";
 import type { DashboardPreferences } from "@/lib/dashboard-data";
 import type { SafeProfileDTO } from "@/lib/repositories";
-import type { NotificationView } from "@/lib/support";
+import type { NotificationView, SupportConversationView } from "@/lib/support";
 import type { GlobalSearchResult } from "@/lib/platform-operations";
+import type { EconomySnapshotView } from "@/lib/economy";
 
 export type WorkspaceNavigationItem = {
   label: string;
@@ -35,14 +37,18 @@ type WorkspaceShellConfig = {
   notificationText: string;
 };
 
+const tierLabels = { EXPLORER: "Bronze", NAVIGATOR: "Silver", ATLAS: "Gold", PRIME: "Platinum", SIGNATURE: "Diamond" } as const;
+
 function WorkspaceNavigation({
   config,
   onNavigate,
   mobile = false,
+  canAdmin = false,
 }: {
   config: WorkspaceShellConfig;
   onNavigate?: () => void;
   mobile?: boolean;
+  canAdmin?: boolean;
 }) {
   const pathname = usePathname();
   const { profile, shouldReduceMotion } = useDashboard();
@@ -79,6 +85,7 @@ function WorkspaceNavigation({
         <Link href="/" className={styles.publicLink} onClick={onNavigate}>
           <Grid2X2 aria-hidden="true" />Публичная страница<ChevronRight aria-hidden="true" />
         </Link>
+        {canAdmin ? <Link href="/admin" className={styles.publicLink} onClick={onNavigate}><ShieldCheck aria-hidden="true" />Администрирование<ChevronRight aria-hidden="true" /></Link> : null}
         {profile ? <button type="button" className={styles.publicLink} onClick={async () => { await fetch("/api/auth/logout", { method: "POST", headers: { "content-type": "application/json" }, body: "{}" }); window.location.assign("/access?mode=login"); }}><LogOut aria-hidden="true" />Выйти<ChevronRight aria-hidden="true" /></button> : null}
         <Link href={config.profileHref} className={styles.sidebarProfile} onClick={onNavigate}>
           <span>{displayName.charAt(0).toLocaleUpperCase("ru") || "Д"}</span>
@@ -89,7 +96,7 @@ function WorkspaceNavigation({
   );
 }
 
-function WorkspaceShellContent({ children, config, initialNotifications }: { children: React.ReactNode; config: WorkspaceShellConfig; initialNotifications: NotificationView[] }) {
+function WorkspaceShellContent({ children, config, initialNotifications, personalConversation, economy, canAdmin }: { children: React.ReactNode; config: WorkspaceShellConfig; initialNotifications: NotificationView[]; personalConversation?: SupportConversationView; economy?: EconomySnapshotView; canAdmin: boolean }) {
   const pathname = usePathname();
   const { profile, shouldReduceMotion } = useDashboard();
   const displayName = profile?.user.displayName ?? config.profileRole;
@@ -97,22 +104,40 @@ function WorkspaceShellContent({ children, config, initialNotifications }: { chi
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notifications, setNotifications] = useState(initialNotifications);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [rankOpen, setRankOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [searchResults, setSearchResults] = useState<GlobalSearchResult[]>([]);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const mobileCloseRef = useRef<HTMLButtonElement>(null);
   const mainRef = useRef<HTMLElement>(null);
+  const searchRef = useRef<HTMLDivElement>(null);
+  const notificationsRef = useRef<HTMLDivElement>(null);
+  const rankRef = useRef<HTMLDivElement>(null);
   const menuId = `${config.kind}-mobile-menu`;
   const notificationsId = `${config.kind}-notifications`;
   const pageTitle = config.pageTitles[pathname]
     ?? Object.entries(config.pageTitlePrefixes ?? {}).find(([prefix]) => pathname.startsWith(prefix))?.[1]
     ?? "VX House";
   const unreadCount = notifications.filter((item) => item.status !== "READ").length;
+  const unreadMessages = notifications.filter((item) => item.status !== "READ").length;
+  const supportHref = config.kind === "partner" ? "/partner/support" : "/dashboard/support";
+  const messengerIsFullPage = pathname === supportHref;
+  const rankLabel = economy?.rank.current ? tierLabels[economy.rank.current.code] : "Bronze";
+  const nextRankLabel = economy?.rank.next ? tierLabels[economy.rank.next.code] : "Silver";
+  const completedCriteria = economy?.rank.next?.criteria.filter((item) => item.completed).length ?? 0;
+  const criteriaCount = economy?.rank.next?.criteria.length ?? 0;
+  const rankProgress = criteriaCount ? Math.round(completedCriteria / criteriaCount * 100) : Math.min(100, Math.round((economy?.points.confirmedBalance ?? 0) / 10));
 
   async function readNotification(id: string) {
     const current = notifications.find((item) => item.id === id); if (!current || current.status === "READ") return;
     const response = await fetch(`/api/notifications/${id}/read`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ idempotencyKey: `notification-read-${id}` }) });
     if (response.ok) setNotifications((items) => items.map((item) => item.id === id ? { ...item, status: "READ", readAt: new Date().toISOString() } : item));
+  }
+
+  function readMessenger() {
+    for (const item of notifications) {
+      if (item.status !== "READ") void readNotification(item.id);
+    }
   }
 
   useEffect(() => {
@@ -134,6 +159,7 @@ function WorkspaceShellContent({ children, config, initialNotifications }: { chi
       if (event.key !== "Escape") return;
       if (searchOpen) setSearchOpen(false);
       if (notificationsOpen) setNotificationsOpen(false);
+      if (rankOpen) setRankOpen(false);
       if (menuOpen) {
         setMenuOpen(false);
         menuButtonRef.current?.focus();
@@ -141,7 +167,18 @@ function WorkspaceShellContent({ children, config, initialNotifications }: { chi
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [menuOpen, notificationsOpen, searchOpen]);
+  }, [menuOpen, notificationsOpen, rankOpen, searchOpen]);
+
+  useEffect(() => {
+    function onPointerDown(event: PointerEvent) {
+      const target = event.target as Node;
+      if (searchOpen && !searchRef.current?.contains(target)) setSearchOpen(false);
+      if (notificationsOpen && !notificationsRef.current?.contains(target)) setNotificationsOpen(false);
+      if (rankOpen && !rankRef.current?.contains(target)) setRankOpen(false);
+    }
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => document.removeEventListener("pointerdown", onPointerDown);
+  }, [notificationsOpen, rankOpen, searchOpen]);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -158,7 +195,7 @@ function WorkspaceShellContent({ children, config, initialNotifications }: { chi
 
   return (
     <div className={styles.dashboardShell} data-workspace={config.kind} data-reduced-motion={shouldReduceMotion || undefined}>
-      <aside className={styles.sidebar}><WorkspaceNavigation config={config} /></aside>
+      <aside className={styles.sidebar}><WorkspaceNavigation config={config} canAdmin={canAdmin} /></aside>
 
       <AnimatePresence>
         {menuOpen ? (
@@ -176,7 +213,7 @@ function WorkspaceShellContent({ children, config, initialNotifications }: { chi
               transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
             >
               <button ref={mobileCloseRef} type="button" className={styles.mobileClose} onClick={() => setMenuOpen(false)} aria-label="Закрыть меню"><X aria-hidden="true" /></button>
-              <WorkspaceNavigation config={config} mobile onNavigate={() => setMenuOpen(false)} />
+              <WorkspaceNavigation config={config} mobile canAdmin={canAdmin} onNavigate={() => setMenuOpen(false)} />
             </motion.aside>
           </>
         ) : null}
@@ -190,12 +227,22 @@ function WorkspaceShellContent({ children, config, initialNotifications }: { chi
           </div>
 
           <div className={styles.topbarActions}>
-            {config.kind !== "admin" ? <div className={styles.globalSearch} data-open={searchOpen || undefined}>
-              <button type="button" aria-label="Открыть глобальный поиск" aria-expanded={searchOpen} onClick={() => setSearchOpen((open) => !open)}><Search aria-hidden="true" /></button>
+            {config.kind === "player" && economy ? <>
+              <Link href="/dashboard/economy" className={styles.pointsCompact} aria-label={`${economy.points.confirmedBalance} VX Points`}>
+                <Coins aria-hidden="true" /><span><small>VX Points</small><strong>{economy.points.confirmedBalance}</strong></span>
+                <em role="tooltip">Ваши бонусные баллы VX.<br />Используются для получения преимуществ.</em>
+              </Link>
+              <div className={styles.rankCompactWrap} ref={rankRef}>
+                <button type="button" className={styles.rankCompact} aria-expanded={rankOpen} onClick={() => { setRankOpen((open) => !open); setSearchOpen(false); setNotificationsOpen(false); }}><Medal aria-hidden="true" />{rankLabel}</button>
+                {rankOpen ? <div className={styles.rankCompactPanel} role="region" aria-label="Текущий уровень"><small>Текущий уровень</small><strong>{rankLabel}</strong><div><span>До уровня {nextRankLabel}</span><b>{rankProgress}%</b></div><div className={styles.compactProgress}><i style={{ width: `${rankProgress}%` }} /></div><p>{criteriaCount ? `Выполнено условий: ${completedCriteria} из ${criteriaCount}` : `До следующего уровня осталось ${Math.max(0, 1000 - (economy.points.confirmedBalance ?? 0))} VX Points`}</p><Link href="/dashboard/economy" onClick={() => setRankOpen(false)}>Подробнее о уровнях <ChevronRight aria-hidden="true" /></Link></div> : null}
+              </div>
+            </> : null}
+            {config.kind !== "admin" ? <div className={styles.globalSearch} ref={searchRef} data-open={searchOpen || undefined}>
+              <button type="button" aria-label="Открыть глобальный поиск" aria-expanded={searchOpen} onClick={() => { setSearchOpen((open) => !open); setNotificationsOpen(false); setRankOpen(false); }}><Search aria-hidden="true" /></button>
               {searchOpen ? <div className={styles.globalSearchPanel}><label><Search aria-hidden="true" /><span className="sr-only">Поиск по VX House</span><input autoFocus value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="Возможности, задания, прогнозы…" /></label>{searchTerm.trim().length < 2 ? <p>Введите минимум два символа.</p> : searchResults.length ? <div>{searchResults.map((item) => <Link key={`${item.type}:${item.id}`} href={item.href} onClick={() => setSearchOpen(false)}><small>{item.type}</small><strong>{item.title}</strong><span>{item.description}</span></Link>)}</div> : <p>Ничего не найдено.</p>}</div> : null}
             </div> : null}
-            <div className={styles.notificationsWrap}>
-              <button type="button" className={styles.notificationButton} aria-label={unreadCount ? `Непрочитанных уведомлений: ${unreadCount}` : "Новых уведомлений нет"} aria-expanded={notificationsOpen} aria-controls={notificationsId} onClick={() => setNotificationsOpen((open) => !open)}><Bell aria-hidden="true" />{unreadCount ? <i aria-hidden="true">{unreadCount}</i> : null}</button>
+            <div className={styles.notificationsWrap} ref={notificationsRef}>
+              <button type="button" className={styles.notificationButton} aria-label={unreadCount ? `Непрочитанных уведомлений: ${unreadCount}` : "Новых уведомлений нет"} aria-expanded={notificationsOpen} aria-controls={notificationsId} onClick={() => { setNotificationsOpen((open) => !open); setSearchOpen(false); setRankOpen(false); }}><Bell aria-hidden="true" />{unreadCount ? <i aria-hidden="true">{unreadCount}</i> : null}</button>
               <AnimatePresence>
                 {notificationsOpen ? (
                   <motion.div
@@ -208,7 +255,7 @@ function WorkspaceShellContent({ children, config, initialNotifications }: { chi
                     aria-label="Уведомления"
                   >
                     <div className={styles.notificationsHeader}><strong>Уведомления</strong><span>{unreadCount ? `${unreadCount} непрочитано` : "Всё прочитано"}</span></div>
-                    {notifications.length ? <div className={styles.notificationsList}>{notifications.map((item) => <button type="button" key={item.id} data-unread={item.status !== "READ" || undefined} onClick={() => readNotification(item.id)}><span>{item.category}</span><strong>{item.title}</strong><p>{item.body}</p><small>{new Intl.DateTimeFormat("ru", { dateStyle: "medium", timeStyle: "short" }).format(new Date(item.createdAt))}</small></button>)}</div> : <div className={styles.notificationsEmpty}><Bell aria-hidden="true" /><strong>Уведомлений пока нет</strong><p>{config.notificationText}</p></div>}
+                    {notifications.length ? <div className={styles.notificationsList}>{notifications.map((item) => <button type="button" key={item.id} data-unread={item.status !== "READ" || undefined} onClick={() => readNotification(item.id)}><span>{item.category}</span><strong>{item.title}</strong><p>{item.body}</p><small>{new Intl.DateTimeFormat("ru", { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" }).format(new Date(item.createdAt))}</small></button>)}</div> : <div className={styles.notificationsEmpty}><Bell aria-hidden="true" /><strong>Уведомлений пока нет</strong><p>{config.notificationText}</p></div>}
                   </motion.div>
                 ) : null}
               </AnimatePresence>
@@ -221,7 +268,27 @@ function WorkspaceShellContent({ children, config, initialNotifications }: { chi
           </div>
         </header>
 
-        <main ref={mainRef} id="main-content" className={styles.dashboardMain}>{children}</main>
+        <main ref={mainRef} id="main-content" className={styles.dashboardMain}>
+          {messengerIsFullPage && personalConversation ? (
+            <PersonalMessengerExperience
+              initialConversation={personalConversation}
+              basePath={supportHref}
+              unreadCount={unreadMessages}
+              fullPage
+              onRead={readMessenger}
+            />
+          ) : children}
+        </main>
+
+        {config.kind !== "admin" && personalConversation && !messengerIsFullPage ? (
+          <PersonalMessengerExperience
+            initialConversation={personalConversation}
+            basePath={supportHref}
+            unreadCount={unreadMessages}
+            fullPage={false}
+            onRead={readMessenger}
+          />
+        ) : null}
 
         <nav
           className={styles.mobileBottomNav}
@@ -238,10 +305,10 @@ function WorkspaceShellContent({ children, config, initialNotifications }: { chi
   );
 }
 
-export function WorkspaceShell({ children, config, profile, notifications = [] }: { children: React.ReactNode; config: WorkspaceShellConfig; profile?: SafeProfileDTO; notifications?: NotificationView[] }) {
+export function WorkspaceShell({ children, config, profile, notifications = [], personalConversation, economy, canAdmin = false }: { children: React.ReactNode; config: WorkspaceShellConfig; profile?: SafeProfileDTO; notifications?: NotificationView[]; personalConversation?: SupportConversationView; economy?: EconomySnapshotView; canAdmin?: boolean }) {
   return (
     <DashboardProvider storageKey={config.storageKey} defaultPreferences={config.defaultPreferences} profile={profile}>
-      <WorkspaceShellContent config={config} initialNotifications={notifications}>{children}</WorkspaceShellContent>
+      <WorkspaceShellContent config={config} initialNotifications={notifications} personalConversation={personalConversation} economy={economy} canAdmin={canAdmin}>{children}</WorkspaceShellContent>
     </DashboardProvider>
   );
 }

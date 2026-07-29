@@ -36,11 +36,10 @@ export class PrismaEconomyRewardRepository {
     return this.database.vXPointsLedgerEntry.findMany({ where: { userId }, orderBy: [{ occurredAt: "desc" }, { id: "desc" }], take });
   }
 
-  pointsTotals(userId: string) {
-    return Promise.all([
-      this.database.vXPointsLedgerEntry.aggregate({ where: { userId, status: { in: ["CONFIRMED", "REVERSED"] } }, _sum: { delta: true } }),
-      this.database.vXPointsLedgerEntry.aggregate({ where: { userId, status: "PENDING" }, _sum: { delta: true } }),
-    ]);
+  async pointsTotals(userId: string) {
+    const confirmed = await this.database.vXPointsLedgerEntry.aggregate({ where: { userId, status: { in: ["CONFIRMED", "REVERSED"] } }, _sum: { delta: true } });
+    const pending = await this.database.vXPointsLedgerEntry.aggregate({ where: { userId, status: "PENDING" }, _sum: { delta: true } });
+    return [confirmed, pending] as const;
   }
 
   findPointById(id: string, userId: string) {

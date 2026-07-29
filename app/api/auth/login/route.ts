@@ -1,5 +1,5 @@
 import { ApplicationError } from "@/lib/application";
-import { deriveNetworkIdentifier, errorResponse, getIdentitySystem, json, normalizedIdentifier, readJsonBody, recordLoginEvent, requireTrustedOrigin, securityServices } from "@/lib/server";
+import { deriveNetworkIdentifier, errorResponse, getIdentitySystem, json, normalizedIdentifier, readJsonBody, recordLoginEvent, requireTrustedOrigin, securityServices } from "@/lib/server/identity-delivery";
 
 export async function POST(request: Request) {
   try {
@@ -16,7 +16,9 @@ export async function POST(request: Request) {
         retryAfterSeconds: String(assessment.retryAfterSeconds),
       });
     }
-    const result = await getIdentitySystem().authentication.login({ email, password });
+    const identity = getIdentitySystem();
+    await identity.onboarding.purgeExpiredUnverifiedAccounts();
+    const result = await identity.authentication.login({ email, password });
     if (!result.ok) {
       const failure = await bruteForce.registerFailure(key);
       await recordLoginEvent({ succeeded: false, reason: "invalid_credentials" });
@@ -29,7 +31,7 @@ export async function POST(request: Request) {
     }
     await bruteForce.registerSuccess(key);
     await recordLoginEvent({ principal: result.authentication.principal, succeeded: true });
-    const snapshot = await getIdentitySystem().onboarding.getSnapshot(result.authentication.principal);
+    const snapshot = await identity.onboarding.getSnapshot(result.authentication.principal);
     return json(
       { user: { id: result.authentication.principal.userId }, profile: snapshot.profile, redirectTo: snapshot.redirectTo },
       { headers: { "set-cookie": result.setCookie } },

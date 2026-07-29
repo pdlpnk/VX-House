@@ -39,6 +39,7 @@ export type TaskVersionView = {
   availableUntil: string | null;
   completionDeadline: string | null;
   resubmissionPolicy: string;
+  possibleRewardDescription: string | null;
   instruction: InstructionView | null;
 };
 

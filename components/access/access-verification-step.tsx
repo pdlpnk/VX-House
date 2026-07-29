@@ -1,6 +1,7 @@
 "use client";
 
 import { ArrowLeft, ArrowRight, KeyRound, RefreshCw } from "lucide-react";
+import { useEffect, useState } from "react";
 
 import styles from "@/app/access/access.module.css";
 import { Button } from "@/components/ui/button";
@@ -18,6 +19,19 @@ export function AccessVerificationStep({ email, code, developmentCode, pending, 
   onResend: () => Promise<void>;
   onLogout: () => Promise<void>;
 }) {
+  const [resendIn, setResendIn] = useState(30);
+
+  useEffect(() => {
+    if (resendIn <= 0) return;
+    const timer = window.setInterval(() => setResendIn((current) => Math.max(0, current - 1)), 1000);
+    return () => window.clearInterval(timer);
+  }, [resendIn]);
+
+  async function handleResend() {
+    await onResend();
+    setResendIn(30);
+  }
+
   return <div className={styles.consentContent}>
     <header className={styles.stepHeading}>
       <span className={styles.scenarioEyebrow}>Подтверждение контакта</span>
@@ -34,7 +48,10 @@ export function AccessVerificationStep({ email, code, developmentCode, pending, 
     </Card>
     <div className={styles.stepActions}>
       <Button type="button" size="lg" disabled={pending || code.length !== 6} onClick={() => void onVerify()}>{pending ? "Проверяем…" : "Подтвердить"}<ArrowRight aria-hidden="true" /></Button>
-      <button type="button" className={styles.stepBackButton} disabled={pending} onClick={() => void onResend()}><RefreshCw aria-hidden="true" />Отправить новый код</button>
+      <button type="button" className={styles.stepBackButton} disabled={pending || resendIn > 0} onClick={() => void handleResend()}>
+        <RefreshCw aria-hidden="true" />
+        {resendIn > 0 ? `Новый код через 0:${String(resendIn).padStart(2, "0")}` : "Отправить новый код"}
+      </button>
       <button type="button" className={styles.stepBackButton} disabled={pending} onClick={() => void onLogout()}><ArrowLeft aria-hidden="true" />Начать с другого адреса</button>
     </div>
   </div>;

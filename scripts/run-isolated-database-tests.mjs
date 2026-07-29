@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { startPrismaDevServer } from "@prisma/dev";
+import { startDatabaseLockCoordinator } from "./database-lock-coordinator.mjs";
 
 const node = process.execPath;
 const prisma = fileURLToPath(new URL("../node_modules/prisma/build/index.js", import.meta.url));
@@ -26,12 +27,15 @@ const server = await startPrismaDevServer({
 });
 
 const databaseUrl = server.database.connectionString;
+const databaseLock = await startDatabaseLockCoordinator();
 const env = {
   ...process.env,
   NODE_ENV: "test",
   DATABASE_URL: databaseUrl,
   DIRECT_URL: databaseUrl,
   TEST_DATABASE_URL: databaseUrl,
+  VX_DATABASE_LOCK_URL: databaseLock.url,
+  VX_DATABASE_LOCK_SECRET: databaseLock.secret,
 };
 
 try {
@@ -42,6 +46,7 @@ try {
     "tests/database-invariants.integration.test.mts",
     "tests/identity-profile-consent.integration.test.mts",
     "tests/functional-identity-onboarding.integration.test.mts",
+    "tests/registration-stabilization.integration.test.mts",
     "tests/functional-opportunities-tasks.integration.test.mts",
     "tests/functional-economy-rewards.integration.test.mts",
     "tests/functional-support-notifications.integration.test.mts",
@@ -50,5 +55,6 @@ try {
   ];
   for (const file of testFiles) await run(node, [tsx, "--conditions=react-server", "--test", "--test-concurrency=1", file], env);
 } finally {
+  await databaseLock.close();
   await server.close?.();
 }

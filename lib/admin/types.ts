@@ -51,6 +51,7 @@ export type ContentDraftInput = Readonly<{
   market?: "TR" | "AZ";
   nextStep?: string;
   instructionVersionId?: string;
+  sequenceOrder?: number;
   disclaimer?: string;
   validFrom?: string;
   validUntil?: string;

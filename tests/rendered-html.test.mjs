@@ -59,7 +59,7 @@ test("server-renders the access welcome screen", async () => {
 
   const html = await response.text();
   assert.match(html, /<title>Получение доступа \| VX House<\/title>/i);
-  assert.match(html, /Проверяем безопасный сеанс/i);
+  assert.match(html, /Проверяем сеанс/i);
   assert.match(html, /Только для совершеннолетних/i);
   assert.doesNotMatch(html, /Кабинет готов|Профиль активирован|Данные защищены системой/i);
 });
@@ -109,13 +109,12 @@ test("dashboard keeps player-only server-backed contracts", async () => {
   assert.match(workspaceShell, /Уведомлений пока нет/);
   assert.match(workspaceShell, /WorkspaceShell/);
   assert.match(shell, /href: "\/dashboard\/support"/);
-  assert.match(home, /Рекомендуемый следующий шаг/);
-  assert.match(home, /Trust Score/);
+  assert.match(home, /Следующий шаг/);
+  assert.doesNotMatch(home, /Trust Score/);
   assert.match(home, /VX Points/);
-  assert.match(home, /Прогресс до следующего ранга/);
+  assert.match(home, /Быстрый доступ/);
   assert.match(home, /summary\.activeTasks/);
-  assert.match(home, /ForecastCatalog/);
-  assert.match(home, /PromocodeCatalog/);
+  assert.doesNotMatch(home, /ForecastCatalog|PromocodeCatalog/);
   assert.match(opportunities, /OpportunityCatalog/);
   assert.doesNotMatch(opportunities, /partnerOpportunities|Прайм/);
   assert.match(settings, /Уменьшенное движение/);
@@ -230,14 +229,14 @@ test("task lifecycle renders only server state and real commands", async () => {
   assert.match(lifecycleComponent, /\/api\/tasks/);
   assert.match(lifecycleComponent, /Сохранить черновик/);
   assert.match(lifecycleComponent, /Отправить результат/);
-  assert.match(lifecycleComponent, /История изменений/);
+  assert.match(lifecycleComponent, /Что уже произошло/);
   assert.match(service, /SubmissionVersion/);
   assert.match(service, /assertTransition/);
   assert.match(styles, /prefers-reduced-motion/);
   assert.doesNotMatch(lifecycleComponent, /role="tablist"|aria-selected|localStorage|sessionStorage/i);
 });
 
-test("economy UI uses four independent server-backed entities", async () => {
+test("player progress UI keeps server data and hides internal Trust Score", async () => {
   const [types, service, overview, history, impact, playerShell, partnerShell, styles] = await Promise.all([
     readFile(new URL("../lib/economy/types.ts", import.meta.url), "utf8"),
     readFile(new URL("../lib/services/economy-reward-service.ts", import.meta.url), "utf8"),
@@ -249,9 +248,7 @@ test("economy UI uses four independent server-backed entities", async () => {
     readFile(new URL("../app/dashboard/dashboard.module.css", import.meta.url), "utf8"),
   ]);
 
-  for (const entity of ["VX Points", "Trust Score", "Ранг", "VX Rewards"]) {
-    assert.match(`${types}${service}${overview}${impact}`, new RegExp(entity, "i"));
-  }
+  for (const entity of ["VX Points", "Trust Score", "Ранг", "VX Rewards"]) assert.match(`${types}${service}${impact}`, new RegExp(entity, "i"));
   for (const rank of ["Explorer", "Navigator", "Atlas", "Prime", "Signature"]) {
     assert.match(service, new RegExp(rank, "i"));
   }
@@ -259,10 +256,11 @@ test("economy UI uses four independent server-backed entities", async () => {
   assert.match(service, /findTrustSnapshot/);
   assert.match(service, /promoteRank/);
   assert.match(service, /getHistory/);
-  assert.match(overview, /Не являются деньгами/);
-  assert.match(overview, /Серверные данные/);
-  assert.match(history, /неизменяемая серверная хронология/i);
-  assert.match(history, /История не переписывается/i);
+  for (const level of ["Bronze", "Silver", "Gold", "Platinum", "Diamond"]) assert.match(overview, new RegExp(level, "i"));
+  assert.match(overview, /Начисления за месяц/);
+  assert.match(overview, /История начислений/);
+  assert.match(history, /История прогресса/i);
+  assert.doesNotMatch(`${overview}${history}`, /Trust Score|серверная хронология|Серверные данные/i);
   assert.match(playerShell, /\/dashboard\/economy/);
   assert.match(partnerShell, /\/partner\/economy/);
   assert.match(styles, /economyMetricGrid/);
@@ -316,9 +314,9 @@ test("VX Rewards uses server lifecycle, ownership and claim", async () => {
   assert.match(lifecycle, /Связанное задание/);
   assert.match(lifecycle, /История изменений Reward/);
   assert.match(lifecycle, /\/api\/rewards/);
-  assert.match(history, /неизменяемая серверная хронология/i);
-  assert.match(catalog, /Серверные данные/);
-  assert.match(detail, /серверные данные/i);
+  assert.match(history, /Полная хронология/i);
+  assert.match(catalog, /Актуальные данные/);
+  assert.match(detail, /актуально сейчас/i);
   assert.match(playerShell, /\/dashboard\/rewards/);
   assert.match(partnerShell, /\/partner\/rewards/);
   assert.match(styles, /rewardLifecycleTabs/);
@@ -347,50 +345,40 @@ test.skip("server-renders support center and creation for both roles (requires a
 });
 
 test("support, appeals and notifications use server-backed contracts", async () => {
-  const [data, service, migration, center, detail, creation, statusGuide, workspace, playerShell, partnerShell, task, reward, styles] = await Promise.all([
-    readFile(new URL("../lib/support-data.ts", import.meta.url), "utf8"),
+  const [service, migration, messenger, messengerStyles, workspace, playerShell, partnerShell, task, reward] = await Promise.all([
     readFile(new URL("../lib/services/support-notification-service.ts", import.meta.url), "utf8"),
     readFile(new URL("../prisma/migrations/20260722080000_support_appeals_notifications_integration/migration.sql", import.meta.url), "utf8"),
-    readFile(new URL("../components/support/support-center.tsx", import.meta.url), "utf8"),
-    readFile(new URL("../components/support/support-ticket-detail.tsx", import.meta.url), "utf8"),
-    readFile(new URL("../components/support/support-new-ticket.tsx", import.meta.url), "utf8"),
-    readFile(new URL("../components/support/support-status-guide.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../components/messenger/personal-messenger.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../components/messenger/personal-messenger.module.css", import.meta.url), "utf8"),
     readFile(new URL("../components/dashboard/workspace-shell.tsx", import.meta.url), "utf8"),
     readFile(new URL("../components/dashboard/dashboard-shell.tsx", import.meta.url), "utf8"),
     readFile(new URL("../components/partner/partner-shell.tsx", import.meta.url), "utf8"),
     readFile(new URL("../components/opportunities/task-detail.tsx", import.meta.url), "utf8"),
     readFile(new URL("../components/rewards/reward-detail.tsx", import.meta.url), "utf8"),
-    readFile(new URL("../app/dashboard/dashboard.module.css", import.meta.url), "utf8"),
   ]);
 
-  for (const status of ["Новое", "Открыто", "Ожидает пользователя", "Ожидает оператора", "Решено", "Закрыто"]) {
-    assert.match(data, new RegExp(status, "i"));
-  }
   for (const category of ["Доступ к платформе", "Задание", "Проверка результата", "VX Rewards", "Профиль и настройки", "Апелляция", "Сотрудничество"]) {
     assert.match(migration, new RegExp(category, "i"));
   }
-  assert.match(center, /Серверные данные/);
-  assert.match(center, /Ваши обращения/);
-  assert.match(detail, /Сообщения защищены и неизменяемы/);
-  assert.match(detail, /Вложения/);
-  assert.match(detail, /История статусов/);
-  assert.match(detail, /\/api\/support/);
-  assert.match(creation, /Создать обращение/);
-  assert.match(creation, /\/api\/support/);
+  assert.match(messenger, /Менеджер VX House/);
+  assert.match(messenger, /Введите сообщение/);
+  assert.match(messenger, /Прикрепить файл/);
+  assert.match(messenger, /Развернуть Messenger/);
+  assert.match(messenger, /\/api\/support/);
   assert.match(service, /createAppeal/);
   assert.match(service, /appealStateMachine/);
+  assert.match(service, /getPersonalConversation/);
   assert.match(service, /markNotificationRead/);
   assert.match(workspace, /\/api\/notifications/);
   assert.match(migration, /AppealStatusHistory_append_only/);
   assert.match(migration, /NotificationStatusHistory_append_only/);
-  assert.match(statusGuide, /следующий шаг/i);
   assert.match(playerShell, /\/dashboard\/support/);
   assert.match(partnerShell, /\/partner\/support/);
-  assert.match(task, /Открыть Центр поддержки/);
-  assert.match(reward, /Открыть Центр поддержки/);
-  assert.match(styles, /supportConversation/);
-  assert.match(styles, /prefers-reduced-motion/);
-  assert.doesNotMatch(`${data}${center}${detail}${creation}${statusGuide}`, /WebSocket|localStorage|sessionStorage|EventSource/i);
+  assert.match(task, /Написать менеджеру/);
+  assert.match(reward, /Написать менеджеру/);
+  assert.match(messengerStyles, /prefers-reduced-motion/);
+  assert.doesNotMatch(`${messenger}${playerShell}${partnerShell}`, /Новый диалог|Создать обращение|Ожидает оператора|Приоритет/i);
+  assert.doesNotMatch(messenger, /WebSocket|localStorage|sessionStorage|EventSource/i);
 });
 
 test.skip("server-renders the complete administrative workspace (requires authenticated database fixture)", async () => {
@@ -562,11 +550,11 @@ test("includes scalable theme and component contracts", async () => {
   assert.match(accessConsent, /Мне исполнилось 18 лет/);
   assert.match(accessConsent, /опубликованной версией/i);
   assert.match(accessConsent, /обязательные документы/i);
-  assert.match(accessComplete, /Профиль создан/);
+  assert.match(accessComplete, /Знакомство завершено/);
   assert.match(accessComplete, /Безопасный вход настроен/);
-  assert.match(accessComplete, /Открыть VX House/);
+  assert.match(accessComplete, /Перейти к заданиям/);
   assert.doesNotMatch(accessComplete, /Кабинет готов|Профиль активирован/i);
-  assert.match(accessProgress, /"Проверка почты"/);
+  assert.match(accessProgress, /"Подтверждение почты"/);
   assert.match(accessDraft, /AccessScenario/);
   assert.match(accessDraft, /AccessCountry/);
   assert.match(components, /"ui": "@\/components\/ui"/);

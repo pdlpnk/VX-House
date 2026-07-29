@@ -1,11 +1,12 @@
 "use client";
 
-import { Activity, ChartNoAxesCombined, Compass, Gift, Headphones, House, Settings, UserRound } from "lucide-react";
+import { Activity, ChartNoAxesCombined, Compass, Gift, House, MessageCircle, Settings, UserRound } from "lucide-react";
 
 import { WorkspaceShell } from "@/components/dashboard/workspace-shell";
 import { DASHBOARD_PREFERENCES_KEY, defaultDashboardPreferences } from "@/lib/dashboard-data";
 import type { SafeProfileDTO } from "@/lib/repositories";
-import type { NotificationView } from "@/lib/support";
+import type { NotificationView, SupportConversationView } from "@/lib/support";
+import type { EconomySnapshotView } from "@/lib/economy";
 
 const playerConfig = {
   kind: "player" as const,
@@ -18,10 +19,10 @@ const playerConfig = {
   defaultPreferences: defaultDashboardPreferences,
   navigation: [
     { label: "Главная", href: "/dashboard", icon: House },
-    { label: "Возможности", href: "/dashboard/opportunities", icon: Compass },
-    { label: "Экономика", href: "/dashboard/economy", icon: ChartNoAxesCombined },
+    { label: "Задания", href: "/dashboard/opportunities", icon: Compass },
+    { label: "Мой прогресс", href: "/dashboard/economy", icon: ChartNoAxesCombined },
     { label: "VX Rewards", href: "/dashboard/rewards", icon: Gift },
-    { label: "Поддержка", href: "/dashboard/support", icon: Headphones },
+    { label: "Менеджер", href: "/dashboard/support", icon: MessageCircle },
     { label: "Активность", href: "/dashboard/activity", icon: Activity },
     { label: "Профиль", href: "/dashboard/profile", icon: UserRound },
     { label: "Настройки", href: "/dashboard/settings", icon: Settings },
@@ -29,25 +30,25 @@ const playerConfig = {
   pageTitles: {
     "/dashboard": "Главная",
     "/dashboard/profile": "Профиль",
-    "/dashboard/opportunities": "Возможности",
-    "/dashboard/economy": "Экономика",
-    "/dashboard/economy/history": "История экономики",
+    "/dashboard/opportunities": "Доступные задания",
+    "/dashboard/economy": "Мой прогресс",
+    "/dashboard/economy/history": "История начислений",
     "/dashboard/rewards": "VX Rewards",
     "/dashboard/rewards/history": "История Rewards",
     "/dashboard/activity": "Активность",
-    "/dashboard/support": "Поддержка",
-    "/dashboard/support/new": "Новое обращение",
+    "/dashboard/support": "Messenger",
+    "/dashboard/support/new": "Messenger",
     "/dashboard/settings": "Настройки",
   },
   pageTitlePrefixes: {
     "/dashboard/opportunities/": "Карточка возможности",
     "/dashboard/tasks/": "Задание",
     "/dashboard/rewards/": "Карточка VX Reward",
-    "/dashboard/support/": "Обращение",
+    "/dashboard/support/": "Messenger",
   },
   notificationText: "Новых событий пока нет.",
 };
 
-export function DashboardShell({ children, profile, notifications }: { children: React.ReactNode; profile?: SafeProfileDTO; notifications?: NotificationView[] }) {
-  return <WorkspaceShell config={playerConfig} profile={profile} notifications={notifications}>{children}</WorkspaceShell>;
+export function DashboardShell({ children, profile, notifications, personalConversation, economy, canAdmin }: { children: React.ReactNode; profile?: SafeProfileDTO; notifications?: NotificationView[]; personalConversation?: SupportConversationView; economy?: EconomySnapshotView; canAdmin?: boolean }) {
+  return <WorkspaceShell config={playerConfig} profile={profile} notifications={notifications} personalConversation={personalConversation} economy={economy} canAdmin={canAdmin}>{children}</WorkspaceShell>;
 }

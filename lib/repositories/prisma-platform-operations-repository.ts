@@ -9,7 +9,6 @@ export class PrismaPlatformOperationsRepository {
     return this.database.userProfile.findUnique({
       where: { userId },
       include: {
-        user: { select: { id: true, displayName: true, email: true, createdAt: true } },
         market: true,
         partnerProfile: true,
       },
@@ -68,15 +67,13 @@ export class PrismaPlatformOperationsRepository {
   }
 
   async workspaceCounts(userId: string, role: "PLAYER" | "PARTNER", marketId: string, at: Date) {
-    const [activeTasks, completedTasks, rewards, openSupport, unreadNotifications, availableOpportunities, availablePromocodes] = await Promise.all([
-      this.database.userTask.count({ where: { userId, status: { in: ["ACCEPTED", "IN_PROGRESS", "AWAITING_SUBMISSION", "SUBMITTED", "UNDER_REVIEW", "CLARIFICATION_REQUIRED", "RESUBMISSION_REQUIRED"] } } }),
-      this.database.userTask.count({ where: { userId, status: "CONFIRMED" } }),
-      this.database.vXReward.count({ where: { userId, status: { notIn: ["REJECTED", "CANCELLED", "EXPIRED"] } } }),
-      this.database.supportConversation.count({ where: { userId, status: { notIn: ["RESOLVED", "CLOSED"] } } }),
-      this.database.notification.count({ where: { userId, status: "SENT" } }),
-      this.database.opportunity.count({ where: { status: "PUBLISHED", audiences: { some: { productRole: role, marketId } }, OR: [{ eligibility: { none: { userId } } }, { eligibility: { some: { userId, status: "ELIGIBLE", OR: [{ validUntil: null }, { validUntil: { gt: at } }] } } }] } }),
-      this.database.promocode.count({ where: { productRole: role, marketId, status: "PUBLISHED", validFrom: { lte: at }, validUntil: { gt: at }, partnerService: { status: "ACTIVE", markets: { some: { marketId, status: "ACTIVE" } } } } }),
-    ]);
+    const activeTasks = await this.database.userTask.count({ where: { userId, status: { in: ["ACCEPTED", "IN_PROGRESS", "AWAITING_SUBMISSION", "SUBMITTED", "UNDER_REVIEW", "CLARIFICATION_REQUIRED", "RESUBMISSION_REQUIRED"] } } });
+    const completedTasks = await this.database.userTask.count({ where: { userId, status: "CONFIRMED" } });
+    const rewards = await this.database.vXReward.count({ where: { userId, status: { notIn: ["REJECTED", "CANCELLED", "EXPIRED"] } } });
+    const openSupport = await this.database.supportConversation.count({ where: { userId, status: { notIn: ["RESOLVED", "CLOSED"] } } });
+    const unreadNotifications = await this.database.notification.count({ where: { userId, status: "SENT" } });
+    const availableOpportunities = await this.database.opportunity.count({ where: { status: "PUBLISHED", audiences: { some: { productRole: role, marketId } }, OR: [{ eligibility: { none: { userId } } }, { eligibility: { some: { userId, status: "ELIGIBLE", OR: [{ validUntil: null }, { validUntil: { gt: at } }] } } }] } });
+    const availablePromocodes = await this.database.promocode.count({ where: { productRole: role, marketId, status: "PUBLISHED", validFrom: { lte: at }, validUntil: { gt: at }, partnerService: { status: "ACTIVE", markets: { some: { marketId, status: "ACTIVE" } } } } });
     return { activeTasks, completedTasks, rewards, openSupport, unreadNotifications, availableOpportunities, availablePromocodes };
   }
 

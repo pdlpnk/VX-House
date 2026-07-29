@@ -31,7 +31,10 @@ interface SecurityEventMetadataMap {
     policyKey: string;
     reason: string;
   }>;
-  "identity.registration.created": Readonly<{ productRole: "PLAYER" | "PARTNER"; market: "TR" | "AZ" }>;
+  "identity.registration.created": Readonly<{
+    productRole: "PLAYER" | "PARTNER" | "UNSELECTED";
+    market: "TR" | "AZ" | "UNSELECTED";
+  }>;
   "identity.email_verification.requested": Readonly<{ reason: "registration" | "resend" }>;
   "identity.email_verification.succeeded": Readonly<{ method: "email_code" }>;
   "identity.email_verification.failed": Readonly<{

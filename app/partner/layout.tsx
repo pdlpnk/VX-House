@@ -13,6 +13,7 @@ export const metadata: Metadata = {
 };
 
 export default async function PartnerLayout({ children }: { children: React.ReactNode }) {
-  const { principal, profile } = await requireProductWorkspaceContext("PARTNER", "/partner");
-  return <div className={styles.dashboardRoot}><PartnerShell profile={profile} notifications={await getSupportNotificationService().listNotifications(principal)}>{children}</PartnerShell></div>;
+  const { principal, profile, database } = await requireProductWorkspaceContext("PARTNER", "/partner");
+  const support = getSupportNotificationService(database);
+  return <div className={styles.dashboardRoot}><PartnerShell profile={profile} notifications={await support.listNotifications(principal)} personalConversation={await support.getPersonalConversation(principal)}>{children}</PartnerShell></div>;
 }

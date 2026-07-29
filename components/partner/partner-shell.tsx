@@ -1,11 +1,11 @@
 "use client";
 
-import { BriefcaseBusiness, ChartNoAxesCombined, FolderOpen, Gift, Handshake, Headphones, History, UserRound } from "lucide-react";
+import { BriefcaseBusiness, ChartNoAxesCombined, FolderOpen, Gift, Handshake, History, MessageCircle, UserRound } from "lucide-react";
 
 import { WorkspaceShell } from "@/components/dashboard/workspace-shell";
 import { PARTNER_PREFERENCES_KEY, defaultPartnerPreferences } from "@/lib/partner-data";
 import type { SafeProfileDTO } from "@/lib/repositories";
-import type { NotificationView } from "@/lib/support";
+import type { NotificationView, SupportConversationView } from "@/lib/support";
 
 const partnerConfig = {
   kind: "partner" as const,
@@ -21,7 +21,7 @@ const partnerConfig = {
     { label: "Возможности", href: "/partner/opportunities", icon: Handshake },
     { label: "Экономика", href: "/partner/economy", icon: ChartNoAxesCombined },
     { label: "VX Rewards", href: "/partner/rewards", icon: Gift },
-    { label: "Поддержка", href: "/partner/support", icon: Headphones },
+    { label: "Менеджер", href: "/partner/support", icon: MessageCircle },
     { label: "Материалы", href: "/partner/materials", icon: FolderOpen },
     { label: "Прогнозы", href: "/partner/forecasts", icon: ChartNoAxesCombined },
     { label: "История", href: "/partner/history", icon: History },
@@ -34,8 +34,8 @@ const partnerConfig = {
     "/partner/economy/history": "История экономики",
     "/partner/rewards": "VX Rewards",
     "/partner/rewards/history": "История Rewards",
-    "/partner/support": "Поддержка",
-    "/partner/support/new": "Новое обращение",
+    "/partner/support": "Messenger",
+    "/partner/support/new": "Messenger",
     "/partner/materials": "Материалы",
     "/partner/forecasts": "Прогнозы",
     "/partner/history": "История",
@@ -45,11 +45,11 @@ const partnerConfig = {
     "/partner/opportunities/": "Карточка возможности",
     "/partner/tasks/": "Задание",
     "/partner/rewards/": "Карточка VX Reward",
-    "/partner/support/": "Обращение",
+    "/partner/support/": "Messenger",
   },
   notificationText: "Новых событий партнёрского пространства пока нет.",
 };
 
-export function PartnerShell({ children, profile, notifications }: { children: React.ReactNode; profile?: SafeProfileDTO; notifications?: NotificationView[] }) {
-  return <WorkspaceShell config={partnerConfig} profile={profile} notifications={notifications}>{children}</WorkspaceShell>;
+export function PartnerShell({ children, profile, notifications, personalConversation }: { children: React.ReactNode; profile?: SafeProfileDTO; notifications?: NotificationView[]; personalConversation?: SupportConversationView }) {
+  return <WorkspaceShell config={partnerConfig} profile={profile} notifications={notifications} personalConversation={personalConversation}>{children}</WorkspaceShell>;
 }

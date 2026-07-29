@@ -113,15 +113,13 @@ export class PlatformOperationsService {
     const repository = new PrismaPlatformOperationsRepository(this.database);
     const profile = assertProfile(await repository.findProfile(principal.userId));
     const now = new Date();
-    const [counts, forecasts, recommended] = await Promise.all([
-      repository.workspaceCounts(principal.userId, profile.productRole, profile.marketId, now),
-      this.listForecasts(principal),
-      repository.findRecommendedOpportunity(principal.userId, profile.productRole, profile.marketId, now),
-    ]);
+    const counts = await repository.workspaceCounts(principal.userId, profile.productRole, profile.marketId, now);
+    const forecasts = await this.listForecasts(principal);
+    const recommended = await repository.findRecommendedOpportunity(principal.userId, profile.productRole, profile.marketId, now);
     const root = profile.productRole === "PARTNER" ? "/partner" : "/dashboard";
     return {
-      memberSince: profile.user.createdAt.toISOString(),
-      daysWithPlatform: Math.max(1, Math.floor((now.getTime() - profile.user.createdAt.getTime()) / 86_400_000) + 1),
+      memberSince: profile.createdAt.toISOString(),
+      daysWithPlatform: Math.max(1, Math.floor((now.getTime() - profile.createdAt.getTime()) / 86_400_000) + 1),
       partnerStatus: profile.partnerProfile?.status ?? null,
       ...counts,
       availableForecasts: forecasts.length,

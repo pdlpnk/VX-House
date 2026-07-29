@@ -1,5 +1,7 @@
 import "server-only";
 
+import { cache } from "react";
+
 import { SessionCookieManager, SessionTokenManager, VerificationCodeHasher } from "@/lib/auth";
 import { getServerConfig } from "@/lib/config";
 import { getDatabase } from "@/lib/db";
@@ -50,11 +52,14 @@ function buildIdentitySystem() {
       maxActiveChallenges: verificationConfig.maxActive,
     },
   );
-  return Object.freeze({ authentication, onboarding, cookies, emailProvider, config });
+  return Object.freeze({ authentication, onboarding, cookies, emailProvider, config, database });
 }
 
+const getRequestIdentitySystem = cache(buildIdentitySystem);
+
 export function getIdentitySystem() {
-  if (globalThis.navigator?.userAgent === "Cloudflare-Workers") return buildIdentitySystem();
+  if (globalThis.navigator?.userAgent === "Cloudflare-Workers") return getRequestIdentitySystem();
+
   globalIdentity.vxHouseIdentitySystem ??= buildIdentitySystem();
   return globalIdentity.vxHouseIdentitySystem;
 }

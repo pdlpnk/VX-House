@@ -1,0 +1,20 @@
+import { errorResponse, getSupportNotificationService, requireRequestPrincipal } from "@/lib/server";
+
+export async function GET(request: Request, { params }: { params: Promise<{ attachmentId: string }> }) {
+  try {
+    const principal = await requireRequestPrincipal(request);
+    const { attachmentId } = await params;
+    const attachment = await getSupportNotificationService().getAttachment(principal, attachmentId);
+    const safeName = attachment.fileName.replace(/["\\\r\n]/g, "_");
+    return new Response(attachment.bytes, {
+      headers: {
+        "cache-control": "private, no-store",
+        "content-type": attachment.mediaType,
+        "content-disposition": `attachment; filename="${safeName}"; filename*=UTF-8''${encodeURIComponent(safeName)}`,
+        "x-content-type-options": "nosniff",
+      },
+    });
+  } catch (error) {
+    return errorResponse(error);
+  }
+}

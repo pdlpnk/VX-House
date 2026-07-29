@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight, Compass, Info, MapPin, Search, UserRound } from "lucide-react";
+import { ArrowRight, Award, Compass, Info, Search, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
@@ -14,8 +14,7 @@ import type { OpportunityView } from "@/lib/opportunities/types";
 import { cn } from "@/lib/utils";
 
 const typeLabels = { TASK: "Задание", INSTRUCTION: "Инструкция", PROMOCODE: "Промокод", FORECAST: "Прогноз", PERSONAL_CONDITION: "Персональное условие" } as const;
-const roleLabels = { PLAYER: "Игрок", PARTNER: "Партнёр" } as const;
-const copy = { PLAYER: { eyebrow: "Кабинет игрока", description: "Опубликованные возможности для вашей роли и рынка.", backHref: "/dashboard" }, PARTNER: { eyebrow: "Партнёрское пространство", description: "Рабочие возможности, доступные подтверждённому партнёрскому профилю.", backHref: "/partner" } } as const;
+const copy = { PLAYER: { eyebrow: "Задания", title: "Доступные задания", description: "Выберите подходящее задание и заранее ознакомьтесь с условиями и наградами." }, PARTNER: { eyebrow: "Партнёрское пространство", title: "Возможности", description: "Доступные рабочие сценарии и материалы." } } as const;
 
 export function OpportunityCatalog({ role, basePath, initialItems }: { role: "PLAYER" | "PARTNER"; basePath: string; initialItems: OpportunityView[] }) {
   const [items, setItems] = useState(initialItems);
@@ -32,9 +31,9 @@ export function OpportunityCatalog({ role, basePath, initialItems }: { role: "PL
         const params = new URLSearchParams(); if (search.trim()) params.set("search", search.trim()); if (type) params.set("type", type);
         const response = await fetch(`/api/opportunities?${params}`, { credentials: "same-origin", cache: "no-store", signal: controller.signal });
         const body = await response.json() as { items?: OpportunityView[]; message?: string };
-        if (!response.ok) throw new Error(body.message ?? "Не удалось обновить каталог");
+        if (!response.ok) throw new Error(body.message ?? "Не удалось обновить список заданий");
         setItems(body.items ?? []);
-      } catch (cause) { if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : "Не удалось обновить каталог"); }
+      } catch (cause) { if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : "Не удалось обновить список заданий"); }
       finally { if (!controller.signal.aborted) setPending(false); }
     }, 250);
     return () => { window.clearTimeout(timer); controller.abort(); };
@@ -42,8 +41,8 @@ export function OpportunityCatalog({ role, basePath, initialItems }: { role: "PL
 
   const texts = copy[role];
   return <DashboardPage>
-    <DashboardHeading eyebrow={texts.eyebrow} title="Возможности" description={texts.description} action={<StatusPill tone="brand">Серверный каталог</StatusPill>} />
-    <section className={styles.opportunityCatalogIntro}><span><Compass aria-hidden="true" /></span><div><small>Персональная выборка</small><h2>Понятно, что доступно и что делать дальше</h2><p>Роль, рынок, публикация и индивидуальная доступность проверяются сервером.</p></div></section>
+    <DashboardHeading eyebrow={texts.eyebrow} title={texts.title} description={texts.description} action={<StatusPill tone="brand">{items.length} доступно</StatusPill>} />
+    <section className={styles.opportunityCatalogIntro}><span><Sparkles aria-hidden="true" /></span><div><small>Подобрано для вас</small><h2>Все условия видны до начала</h2><p>Откройте карточку, чтобы узнать порядок действий, сроки и возможную награду.</p></div></section>
     <div className={styles.opportunityFilters} role="search" aria-label="Поиск и фильтрация возможностей">
       <label><span>Поиск</span><div className={styles.inputWrap}><Search aria-hidden="true" /><Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Название или описание" /></div></label>
       <label><span>Тип</span><select value={type} onChange={(event) => setType(event.target.value)}><option value="">Все типы</option>{Object.entries(typeLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
@@ -52,12 +51,11 @@ export function OpportunityCatalog({ role, basePath, initialItems }: { role: "PL
     {error ? <p className={styles.systemDisclosure} role="alert"><Info aria-hidden="true" />{error}</p> : null}
     {items.length ? <DashboardGrid className={styles.opportunityList}>{items.map((item) => <DashboardGridItem key={item.id}><Card className={styles.opportunityCard}>
       <div className={styles.opportunityCardTopline}><span>{typeLabels[item.type]}</span><OpportunityStatusBadge status={item.availability} /></div>
-      <div className={styles.opportunityCardCopy}><small>{item.market.name}</small><h2>{item.title}</h2><p>{item.description}</p></div>
-      <dl className={styles.opportunityMeta}><div><dt><UserRound aria-hidden="true" /> Роль</dt><dd>{roleLabels[item.role]}</dd></div><div><dt><MapPin aria-hidden="true" /> Рынок</dt><dd>{item.market.name}</dd></div></dl>
-      <div className={styles.opportunityNextStep}><span>Следующий шаг</span><p>{item.nextStep}</p></div>
-      <Link className={cn(buttonVariants({ variant: "outline" }), styles.opportunityDetailsLink)} href={`${basePath}/${item.id}`}>Открыть карточку <ArrowRight aria-hidden="true" /></Link>
-    </Card></DashboardGridItem>)}</DashboardGrid> : <Card className={styles.noDataPanel}><Compass aria-hidden="true" /><h2>Доступных возможностей пока нет</h2><p>Измените фильтр или вернитесь позже. Черновики и архивные публикации не показываются.</p></Card>}
-    <p className={styles.systemDisclosure}><Info aria-hidden="true" /> Доступность формируется сервером; экономические последствия в этом модуле не подключены.</p>
-    <Link className={styles.pageBackLink} href={texts.backHref}>Вернуться к обзору</Link>
+      <div className={styles.opportunityCardCopy}><small>{item.type === "TASK" ? "Задание VX House" : typeLabels[item.type]}</small><h2>{item.title}</h2><p>{item.description}</p></div>
+      {item.task?.possibleRewardDescription ? <div className={styles.opportunityReward}><Award aria-hidden="true" /><div><span>Награда</span><strong>{item.task.possibleRewardDescription}</strong></div></div> : null}
+      <div className={styles.opportunityNextStep}><span>Что дальше</span><p>{item.nextStep}</p></div>
+      <Link className={cn(buttonVariants({ variant: "outline" }), styles.opportunityDetailsLink)} href={`${basePath}/${item.id}`}>Подробнее <ArrowRight aria-hidden="true" /></Link>
+    </Card></DashboardGridItem>)}</DashboardGrid> : <Card className={styles.noDataPanel}><Compass aria-hidden="true" /><h2>Новых заданий пока нет</h2><p>Мы сообщим, когда появится подходящее задание.</p></Card>}
+    {error ? null : <p className={styles.catalogHint}><Info aria-hidden="true" />Новые задания появляются автоматически.</p>}
   </DashboardPage>;
 }

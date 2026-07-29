@@ -28,6 +28,21 @@ after(async () => database.$disconnect());
 
 test("категории фильтруются сервером по роли и рынку", async () => { assert.deepEqual((await service.listCategories(player.principal)).map((item) => item.key).sort(), ["appeal", "task"]); await assert.rejects(service.createConversation(player.principal, { category: "partner", priority: "NORMAL", subject: "Недоступно", body: "Сообщение" }, `support-${randomUUID()}`), (error: unknown) => error instanceof ApplicationError && error.code === "FORBIDDEN"); assert.equal(await database.supportConversation.count(), 0); });
 
+test("персональный Messenger создаётся один раз и объединяет продуктовые сообщения", async () => {
+  await service.createNotification(writer, {
+    userId: player.userId,
+    category: "TASK",
+    title: "Проверяем результат",
+    body: "Мы получили информацию по заданию.",
+  }, `notification-${randomUUID()}`);
+  const first = await service.getPersonalConversation(player.principal);
+  const replay = await service.getPersonalConversation(player.principal);
+  assert.equal(replay.id, first.id);
+  assert.equal(await database.supportConversation.count({ where: { userId: player.userId } }), 1);
+  assert.match(first.messages[0]?.body ?? "", /персональный менеджер/);
+  assert.match(first.messages.at(-1)?.body ?? "", /Проверяем результат/);
+});
+
 test("создание обращения атомарно пишет защищённое сообщение и историю", async () => { const ticket = await service.createConversation(player.principal, { category: "task", priority: "NORMAL", subject: "Вопрос по заданию", body: "Нужна проверка статуса" }, `support-${randomUUID()}`); assert.equal(ticket.messages[0]?.body, "Нужна проверка статуса"); assert.equal(ticket.history[0]?.toStatus, "CREATED"); const stored = await database.supportMessage.findFirstOrThrow(); assert.equal(typeof stored.bodyProtected, "object"); assert.doesNotMatch(JSON.stringify(stored.bodyProtected), /Нужна проверка статуса/); });
 
 test("сообщения идемпотентны, append-only и получают серверное время", async () => { let ticket = await service.createConversation(player.principal, { category: "task", priority: "NORMAL", subject: "Диалог", body: "Первое сообщение" }, `support-${randomUUID()}`); const key = `message-${randomUUID()}`; ticket = await service.sendMessage(player.principal, ticket.id, "Второе сообщение", key); const replay = await service.sendMessage(player.principal, ticket.id, "Второе сообщение", key); assert.equal(replay.messages.length, 2); const message = await database.supportMessage.findFirstOrThrow({ where: { conversationId: ticket.id }, orderBy: { createdAt: "desc" } }); await assert.rejects(database.supportMessage.update({ where: { id: message.id }, data: { bodyProtected: { changed: true } } })); await assert.rejects(database.supportMessage.delete({ where: { id: message.id } })); });

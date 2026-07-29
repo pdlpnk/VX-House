@@ -12,6 +12,32 @@ export class PrismaOpportunityTaskRepository {
     });
   }
 
+  async findSequenceGate(input: { userId: string; role: "PLAYER" | "PARTNER"; marketId: string; now: Date }) {
+    const definitions = await this.database.taskDefinition.findMany({
+      where: {
+        sequenceOrder: { gt: 0 },
+        versions: {
+          some: {
+            status: "PUBLISHED",
+            publishedAt: { not: null, lte: input.now },
+            audiences: { some: { productRole: input.role, marketId: input.marketId } },
+          },
+        },
+      },
+      orderBy: [{ sequenceOrder: "asc" }, { id: "asc" }],
+      select: {
+        id: true,
+        sequenceOrder: true,
+        userTasks: {
+          where: { userId: input.userId, status: "CONFIRMED" },
+          select: { id: true },
+          take: 1,
+        },
+      },
+    });
+    return definitions.find((definition) => definition.userTasks.length === 0)?.sequenceOrder ?? null;
+  }
+
   listVisible(input: { userId: string; role: "PLAYER" | "PARTNER"; marketId: string; now: Date; search?: string; type?: "TASK" | "INSTRUCTION" | "PROMOCODE" | "FORECAST" | "PERSONAL_CONDITION" }) {
     return this.database.opportunity.findMany({
       where: {

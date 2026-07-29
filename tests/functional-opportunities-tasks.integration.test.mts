@@ -128,3 +128,32 @@ test("идемпотентность принятия не создаёт вто
   assert.equal(replay.id, first.id);
   assert.equal(await database.userTask.count({ where: { userId: fixture.player.user.id } }), 1);
 });
+
+test("короткое действие «выполнено» создаёт отправку и ставит задание на проверку", async () => {
+  const accepted = await service.accept(fixture.player.principal, fixture.opportunity.id, `accept-${randomUUID()}`);
+  const key = `complete-${randomUUID()}`;
+  const completed = await service.completeTask(fixture.player.principal, accepted.id, key);
+  assert.equal(completed.status, "UNDER_REVIEW");
+  assert.equal(completed.submissions.length, 1);
+  assert.deepEqual(completed.history.map((item) => item.toStatus), ["ACCEPTED", "IN_PROGRESS", "AWAITING_SUBMISSION", "SUBMITTED", "UNDER_REVIEW"]);
+  const replay = await service.completeTask(fixture.player.principal, accepted.id, key);
+  assert.equal(replay.id, completed.id);
+  assert.equal(replay.submissions.length, 1);
+});
+
+test("следующее последовательное задание открывается только после подтверждения предыдущего", async () => {
+  await database.taskDefinition.update({ where: { id: fixture.definition.id }, data: { sequenceOrder: 1 } });
+  const opportunity = await database.opportunity.create({ data: { key: "player-tr-task-second", type: "TASK", title: "Второе задание", description: "Открывается после первого.", status: "PUBLISHED", nextStep: "Изучить условия", publishedAt: new Date("2026-01-01"), audiences: { create: { productRole: "PLAYER", marketId: fixture.tr.id } } } });
+  const definition = await database.taskDefinition.create({ data: { key: "player-tr-task-definition-second", opportunityId: opportunity.id, sequenceOrder: 2 } });
+  await database.taskVersion.create({ data: { taskDefinitionId: definition.id, version: 1, status: "PUBLISHED", title: "Второе задание", summary: "Продолжение маршрута.", requirements: [], limitations: [], resultRequirements: [], instructionVersionId: fixture.instructionV1.id, resubmissionPolicy: "По решению менеджера", termsHash: "e".repeat(64), publishedAt: new Date("2026-01-01"), audiences: { create: { productRole: "PLAYER", marketId: fixture.tr.id } } } });
+
+  let items = await service.list(fixture.player.principal);
+  assert.equal(items.find((item) => item.id === fixture.opportunity.id)?.availability, "AVAILABLE");
+  assert.equal(items.find((item) => item.id === opportunity.id)?.availability, "UNAVAILABLE");
+
+  const first = await service.accept(fixture.player.principal, fixture.opportunity.id, `accept-${randomUUID()}`);
+  await database.userTask.update({ where: { id: first.id }, data: { status: "CONFIRMED", completedAt: new Date() } });
+
+  items = await service.list(fixture.player.principal);
+  assert.equal(items.find((item) => item.id === opportunity.id)?.availability, "AVAILABLE");
+});

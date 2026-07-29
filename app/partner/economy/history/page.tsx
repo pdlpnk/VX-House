@@ -3,5 +3,5 @@ import { getEconomyRewardService, requireProductWorkspaceContext } from "@/lib/s
 
 export default async function EconomyHistoryPage() {
   const { principal } = await requireProductWorkspaceContext("PARTNER", "/partner/economy/history");
-  return <EconomyHistory history={await getEconomyRewardService().getHistory(principal)} overviewHref="/partner/economy" />;
+  return <EconomyHistory history={await getEconomyRewardService().getHistory(principal)} />;
 }

@@ -38,9 +38,10 @@ function instructionView(version: {
 function taskVersionView(version: {
   id: string; taskDefinitionId: string; version: number; title: string; summary: string; requirements: unknown; limitations: unknown; resultRequirements: unknown;
   reviewWindowMinutes: number | null; availableUntil: Date | null; completionDeadline: Date | null; resubmissionPolicy: string;
+  possibleRewardDescription: string | null;
   instructionVersion: Parameters<typeof instructionView>[0];
 }): TaskVersionView {
-  return { id: version.id, definitionId: version.taskDefinitionId, version: version.version, title: version.title, summary: version.summary, requirements: stringList(version.requirements), limitations: stringList(version.limitations), resultRequirements: stringList(version.resultRequirements), reviewWindowMinutes: version.reviewWindowMinutes, availableUntil: version.availableUntil?.toISOString() ?? null, completionDeadline: version.completionDeadline?.toISOString() ?? null, resubmissionPolicy: version.resubmissionPolicy, instruction: instructionView(version.instructionVersion) };
+  return { id: version.id, definitionId: version.taskDefinitionId, version: version.version, title: version.title, summary: version.summary, requirements: stringList(version.requirements), limitations: stringList(version.limitations), resultRequirements: stringList(version.resultRequirements), reviewWindowMinutes: version.reviewWindowMinutes, availableUntil: version.availableUntil?.toISOString() ?? null, completionDeadline: version.completionDeadline?.toISOString() ?? null, resubmissionPolicy: version.resubmissionPolicy, possibleRewardDescription: version.possibleRewardDescription, instruction: instructionView(version.instructionVersion) };
 }
 
 function availability(record: { eligibility: { status: "ELIGIBLE" | "INELIGIBLE" | "PENDING" | "EXPIRED"; explanation: string; validUntil: Date | null }[] }, now: Date) {
@@ -53,10 +54,18 @@ function availability(record: { eligibility: { status: "ELIGIBLE" | "INELIGIBLE"
 
 type OpportunityRecord = Awaited<ReturnType<PrismaOpportunityTaskRepository["listVisible"]>>[number];
 
-function opportunityView(record: OpportunityRecord, role: "PLAYER" | "PARTNER", now: Date): OpportunityView {
+function opportunityView(record: OpportunityRecord, role: "PLAYER" | "PARTNER", now: Date, sequenceGate?: number | null): OpportunityView {
   const audience = record.audiences[0];
-  const access = availability(record, now);
-  const taskVersion = record.taskDefinitions.flatMap((definition) => definition.versions).at(0);
+  let access = availability(record, now);
+  const taskDefinition = record.taskDefinitions.find((definition) => definition.versions.length > 0);
+  const taskVersion = taskDefinition?.versions[0];
+  if (access.availability === "AVAILABLE" && taskDefinition && taskDefinition.sequenceOrder > 0 && sequenceGate !== undefined) {
+    if (sequenceGate === null || taskDefinition.sequenceOrder < sequenceGate) {
+      access = { availability: "UNAVAILABLE", reason: "Это задание уже завершено." };
+    } else if (taskDefinition.sequenceOrder > sequenceGate) {
+      access = { availability: "UNAVAILABLE", reason: "Откроется после подтверждения предыдущего задания." };
+    }
+  }
   const standaloneInstruction = record.instruction?.versions[0];
   return { id: record.id, key: record.key, type: record.type, title: record.title, description: record.description, nextStep: access.availability === "AVAILABLE" ? record.nextStep : access.reason, role, market: { code: audience.market.code, name: audience.market.name }, availability: access.availability, availabilityReason: access.reason, task: taskVersion ? taskVersionView(taskVersion) : null, instruction: instructionView(standaloneInstruction) };
 }
@@ -75,8 +84,9 @@ export class OpportunityTaskApplicationService {
     const now = new Date();
     const repository = new PrismaOpportunityTaskRepository(this.database);
     const profile = assertActiveProfile(await repository.findProfile(principal.userId));
+    const sequenceGate = await repository.findSequenceGate({ userId: principal.userId, role: profile.productRole, marketId: profile.market.id, now });
     const rows = await repository.listVisible({ userId: principal.userId, role: profile.productRole, marketId: profile.market.id, now, search: query.search, type: query.type });
-    const items = rows.map((row) => opportunityView(row, profile.productRole, now));
+    const items = rows.map((row) => opportunityView(row, profile.productRole, now, sequenceGate));
     return query.availability ? items.filter((item) => item.availability === query.availability) : items;
   }
 
@@ -84,9 +94,10 @@ export class OpportunityTaskApplicationService {
     const now = new Date();
     const repository = new PrismaOpportunityTaskRepository(this.database);
     const profile = assertActiveProfile(await repository.findProfile(principal.userId));
+    const sequenceGate = await repository.findSequenceGate({ userId: principal.userId, role: profile.productRole, marketId: profile.market.id, now });
     const row = await repository.findVisibleById({ id, userId: principal.userId, role: profile.productRole, marketId: profile.market.id, now });
     if (!row) throw new ApplicationError("NOT_FOUND", "Возможность не найдена или недоступна");
-    return opportunityView(row as OpportunityRecord, profile.productRole, now);
+    return opportunityView(row as OpportunityRecord, profile.productRole, now, sequenceGate);
   }
 
   accept(principal: AuthenticatedPrincipal, opportunityId: string, idempotencyKey: string) {
@@ -99,9 +110,10 @@ export class OpportunityTaskApplicationService {
         return this.requireTask(principal, replay.id, repository);
       }
       const profile = assertActiveProfile(await repository.findProfile(principal.userId));
+      const sequenceGate = await repository.findSequenceGate({ userId: principal.userId, role: profile.productRole, marketId: profile.market.id, now: occurredAt });
       const row = await repository.findVisibleById({ id: opportunityId, userId: principal.userId, role: profile.productRole, marketId: profile.market.id, now: occurredAt });
       if (!row) throw new ApplicationError("NOT_FOUND", "Возможность не найдена или недоступна");
-      const view = opportunityView(row as OpportunityRecord, profile.productRole, occurredAt);
+      const view = opportunityView(row as OpportunityRecord, profile.productRole, occurredAt, sequenceGate);
       if (view.availability !== "AVAILABLE" || !view.task) throw new ApplicationError("FORBIDDEN", "Задание сейчас недоступно");
       const current = await repository.findCurrentTask(principal.userId, view.task.definitionId);
       if (current) return this.requireTask(principal, current.id, repository);
@@ -119,6 +131,38 @@ export class OpportunityTaskApplicationService {
 
   start(principal: AuthenticatedPrincipal, id: string) {
     return this.transition(principal, id, "IN_PROGRESS", "Пользователь начал выполнение задания");
+  }
+
+  completeTask(principal: AuthenticatedPrincipal, id: string, idempotencyKey: string) {
+    requireKey(idempotencyKey);
+    return this.transactions.run(async ({ database, occurredAt }) => {
+      const repository = new PrismaOpportunityTaskRepository(database);
+      let task = await repository.findUserTask(id, principal.userId);
+      if (!task) throw new ApplicationError("NOT_FOUND", "Задание не найдено");
+      const receipts = new PrismaIdempotencyRepository(database);
+      const requestHash = hashCommandPayload({ id, action: "complete" });
+      const replay = await receipts.find("task.complete", idempotencyKey);
+      if (replay) {
+        if (replay.actorId !== principal.userId || replay.requestHash !== requestHash) throw new ApplicationError("IDEMPOTENCY_CONFLICT", "Ключ уже использован для другого действия");
+        return this.requireTask(principal, id, repository);
+      }
+      if (!["ACCEPTED", "IN_PROGRESS"].includes(task.status)) throw new ApplicationError("CONFLICT", "Завершение недоступно в текущем статусе");
+      if (task.status === "ACCEPTED") {
+        await this.updateStatus(database, task, "IN_PROGRESS", principal.userId, "Пользователь приступил к заданию", occurredAt);
+        task = (await repository.findUserTask(id, principal.userId))!;
+      }
+      await this.updateStatus(database, task, "AWAITING_SUBMISSION", principal.userId, "Пользователь отметил задание выполненным", occurredAt);
+      const submission = task.submissions[0] ?? await database.taskSubmission.create({ data: { userTaskId: id }, include: { versions: true } });
+      const version = submission.versions.length + 1;
+      const payload = { comment: "Задание отмечено выполненным", reference: "" };
+      const created = await database.submissionVersion.create({ data: { taskSubmissionId: submission.id, version, status: "SUBMITTED", payload, contentHash: createHash("sha256").update(JSON.stringify(payload)).digest("hex"), submittedAt: occurredAt }, select: { id: true } });
+      let current = await database.userTask.findUniqueOrThrow({ where: { id }, select: { id: true, status: true } });
+      current = await this.updateStatus(database, current, "SUBMITTED", principal.userId, "Результат отправлен менеджеру", occurredAt);
+      await this.updateStatus(database, current, "UNDER_REVIEW", null, "Менеджер получил результат на проверку", occurredAt);
+      await receipts.create({ operation: "task.complete", key: idempotencyKey, actorId: principal.userId, requestHash, resultType: "SubmissionVersion", resultId: created.id, createdAt: occurredAt });
+      await createProductNotification(database, { userId: principal.userId, type: "task.submitted", title: "Задание отправлено", body: "Менеджер проверит результат. Следующее задание откроется после подтверждения.", relatedType: "USER_TASK", relatedId: id, idempotencyKey: `task-completed:${created.id}`, actorId: principal.userId, occurredAt });
+      return this.requireTask(principal, id, repository);
+    });
   }
 
   saveDraft(principal: AuthenticatedPrincipal, id: string, payload: unknown, idempotencyKey: string) {

@@ -1,7 +1,8 @@
-import { errorResponse, deriveNetworkIdentifier, getIdentitySystem, json, limitRequest, normalizedIdentifier, readJsonBody, requireTrustedOrigin } from "@/lib/server";
+import { errorResponse, deriveNetworkIdentifier, getIdentitySystem, json, limitRequest, normalizedIdentifier, readJsonBody, requireTrustedOrigin } from "@/lib/server/identity-delivery";
 
 export async function POST(request: Request) {
   try {
+    const correlationId = request.headers.get("x-request-id") ?? crypto.randomUUID();
     requireTrustedOrigin(request);
     const body = await readJsonBody(request);
     const network = deriveNetworkIdentifier(request);
@@ -11,10 +12,11 @@ export async function POST(request: Request) {
     const result = await getIdentitySystem().onboarding.register({
       command: body,
       idempotencyKey: String(body.idempotencyKey ?? request.headers.get("idempotency-key") ?? ""),
+      correlationId,
     });
     return json(
       {
-        user: { id: result.userId, displayName: result.profile.user.displayName },
+        user: { id: result.userId, displayName: result.user.displayName },
         profile: result.profile,
         deliveryAvailable: result.deliveryAvailable,
         redirectTo: result.redirectTo,

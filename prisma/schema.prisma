@@ -734,6 +734,7 @@ model InstructionAudience {
 model TaskDefinition {
   id                   String          @id @default(uuid()) @db.Uuid
   key                  String          @unique @db.VarChar(140)
+  sequenceOrder        Int             @default(0)
   opportunityId        String?         @db.Uuid
   partnerServiceId     String?         @db.Uuid
   responsibleManagerId String?         @db.Uuid
@@ -747,6 +748,7 @@ model TaskDefinition {
 
   @@index([opportunityId])
   @@index([responsibleManagerId])
+  @@index([sequenceOrder])
 }
 
 model TaskVersion {
@@ -1059,8 +1061,22 @@ model SupportMessage {
   createdAt      DateTime                 @default(now())
   conversation   SupportConversation      @relation(fields: [conversationId], references: [id], onDelete: Restrict)
   author         User?                    @relation("SupportMessageAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+  attachments    SupportAttachment[]
 
   @@index([conversationId, createdAt])
+}
+
+model SupportAttachment {
+  id             String         @id @default(uuid()) @db.Uuid
+  messageId      String         @db.Uuid
+  fileName       String         @db.VarChar(240)
+  mediaType      String         @db.VarChar(120)
+  sizeBytes      Int
+  contentProtected Json
+  createdAt      DateTime       @default(now())
+  message        SupportMessage @relation(fields: [messageId], references: [id], onDelete: Restrict)
+
+  @@index([messageId, createdAt])
 }
 
 model SupportInternalNote {

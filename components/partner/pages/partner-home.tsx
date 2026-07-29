@@ -87,7 +87,7 @@ export function PartnerHome({ economy, summary }: { economy: EconomySnapshotView
             <dl className={styles.profileFacts}>
               <div><dt>Прогнозы</dt><dd>{summary.availableForecasts}</dd></div>
               <div><dt>Промокоды</dt><dd>{summary.availablePromocodes}</dd></div>
-              <div><dt>Открытые обращения</dt><dd>{summary.openSupport}</dd></div>
+              <div><dt>Сообщения менеджера</dt><dd>{summary.openSupport}</dd></div>
             </dl>
           </DashboardCard>
         </DashboardGridItem>

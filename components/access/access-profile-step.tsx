@@ -49,8 +49,8 @@ export function AccessProfileStep({
   error,
 }: AccessProfileStepProps) {
   const [attempted, setAttempted] = useState(false);
-  const nameValid = name.trim().length >= 2;
-  const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+  const nameValid = name.trim().length >= 2 && name.trim().length <= 80;
+  const emailValid = email.trim().length <= 320 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
   const passwordValid = new TextEncoder().encode(password).length >= 12 && password.length <= 128;
 
   function handleContinue() {

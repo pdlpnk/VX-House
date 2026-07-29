@@ -98,7 +98,10 @@ export class EconomyRewardApplicationService {
   async getHistory(principal: AuthenticatedPrincipal): Promise<EconomyHistoryView> {
     const repository = new PrismaEconomyRewardRepository(this.database);
     assertProfile(await repository.findProfile(principal.userId));
-    const [points, trust, ranks, rewards] = await Promise.all([repository.listPoints(principal.userId), repository.listTrustEvents(principal.userId), repository.listUserRanks(principal.userId), repository.listRewards(principal.userId)]);
+    const points = await repository.listPoints(principal.userId);
+    const trust = await repository.listTrustEvents(principal.userId);
+    const ranks = await repository.listUserRanks(principal.userId);
+    const rewards = await repository.listRewards(principal.userId);
     const items: EconomyHistoryEvent[] = [
       ...points.map((item) => ({ kind: "POINTS" as const, id: item.id, delta: item.delta, status: item.status, sourceType: item.sourceType, sourceId: item.sourceId, reason: item.reason, ruleVersion: item.ruleVersion, occurredAt: item.occurredAt.toISOString(), reversesEntryId: item.reversesEntryId })),
       ...trust.map((item) => ({ kind: "TRUST" as const, id: item.id, delta: item.delta, scoreBefore: item.scoreBefore, scoreAfter: item.scoreAfter, eventType: item.eventType, sourceType: item.sourceType, sourceId: item.sourceId, reason: item.reason, ruleVersion: item.ruleVersion, isAppealable: item.isAppealable, occurredAt: item.occurredAt.toISOString() })),
@@ -221,10 +224,15 @@ export class EconomyRewardApplicationService {
 
   private async snapshot(userId: string, repository: PrismaEconomyRewardRepository): Promise<EconomySnapshotView> {
     const profile = await repository.findProfile(userId); assertProfile(profile); const now = new Date();
-    const [policies, totalsRaw, trustSnapshot, definitionsRaw, rankHistoryRaw, confirmedTasks, rewardsRaw, totalRewards, claimableRewards] = await Promise.all([
-      repository.listEffectivePolicies({ role: profile.productRole, marketId: profile.market.id, at: now }), repository.pointsTotals(userId), repository.findTrustSnapshot(userId), repository.listRankDefinitions({ role: profile.productRole, marketId: profile.market.id, at: now }), repository.listUserRanks(userId), repository.countConfirmedTasks(userId), repository.listRewards(userId, 4),
-      repository.countRewards(userId), repository.countClaimableRewards(userId, now),
-    ]);
+    const policies = await repository.listEffectivePolicies({ role: profile.productRole, marketId: profile.market.id, at: now });
+    const totalsRaw = await repository.pointsTotals(userId);
+    const trustSnapshot = await repository.findTrustSnapshot(userId);
+    const definitionsRaw = await repository.listRankDefinitions({ role: profile.productRole, marketId: profile.market.id, at: now });
+    const rankHistoryRaw = await repository.listUserRanks(userId);
+    const confirmedTasks = await repository.countConfirmedTasks(userId);
+    const rewardsRaw = await repository.listRewards(userId, 4);
+    const totalRewards = await repository.countRewards(userId);
+    const claimableRewards = await repository.countClaimableRewards(userId, now);
     const policy = selectPolicy(policies, profile); const points = totalsRaw[0]._sum.delta ?? 0; const pending = totalsRaw[1]._sum.delta ?? 0; const trust = trustSnapshot?.score ?? policy?.startingTrustScore ?? null;
     const definitions = selectRankDefinitions(definitionsRaw, profile); const totals = { points, trust, confirmedTasks }; const currentRecord = rankHistoryRaw[0] ?? null; const current = currentRecord ? rankView(currentRecord.rankDefinition, totals) : null; const currentIndex = current ? rankOrder.indexOf(current.code) : -1; const nextDefinition = definitions.find((item) => rankOrder.indexOf(item.code) > currentIndex) ?? null;
     const latest = rewardsRaw.map((item) => rewardView(item, now));
@@ -244,7 +252,11 @@ export class EconomyRewardApplicationService {
   }
 
   private async promoteRank(database: DatabaseClient, repository: PrismaEconomyRewardRepository, profile: Profile, userId: string, idempotencyKey: string, occurredAt: Date) {
-    const [totalsRaw, snapshot, definitionsRaw, history, confirmedTasks] = await Promise.all([repository.pointsTotals(userId), repository.findTrustSnapshot(userId), repository.listRankDefinitions({ role: profile.productRole, marketId: profile.market.id, at: occurredAt }), repository.listUserRanks(userId), repository.countConfirmedTasks(userId)]);
+    const totalsRaw = await repository.pointsTotals(userId);
+    const snapshot = await repository.findTrustSnapshot(userId);
+    const definitionsRaw = await repository.listRankDefinitions({ role: profile.productRole, marketId: profile.market.id, at: occurredAt });
+    const history = await repository.listUserRanks(userId);
+    const confirmedTasks = await repository.countConfirmedTasks(userId);
     const totals = { points: totalsRaw[0]._sum.delta ?? 0, trust: snapshot?.score ?? selectPolicy(await repository.listEffectivePolicies({ role: profile.productRole, marketId: profile.market.id, at: occurredAt }), profile)?.startingTrustScore ?? null, confirmedTasks };
     const eligible = selectRankDefinitions(definitionsRaw, profile).filter((item) => criteria(item, totals).every((criterion) => criterion.completed)); const candidate = eligible.at(-1); if (!candidate) return;
     const current = history[0]; if (current && rankOrder.indexOf(current.rankDefinition.code) >= rankOrder.indexOf(candidate.code)) return;

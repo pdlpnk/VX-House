@@ -12,10 +12,13 @@ export interface CreateProfileInput {
   readonly preferredLanguage: LanguageCode;
 }
 
-export interface RegistrationInput extends CreateProfileInput {
+export interface RegistrationInput {
   readonly displayName: string;
   readonly email: string;
   readonly password: string;
+  readonly productRole?: ProductRole;
+  readonly marketCode?: MarketCode;
+  readonly preferredLanguage?: LanguageCode;
 }
 
 export function validateCreateProfileInput(value: unknown): CreateProfileInput {
@@ -23,6 +26,9 @@ export function validateCreateProfileInput(value: unknown): CreateProfileInput {
     throw new ApplicationError("VALIDATION", "Параметры профиля обязательны");
   }
   const record = value as Record<string, unknown>;
+  if (forbiddenInfrastructureFields.some((key) => key in record)) {
+    throw new ApplicationError("FORBIDDEN", "Инфраструктурные роли нельзя назначить через регистрацию");
+  }
   if (forbiddenInfrastructureFields.some((key) => key in record)) {
     throw new ApplicationError("FORBIDDEN", "Инфраструктурные роли нельзя назначить через профиль");
   }
@@ -64,10 +70,14 @@ export function validateRegistrationInput(value: unknown): RegistrationInput {
   if (passwordBytes < 12 || passwordBytes > 1024) {
     throw new ApplicationError("VALIDATION", "Пароль должен содержать не менее 12 символов");
   }
-  const profile = validateCreateProfileInput({
-    productRole: record.productRole,
-    marketCode: record.marketCode,
-    preferredLanguage: record.preferredLanguage,
-  });
+  const profileFields = [record.productRole, record.marketCode, record.preferredLanguage];
+  const hasProfileFields = profileFields.some((field) => field !== undefined);
+  const profile = hasProfileFields
+    ? validateCreateProfileInput({
+        productRole: record.productRole,
+        marketCode: record.marketCode,
+        preferredLanguage: record.preferredLanguage,
+      })
+    : {};
   return { ...profile, displayName, email, password };
 }

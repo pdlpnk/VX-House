@@ -1,7 +1,7 @@
 import { PrismaPg } from "@prisma/adapter-pg";
 import { createHash } from "node:crypto";
 
-import { PrismaClient } from "../lib/db/generated/client.ts";
+import { PrismaClient } from "../lib/db/generated-node/client.ts";
 
 const url = process.env.DATABASE_URL;
 if (!url) throw new Error("DATABASE_URL обязателен");

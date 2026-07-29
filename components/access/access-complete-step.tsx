@@ -14,7 +14,7 @@ type AccessCompleteStepProps = {
   language: AccessLanguage;
   name: string;
   onRestart: () => void;
-  destination: "/dashboard" | "/partner";
+  destination: "/dashboard/opportunities" | "/partner/opportunities";
   partnerApprovalPending?: boolean;
   reducedMotion: boolean;
 };
@@ -27,9 +27,9 @@ export function AccessCompleteStep({ scenario, country, language, name, onRestar
   return (
     <div className={styles.completeContent}>
       <motion.div className={styles.completeMark} initial={reducedMotion ? false : { opacity: 0, scale: 0.88 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}><Check aria-hidden="true" /></motion.div>
-      <span className={styles.completeEyebrow}>Профиль создан</span>
+      <span className={styles.completeEyebrow}>Знакомство завершено</span>
       <h1 tabIndex={-1}>Спасибо{ name.trim() ? `, ${name.trim()}` : ""}.</h1>
-      <p className={styles.completeLead}>{partnerApprovalPending ? "Профиль подтверждён. Партнёрский доступ ожидает ручного одобрения." : "Контакт подтверждён, актуальные условия приняты. Пространство доступно для входа."}</p>
+      <p className={styles.completeLead}>{partnerApprovalPending ? "Профиль подтверждён. Партнёрский доступ ожидает решения команды." : "Ваш маршрут настроен. Начните с первого доступного задания."}</p>
 
       <div className={styles.completeGrid}>
         <Card className={styles.completeSummary}>
@@ -41,12 +41,12 @@ export function AccessCompleteStep({ scenario, country, language, name, onRestar
           <span>Следующий этап</span>
           <h2>{partnerApprovalPending ? "Проверка партнёрского доступа" : "Безопасный вход настроен"}</h2>
           <p>{partnerApprovalPending ? "Вы можете открыть партнёрское пространство в ограниченном состоянии. Решение об одобрении принимается отдельно." : "Для следующих посещений используйте электронную почту и созданный пароль."}</p>
-          <small><Clock3 aria-hidden="true" /> Состояние профиля хранится на сервере.</small>
+          <small><Clock3 aria-hidden="true" /> Все изменения появятся в личном пространстве.</small>
         </Card>
       </div>
 
       <div className={styles.completeActions}>
-        <Button asChild size="lg"><Link href={destination}>Открыть VX House</Link></Button>
+        <Button asChild size="lg"><Link href={destination}>Перейти к заданиям</Link></Button>
         <button type="button" className={styles.stepBackButton} onClick={onRestart}>Начать заново</button>
       </div>
     </div>

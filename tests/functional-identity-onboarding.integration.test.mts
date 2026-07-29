@@ -69,6 +69,30 @@ test("регистрация партнёра создаёт только pendin
   assert.equal(result.profile.playerProfile, null);
 });
 
+test("новый путь создаёт identity до выбора роли и настраивает профиль после подтверждения email", async () => {
+  const result = await service.register({
+    command: { displayName: "Новый участник", email: `${randomUUID()}@test.invalid`, password: "correct horse battery staple" },
+    idempotencyKey: `register-${randomUUID()}`,
+  });
+  assert.equal(result.profile, null);
+  const principal: AuthenticatedPrincipal = { userId: result.userId, sessionId: result.session.sessionId, roleKeys: ["authenticated"], permissionKeys: [] };
+  await service.verifyEmail({ principal, code: mail.latest(result.userId)!.code });
+  assert.equal((await service.getSnapshot(principal)).status, "CONTACT_VERIFIED");
+  const configured = await service.configureProfile({ principal, command: { productRole: "PLAYER", marketCode: "TR", preferredLanguage: "RU" } });
+  assert.equal(configured.profile?.productRole, "PLAYER");
+  assert.equal(configured.profile?.contactVerificationStatus, "VERIFIED");
+});
+
+test("неподтверждённый аккаунт старше 12 часов удаляется полностью", async () => {
+  const result = await service.register({
+    command: { displayName: "Просроченный участник", email: `${randomUUID()}@test.invalid`, password: "correct horse battery staple" },
+    idempotencyKey: `register-${randomUUID()}`,
+  });
+  await database.user.update({ where: { id: result.userId }, data: { createdAt: new Date(Date.now() - 13 * 60 * 60 * 1000) } });
+  assert.equal(await service.purgeExpiredUnverifiedAccounts(), 1);
+  assert.equal(await database.user.count({ where: { id: result.userId } }), 0);
+});
+
 test("дубликат email и неизвестные поля отклоняются без частичной записи", async () => {
   const email = `${randomUUID()}@test.invalid`; await register("PLAYER", email);
   await assert.rejects(register("PARTNER", email), (error: unknown) => error instanceof ApplicationError && error.code === "CONFLICT");
@@ -82,7 +106,7 @@ test("корректный одноразовый код подтверждае�
   assert.deepEqual(await service.verifyEmail({ principal, code }), { ok: true });
   const snapshot = await service.getSnapshot(principal);
   assert.equal(snapshot.status, "CONSENTS_PENDING");
-  assert.equal(snapshot.profile.contactVerificationStatus, "VERIFIED");
+  assert.equal(snapshot.profile!.contactVerificationStatus, "VERIFIED");
 });
 
 test("неверный код ограничен числом попыток и не подтверждает профиль", async () => {
@@ -150,7 +174,7 @@ test("server route decision блокирует незавершённый и н�
 test("login, refresh и logout управляют серверной session lifecycle", async () => {
   const created = await register();
   const auth = new AuthenticationService(new PrismaAuthRepository(database), tokens, cookies, { sessionIdleTtlSeconds: 3600, sessionAbsoluteTtlSeconds: 86400, sessionRefreshAfterSeconds: 0 });
-  const login = await auth.login({ email: created.result.profile.user.email, password: "correct horse battery staple" });
+  const login = await auth.login({ email: created.result.user.email, password: "correct horse battery staple" });
   assert.equal(login.ok, true); if (!login.ok) return;
   const token = login.setCookie.match(/vx_house_session=([^;]+)/)![1]!;
   const refreshed = await auth.refresh(token); assert.equal(refreshed.ok, true);

@@ -58,13 +58,18 @@ export function SiteHeader() {
           ))}
         </nav>
 
-        <Button asChild size="sm" className="rounded-lg px-3.5">
-          <a href="/access">
-            <span className="hidden min-[420px]:inline">Получить доступ</span>
-            <span className="min-[420px]:hidden">Доступ</span>
-            <ArrowUpRight aria-hidden="true" />
-          </a>
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button asChild size="sm" variant="ghost" className="hidden rounded-lg px-3.5 min-[520px]:inline-flex">
+            <a href="/access?mode=login">Войти</a>
+          </Button>
+          <Button asChild size="sm" className="rounded-lg px-3.5">
+            <a href="/access">
+              <span className="hidden min-[420px]:inline">Получить доступ</span>
+              <span className="min-[420px]:hidden">Доступ</span>
+              <ArrowUpRight aria-hidden="true" />
+            </a>
+          </Button>
+        </div>
       </Container>
     </motion.header>
   );
