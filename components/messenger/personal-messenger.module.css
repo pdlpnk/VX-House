@@ -204,7 +204,11 @@
 .messageRow[data-author="user"] .bubble time { color: oklch(0.9 0.02 25 / 65%); }
 .attachments { display: grid; gap: 0.35rem; margin-top: 0.6rem; }
 .attachments a { display: flex; align-items: center; gap: 0.35rem; border-radius: 0.55rem; padding: 0.42rem 0.5rem; background: oklch(0 0 0 / 13%); color: inherit; font-size: 0.55rem; }
+.attachments a small { margin-left: auto; color: inherit; opacity: .58; }
 .attachments svg { width: 0.7rem; }
+.attachments .imageAttachment { display: grid; overflow: hidden; padding: 0; }
+.imageAttachment > img { width: min(15rem, 100%); max-height: 10rem; object-fit: cover; }
+.imageAttachment > span { display: flex; align-items: center; gap: .35rem; padding: .5rem; }
 
 .typing { display: flex; width: max-content; gap: 0.25rem; margin: 1rem 0 0 2.3rem; border-radius: 1rem 1rem 1rem 0.25rem; padding: 0.75rem 0.85rem; background: oklch(1 0 0 / 4%); }
 .typing i { width: 0.32rem; aspect-ratio: 1; border-radius: 50%; background: oklch(0.58 0.01 25); }
@@ -219,6 +223,25 @@
   padding: 0.7rem;
   background: oklch(0.12 0.01 25 / 96%);
 }
+.filePreview {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 2.8rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: .65rem;
+  border: 1px solid oklch(1 0 0 / 8%);
+  border-radius: .85rem;
+  padding: .5rem;
+  background: oklch(1 0 0 / 3%);
+}
+.filePreview > img, .filePreview > svg { width: 2.8rem; height: 2.8rem; border-radius: .6rem; object-fit: cover; color: oklch(.72 .11 25); }
+.filePreview > span { min-width: 0; }
+.filePreview strong, .filePreview small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.filePreview strong { color: oklch(.86 .006 25); font-size: .6rem; font-weight: 600; }
+.filePreview small { margin-top: .16rem; color: oklch(.54 .01 25); font-size: .51rem; }
+.filePreview button { display: grid; width: 2rem; height: 2rem; place-items: center; border: 0; border-radius: .6rem; background: transparent; color: oklch(.58 .01 25); cursor: pointer; }
+.filePreview button:hover { background: oklch(1 0 0 / 5%); color: white; }
+.filePreview button svg { width: .85rem; }
 .composer textarea {
   min-height: 2.55rem;
   max-height: 7rem;
@@ -248,6 +271,8 @@
 }
 .sendButton:disabled { opacity: 0.38; cursor: default; }
 .sendButton svg { width: 0.95rem; }
+.spinner { animation: messenger-spin .8s linear infinite; }
+@keyframes messenger-spin { to { transform: rotate(360deg); } }
 .emojiMenu {
   position: absolute;
   z-index: 3;
@@ -333,4 +358,5 @@
 @media (prefers-reduced-motion: reduce) {
   .launcher, .iconButton { transition: none; }
   .launcher:hover { transform: none; }
+  .spinner { animation: none; }
 }

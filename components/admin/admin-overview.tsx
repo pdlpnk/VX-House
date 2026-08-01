@@ -1,13 +1,17 @@
-import { ArrowRight, DatabaseZap, ShieldCheck } from "lucide-react";
+import { ArrowRight, BookOpenText, DatabaseZap, MessageCircle, ShieldCheck, UsersRound } from "lucide-react";
 import Link from "next/link";
 
 import styles from "@/app/dashboard/dashboard.module.css";
 import { DashboardGrid, DashboardGridItem, DashboardHeading, DashboardPage, StatusPill } from "@/components/dashboard/dashboard-ui";
 import { Card } from "@/components/ui/card";
 import type { AdminDashboardView } from "@/lib/admin";
-import { adminSections } from "@/lib/admin-data";
 
 export function AdminOverview({ stats }: { stats: AdminDashboardView }) {
+  const coreSections = [
+    { href: "/admin/users", label: "Игроки", description: "Профили и состояние участников.", purpose: "Открыть список игроков", icon: UsersRound },
+    { href: "/admin/messenger", label: "Messenger", description: "Постоянные личные диалоги с игроками.", purpose: "Открыть переписку", icon: MessageCircle },
+    { href: "/admin/content", label: "CMS", description: "Управление опубликованными материалами.", purpose: "Открыть контент", icon: BookOpenText },
+  ];
   const primary = [
     { label: "Пользователи", value: stats.users, icon: DatabaseZap },
     { label: "Новые регистрации", value: stats.registrationsToday, icon: ShieldCheck },
@@ -49,12 +53,12 @@ export function AdminOverview({ stats }: { stats: AdminDashboardView }) {
 
       <section className={styles.adminSectionHub} aria-labelledby="admin-sections-title">
         <header>
-          <div><span>Разделы панели</span><h2 id="admin-sections-title">Все операционные области в одном контуре</h2><p>Каждая операция проверяет разрешения на сервере и фиксируется в аудите.</p></div>
+          <div><span>Рабочее пространство</span><h2 id="admin-sections-title">Основные области администратора</h2><p>В навигации оставлены только разделы, необходимые для текущего MVP.</p></div>
           <StatusPill tone="success">RBAC включён</StatusPill>
         </header>
         <div className={styles.adminSectionGrid}>
-          {adminSections.map(({ id, label, description, purpose, icon: Icon }) => (
-            <Link key={id} href={`/admin/${id}`} className={styles.adminSectionCard}>
+          {coreSections.map(({ href, label, description, purpose, icon: Icon }) => (
+            <Link key={href} href={href} className={styles.adminSectionCard}>
               <div><span><Icon aria-hidden="true" /></span><StatusPill tone="neutral">Открыть</StatusPill></div>
               <h3>{label}</h3>
               <p>{description}</p>
@@ -64,6 +68,19 @@ export function AdminOverview({ stats }: { stats: AdminDashboardView }) {
           ))}
         </div>
       </section>
+
+      {process.env.NODE_ENV === "development" ? (
+        <section className={styles.adminOperationsSummary} aria-labelledby="demo-accounts-title">
+          <header><div><span>Локальная тестовая среда</span><h2 id="demo-accounts-title">Готовые демо-аккаунты</h2><p>Аккаунты создаются автоматически при запуске development-сервера.</p></div><StatusPill tone="neutral">Только локально</StatusPill></header>
+          <div>
+            {[
+              ["Администратор", "admin@vxhouse.local"],
+              ["Игрок 1", "player1@vxhouse.local"],
+              ["Игрок 2", "player2@vxhouse.local"],
+            ].map(([role, email]) => <article key={email}><small>{role}</small><strong>{email}</strong><p>Пароль: VXHouse-Demo-2026!</p></article>)}
+          </div>
+        </section>
+      ) : null}
 
       <section className={styles.adminSafetyPanel} aria-labelledby="admin-safety-title">
         <span><ShieldCheck aria-hidden="true" /></span>

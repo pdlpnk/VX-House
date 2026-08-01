@@ -31,6 +31,12 @@ export async function POST(request: Request) {
     }
     await bruteForce.registerSuccess(key);
     await recordLoginEvent({ principal: result.authentication.principal, succeeded: true });
+    if (result.authentication.principal.roleKeys.includes("admin")) {
+      return json(
+        { user: { id: result.authentication.principal.userId }, profile: null, redirectTo: "/admin" },
+        { headers: { "set-cookie": result.setCookie } },
+      );
+    }
     const snapshot = await identity.onboarding.getSnapshot(result.authentication.principal);
     return json(
       { user: { id: result.authentication.principal.userId }, profile: snapshot.profile, redirectTo: snapshot.redirectTo },

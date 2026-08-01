@@ -14,14 +14,14 @@ export class PrismaAdminRepository {
 
   async dashboard(since: Date) {
     const [users, registrationsToday, activeTasks, openSupport, pointsEntries, rewardsInProgress, pendingReviews, pendingAppeals] = await Promise.all([
-      this.database.user.count(),
-      this.database.user.count({ where: { createdAt: { gte: since } } }),
-      this.database.userTask.count({ where: { status: { in: ["ACCEPTED", "IN_PROGRESS", "AWAITING_SUBMISSION", "SUBMITTED", "UNDER_REVIEW", "CLARIFICATION_REQUIRED", "RESUBMISSION_REQUIRED"] } } }),
-      this.database.supportConversation.count({ where: { status: { notIn: ["RESOLVED", "CLOSED"] } } }),
-      this.database.vXPointsLedgerEntry.count(),
-      this.database.vXReward.count({ where: { status: { in: ["EXPECTED", "AWAITING_CONFIRMATION", "CONFIRMED", "PREPARING", "AVAILABLE"] } } }),
-      this.database.userTask.count({ where: { status: "UNDER_REVIEW" } }),
-      this.database.appeal.count({ where: { status: { in: ["SUBMITTED", "UNDER_REVIEW"] } } }),
+      this.database.user.count({ where: { disabledAt: null } }),
+      this.database.user.count({ where: { disabledAt: null, createdAt: { gte: since } } }),
+      this.database.userTask.count({ where: { user: { disabledAt: null }, status: { in: ["ACCEPTED", "IN_PROGRESS", "AWAITING_SUBMISSION", "SUBMITTED", "UNDER_REVIEW", "CLARIFICATION_REQUIRED", "RESUBMISSION_REQUIRED"] } } }),
+      this.database.supportConversation.count({ where: { user: { disabledAt: null }, status: { notIn: ["RESOLVED", "CLOSED"] } } }),
+      this.database.vXPointsLedgerEntry.count({ where: { user: { disabledAt: null } } }),
+      this.database.vXReward.count({ where: { user: { disabledAt: null }, status: { in: ["EXPECTED", "AWAITING_CONFIRMATION", "CONFIRMED", "PREPARING", "AVAILABLE"] } } }),
+      this.database.userTask.count({ where: { user: { disabledAt: null }, status: "UNDER_REVIEW" } }),
+      this.database.appeal.count({ where: { user: { disabledAt: null }, status: { in: ["SUBMITTED", "UNDER_REVIEW"] } } }),
     ]);
     return { users, registrationsToday, activeTasks, openSupport, pointsEntries, rewardsInProgress, pendingReviews, pendingAppeals };
   }
@@ -32,7 +32,7 @@ export class PrismaAdminRepository {
     const cursor = query.cursor ? { id: query.cursor } : undefined;
     const paging = { take: limit + 1, ...(cursor ? { cursor, skip: 1 } : {}) };
     switch (section) {
-      case "users": return this.database.user.findMany({ ...paging, where: { ...(search ? { OR: [{ email: { contains: search, mode: "insensitive" as const } }, { displayName: { contains: search, mode: "insensitive" as const } }] } : {}), profile: { ...(query.status ? { accountStatus: query.status as never } : {}), ...(query.role ? { productRole: query.role } : {}), ...(query.market ? { market: { code: query.market } } : {}) } }, include: { profile: { include: { market: true, partnerProfile: true, statusHistory: { orderBy: { occurredAt: "desc" }, take: 10 } } }, roles: true }, orderBy: [{ createdAt: "desc" }, { id: "desc" }] });
+      case "users": return this.database.user.findMany({ ...paging, where: { disabledAt: null, ...(search ? { OR: [{ email: { contains: search, mode: "insensitive" as const } }, { displayName: { contains: search, mode: "insensitive" as const } }] } : {}), profile: { productRole: "PLAYER", ...(query.status ? { accountStatus: query.status as never } : {}), ...(query.market ? { market: { code: query.market } } : {}) } }, include: { profile: { include: { market: true, partnerProfile: true, statusHistory: { orderBy: { occurredAt: "desc" }, take: 10 } } }, roles: true }, orderBy: [{ createdAt: "desc" }, { id: "desc" }] });
       case "services": return this.database.partnerService.findMany({ ...paging, where: { ...(search ? { name: { contains: search, mode: "insensitive" as const } } : {}), ...(query.status ? { status: query.status as never } : {}) }, include: { markets: { include: { market: true } } }, orderBy: [{ updatedAt: "desc" }, { id: "desc" }] });
       case "opportunities": return this.database.opportunity.findMany({ ...paging, where: { ...(search ? { OR: [{ title: { contains: search, mode: "insensitive" as const } }, { key: { contains: search, mode: "insensitive" as const } }] } : {}), ...(query.status ? { status: query.status as never } : {}), ...(query.role || query.market ? { audiences: { some: { ...(query.role ? { productRole: query.role } : {}), ...(query.market ? { market: { code: query.market } } : {}) } } } : {}) }, include: { audiences: { include: { market: true } }, taskDefinitions: true }, orderBy: [{ updatedAt: "desc" }, { id: "desc" }] });
       case "tasks": return this.database.taskDefinition.findMany({ ...paging, where: search ? { OR: [{ key: { contains: search, mode: "insensitive" as const } }, { versions: { some: { title: { contains: search, mode: "insensitive" as const } } } }] } : {}, include: { versions: { include: { audiences: { include: { market: true } }, instructionVersion: true }, orderBy: { version: "desc" } }, _count: { select: { userTasks: true } } }, orderBy: [{ updatedAt: "desc" }, { id: "desc" }] });

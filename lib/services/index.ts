@@ -14,5 +14,6 @@ export * from "./opportunity-task-service";
 export * from "./economy-reward-service";
 export * from "./support-notification-service";
 export * from "./admin-application-service";
+export * from "./admin-messenger-service";
 export * from "./platform-operations-service";
 export * from "./product-notification";

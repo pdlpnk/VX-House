@@ -20,6 +20,7 @@ export type WorkspaceNavigationItem = {
   label: string;
   href: string;
   icon: LucideIcon;
+  action?: "logout";
 };
 
 type WorkspaceShellConfig = {
@@ -44,15 +45,43 @@ function WorkspaceNavigation({
   onNavigate,
   mobile = false,
   canAdmin = false,
+  playerMessengerUnread = 0,
 }: {
   config: WorkspaceShellConfig;
   onNavigate?: () => void;
   mobile?: boolean;
   canAdmin?: boolean;
+  playerMessengerUnread?: number;
 }) {
   const pathname = usePathname();
   const { profile, shouldReduceMotion } = useDashboard();
   const displayName = profile?.user.displayName ?? config.profileRole;
+  const [messengerUnread, setMessengerUnread] = useState(0);
+  const hasNavigationLogout = config.navigation.some((item) => item.action === "logout");
+
+  async function logout() {
+    await fetch("/api/auth/logout", { method: "POST", headers: { "content-type": "application/json" }, body: "{}" });
+    window.location.assign("/access?mode=login");
+  }
+
+  useEffect(() => {
+    if (config.kind !== "admin" || pathname === "/admin/messenger") return;
+    let active = true;
+    let pending = false;
+    const refresh = async () => {
+      if (pending || document.hidden) return;
+      pending = true;
+      try {
+        const response = await fetch("/api/admin/messenger", { cache: "no-store" });
+        if (active && response.ok) setMessengerUnread(((await response.json()) as { unreadCount: number }).unreadCount);
+      } finally {
+        pending = false;
+      }
+    };
+    void refresh();
+    const timer = window.setInterval(refresh, 10_000);
+    return () => { active = false; window.clearInterval(timer); };
+  }, [config.kind, pathname]);
 
   return (
     <div className={styles.navigationInner}>
@@ -62,12 +91,22 @@ function WorkspaceNavigation({
         </Link>
         {mobile ? <span className={styles.mobileMenuLabel}>{config.label}</span> : null}
         <nav className={styles.dashboardNav} aria-label={`Навигация ${config.ariaContext}`}>
-          {config.navigation.map(({ label, href, icon: Icon }) => {
-            const active = pathname === href || (href !== config.rootHref && pathname.startsWith(`${href}/`));
+          {config.navigation.map(({ label, href, icon: Icon, action }) => {
+            const active = !action && (pathname === href || (href !== config.rootHref && pathname.startsWith(`${href}/`)));
+            if (action === "logout") {
+              return (
+                <button key={label} type="button" className={styles.navLink} onClick={() => void logout()}>
+                  <Icon aria-hidden="true" />
+                  <span>{label}</span>
+                </button>
+              );
+            }
             return (
               <Link key={href} href={href} className={styles.navLink} data-active={active || undefined} aria-current={active ? "page" : undefined} onClick={onNavigate}>
                 <Icon aria-hidden="true" />
                 <span>{label}</span>
+                {href.endsWith("/support") && playerMessengerUnread ? <em className={styles.navUnreadBadge} aria-label={`Непрочитано: ${playerMessengerUnread}`}>{playerMessengerUnread}</em> : null}
+                {href === "/admin/messenger" && messengerUnread ? <em className={styles.navUnreadBadge} aria-label={`Непрочитано: ${messengerUnread}`}>{messengerUnread}</em> : null}
                 {active ? (
                   <motion.i
                     aria-hidden="true"
@@ -82,15 +121,22 @@ function WorkspaceNavigation({
       </div>
 
       <div className={styles.sidebarFooter}>
-        <Link href="/" className={styles.publicLink} onClick={onNavigate}>
+        {config.kind !== "admin" ? <Link href="/" className={styles.publicLink} onClick={onNavigate}>
           <Grid2X2 aria-hidden="true" />Публичная страница<ChevronRight aria-hidden="true" />
-        </Link>
-        {canAdmin ? <Link href="/admin" className={styles.publicLink} onClick={onNavigate}><ShieldCheck aria-hidden="true" />Администрирование<ChevronRight aria-hidden="true" /></Link> : null}
-        {profile ? <button type="button" className={styles.publicLink} onClick={async () => { await fetch("/api/auth/logout", { method: "POST", headers: { "content-type": "application/json" }, body: "{}" }); window.location.assign("/access?mode=login"); }}><LogOut aria-hidden="true" />Выйти<ChevronRight aria-hidden="true" /></button> : null}
-        <Link href={config.profileHref} className={styles.sidebarProfile} onClick={onNavigate}>
-          <span>{displayName.charAt(0).toLocaleUpperCase("ru") || "Д"}</span>
-          <div><strong>{displayName}</strong><small>{config.profileRole}</small></div>
-        </Link>
+        </Link> : null}
+        {config.kind !== "admin" && canAdmin ? <Link href="/admin" className={styles.publicLink} onClick={onNavigate}><ShieldCheck aria-hidden="true" />Администрирование<ChevronRight aria-hidden="true" /></Link> : null}
+        {(profile || config.kind === "admin") && !hasNavigationLogout ? <button type="button" className={styles.publicLink} onClick={() => void logout()}><LogOut aria-hidden="true" />Выйти<ChevronRight aria-hidden="true" /></button> : null}
+        {config.kind !== "admin" ? config.kind === "player" ? (
+          <div className={styles.sidebarProfile}>
+            <span>{displayName.charAt(0).toLocaleUpperCase("ru") || "Д"}</span>
+            <div><strong>{displayName}</strong><small>{config.profileRole}</small></div>
+          </div>
+        ) : (
+          <Link href={config.profileHref} className={styles.sidebarProfile} onClick={onNavigate}>
+            <span>{displayName.charAt(0).toLocaleUpperCase("ru") || "Д"}</span>
+            <div><strong>{displayName}</strong><small>{config.profileRole}</small></div>
+          </Link>
+        ) : null}
       </div>
     </div>
   );
@@ -195,7 +241,7 @@ function WorkspaceShellContent({ children, config, initialNotifications, persona
 
   return (
     <div className={styles.dashboardShell} data-workspace={config.kind} data-reduced-motion={shouldReduceMotion || undefined}>
-      <aside className={styles.sidebar}><WorkspaceNavigation config={config} canAdmin={canAdmin} /></aside>
+      <aside className={styles.sidebar}><WorkspaceNavigation config={config} canAdmin={canAdmin} playerMessengerUnread={unreadMessages} /></aside>
 
       <AnimatePresence>
         {menuOpen ? (
@@ -213,7 +259,7 @@ function WorkspaceShellContent({ children, config, initialNotifications, persona
               transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
             >
               <button ref={mobileCloseRef} type="button" className={styles.mobileClose} onClick={() => setMenuOpen(false)} aria-label="Закрыть меню"><X aria-hidden="true" /></button>
-              <WorkspaceNavigation config={config} mobile canAdmin={canAdmin} onNavigate={() => setMenuOpen(false)} />
+              <WorkspaceNavigation config={config} mobile canAdmin={canAdmin} playerMessengerUnread={unreadMessages} onNavigate={() => setMenuOpen(false)} />
             </motion.aside>
           </>
         ) : null}

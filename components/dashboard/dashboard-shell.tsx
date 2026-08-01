@@ -1,6 +1,6 @@
 "use client";
 
-import { Activity, ChartNoAxesCombined, Compass, Gift, House, MessageCircle, Settings, UserRound } from "lucide-react";
+import { ChartNoAxesCombined, Compass, Gift, House, LogOut, MessageCircle, Settings } from "lucide-react";
 
 import { WorkspaceShell } from "@/components/dashboard/workspace-shell";
 import { DASHBOARD_PREFERENCES_KEY, defaultDashboardPreferences } from "@/lib/dashboard-data";
@@ -23,9 +23,8 @@ const playerConfig = {
     { label: "Мой прогресс", href: "/dashboard/economy", icon: ChartNoAxesCombined },
     { label: "VX Rewards", href: "/dashboard/rewards", icon: Gift },
     { label: "Менеджер", href: "/dashboard/support", icon: MessageCircle },
-    { label: "Активность", href: "/dashboard/activity", icon: Activity },
-    { label: "Профиль", href: "/dashboard/profile", icon: UserRound },
     { label: "Настройки", href: "/dashboard/settings", icon: Settings },
+    { label: "Выйти", href: "/access?mode=login", icon: LogOut, action: "logout" as const },
   ],
   pageTitles: {
     "/dashboard": "Главная",

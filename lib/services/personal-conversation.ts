@@ -160,6 +160,7 @@ export async function ensurePersonalConversationRecord(
       userId,
       channel: "IN_APP",
       status: { in: ["SENT", "READ"] },
+      type: { not: "support.reply" },
     },
     orderBy: { createdAt: "asc" },
     take: 20,

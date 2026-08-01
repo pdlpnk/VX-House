@@ -237,7 +237,7 @@ export function AccessFlow() {
         method: "POST",
         body: JSON.stringify({ email, password }),
       });
-      if (result.redirectTo === "/dashboard" || result.redirectTo === "/partner") {
+      if (["/dashboard", "/partner", "/admin"].includes(result.redirectTo)) {
         window.location.assign(result.redirectTo);
       } else {
         setMode("onboarding");

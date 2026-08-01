@@ -1,9 +1,9 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowUpRight, Expand, MessageCircle, Paperclip, Send, Smile, X } from "lucide-react";
+import { ArrowUpRight, Expand, FileText, ImageIcon, LoaderCircle, MessageCircle, Paperclip, Send, Smile, X } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 
 import { useDashboard } from "@/components/dashboard/dashboard-provider";
 import type { SupportConversationView, SupportMessageView } from "@/lib/support";
@@ -11,6 +11,14 @@ import styles from "./personal-messenger.module.css";
 
 const transition = { duration: 0.28, ease: [0.22, 1, 0.36, 1] as const };
 const emojis = ["🙂", "👍", "❤️", "✨"];
+const allowedAttachmentTypes = new Set(["image/jpeg", "image/png", "image/webp", "application/pdf"]);
+const maxAttachmentSize = 10 * 1024 * 1024;
+
+function fileSizeLabel(value: number) {
+  return value >= 1024 * 1024
+    ? `${(value / 1024 / 1024).toFixed(1)} МБ`
+    : `${Math.max(1, Math.round(value / 1024))} КБ`;
+}
 
 function messageAuthor(message: SupportMessageView) {
   if (message.authorType === "USER") return "user";
@@ -57,17 +65,36 @@ function MessageList({
   shouldReduceMotion: boolean;
 }) {
   const listRef = useRef<HTMLDivElement>(null);
+  const restoredConversation = useRef("");
+  const stickToBottom = useRef(true);
 
   useEffect(() => {
     const list = listRef.current;
-    list?.scrollTo({
-      top: list.scrollHeight,
-      behavior: shouldReduceMotion ? "auto" : "smooth",
-    });
-  }, [conversation.messages.length, pending, shouldReduceMotion]);
+    if (!list) return;
+    const key = `vx-house:messenger-scroll:${conversation.id}`;
+    if (restoredConversation.current !== conversation.id) {
+      restoredConversation.current = conversation.id;
+      const saved = Number(window.sessionStorage.getItem(key));
+      list.scrollTop = Number.isFinite(saved) && saved > 0 ? saved : list.scrollHeight;
+      stickToBottom.current = list.scrollHeight - list.scrollTop - list.clientHeight < 80;
+      return;
+    }
+    if (stickToBottom.current) {
+      list.scrollTo({ top: list.scrollHeight, behavior: shouldReduceMotion ? "auto" : "smooth" });
+    }
+  }, [conversation.id, conversation.messages.length, pending, shouldReduceMotion]);
 
   return (
-    <div ref={listRef} className={styles.messages} aria-live="polite">
+    <div
+      ref={listRef}
+      className={styles.messages}
+      aria-live="polite"
+      onScroll={(event) => {
+        const list = event.currentTarget;
+        stickToBottom.current = list.scrollHeight - list.scrollTop - list.clientHeight < 80;
+        window.sessionStorage.setItem(`vx-house:messenger-scroll:${conversation.id}`, String(list.scrollTop));
+      }}
+    >
       <div className={styles.day}>
         {dayLabel(conversation.messages.at(-1)?.createdAt)}
       </div>
@@ -89,15 +116,23 @@ function MessageList({
               <p>{message.body}</p>
               {message.attachments.length ? (
                 <div className={styles.attachments}>
-                  {message.attachments.map((attachment) => (
-                    <a
-                      key={attachment.id}
-                      href={`/api/support/${conversation.id}/attachments/${attachment.id}`}
-                    >
-                      <Paperclip aria-hidden="true" />
-                      {attachment.fileName}
-                    </a>
-                  ))}
+                  {message.attachments.map((attachment) => {
+                    const href = `/api/support/${conversation.id}/attachments/${attachment.id}`;
+                    return attachment.mediaType.startsWith("image/") ? (
+                      <a key={attachment.id} className={styles.imageAttachment} href={href} download>
+                        {/* The protected endpoint verifies ownership before returning bytes. */}
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={`${href}?inline=1`} alt={`Вложение: ${attachment.fileName}`} />
+                        <span><ImageIcon aria-hidden="true" />{attachment.fileName}<small>{fileSizeLabel(attachment.sizeBytes)}</small></span>
+                      </a>
+                    ) : (
+                      <a key={attachment.id} href={href} download>
+                        <FileText aria-hidden="true" />
+                        {attachment.fileName}
+                        <small>{fileSizeLabel(attachment.sizeBytes)}</small>
+                      </a>
+                    );
+                  })}
                 </div>
               ) : null}
               <time dateTime={message.createdAt}>{timeLabel(message.createdAt)}</time>
@@ -142,11 +177,32 @@ function Composer({
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
   const [emojiOpen, setEmojiOpen] = useState(false);
+  const previewUrl = useMemo(() => file?.type.startsWith("image/") ? URL.createObjectURL(file) : "", [file]);
+  useEffect(() => () => { if (previewUrl) URL.revokeObjectURL(previewUrl); }, [previewUrl]);
+
+  function selectFile(next: File | null) {
+    setError("");
+    if (!next) {
+      setFile(null);
+      return;
+    }
+    if (!allowedAttachmentTypes.has(next.type)) {
+      setFile(null);
+      setError("Разрешены изображения JPG, PNG, WEBP и документы PDF.");
+      return;
+    }
+    if (next.size < 1 || next.size > maxAttachmentSize) {
+      setFile(null);
+      setError("Размер файла не должен превышать 10 МБ.");
+      return;
+    }
+    setFile(next);
+  }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const cleanBody = body.trim();
-    if (!cleanBody || pending) return;
+    if ((!cleanBody && !file) || pending) return;
     setPending(true);
     onPendingChange(true);
     setError("");
@@ -155,7 +211,7 @@ function Composer({
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          body: cleanBody,
+          body: cleanBody || `Вложение: ${file?.name ?? "файл"}`,
           idempotencyKey: `message-${crypto.randomUUID()}`,
         }),
       });
@@ -192,12 +248,26 @@ function Composer({
 
   return (
     <form className={styles.composer} onSubmit={submit}>
+      {file ? (
+        <div className={styles.filePreview}>
+          {previewUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={previewUrl} alt="" />
+          ) : <FileText aria-hidden="true" />}
+          <span><strong>{file.name}</strong><small>{fileSizeLabel(file.size)}</small></span>
+          <button type="button" onClick={() => setFile(null)} aria-label={`Удалить файл ${file.name}`}><X aria-hidden="true" /></button>
+        </div>
+      ) : null}
       <label className={styles.iconButton} aria-label={file ? `Выбран файл: ${file.name}` : "Прикрепить файл"}>
         <Paperclip aria-hidden="true" />
         <input
           type="file"
           accept=".jpg,.jpeg,.png,.webp,.pdf,image/jpeg,image/png,image/webp,application/pdf"
-          onChange={(event) => setFile(event.target.files?.[0] ?? null)}
+          disabled={pending}
+          onChange={(event) => {
+            selectFile(event.target.files?.[0] ?? null);
+            event.currentTarget.value = "";
+          }}
         />
       </label>
       <button
@@ -247,10 +317,10 @@ function Composer({
       <button
         type="submit"
         className={styles.sendButton}
-        disabled={!body.trim() || pending}
+        disabled={(!body.trim() && !file) || pending}
         aria-label="Отправить сообщение"
       >
-        <Send aria-hidden="true" />
+        {pending ? <LoaderCircle className={styles.spinner} aria-hidden="true" /> : <Send aria-hidden="true" />}
       </button>
       {error ? <p className={styles.error} role="alert">{error}</p> : null}
       <span className="sr-only" aria-live="polite">
@@ -311,6 +381,19 @@ export function PersonalMessengerExperience({
   const [previewOpen, setPreviewOpen] = useState(unreadCount > 0);
   const [sending, setSending] = useState(false);
   const latest = conversation.messages.at(-1);
+
+  useEffect(() => {
+    const timer = window.setInterval(async () => {
+      const response = await fetch(`/api/support/${conversation.id}`, { cache: "no-store" });
+      if (!response.ok) return;
+      const next = await response.json() as SupportConversationView;
+      if (next.messages.length > conversation.messages.length) {
+        setConversation(next);
+        if (!open && !fullPage) setPreviewOpen(true);
+      }
+    }, 5000);
+    return () => window.clearInterval(timer);
+  }, [conversation.id, conversation.messages.length, fullPage, open]);
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {

@@ -6,11 +6,13 @@ export async function GET(request: Request, { params }: { params: Promise<{ atta
     const { attachmentId } = await params;
     const attachment = await getSupportNotificationService().getAttachment(principal, attachmentId);
     const safeName = attachment.fileName.replace(/["\\\r\n]/g, "_");
+    const inline = new URL(request.url).searchParams.get("inline") === "1"
+      && attachment.mediaType.startsWith("image/");
     return new Response(attachment.bytes, {
       headers: {
         "cache-control": "private, no-store",
         "content-type": attachment.mediaType,
-        "content-disposition": `attachment; filename="${safeName}"; filename*=UTF-8''${encodeURIComponent(safeName)}`,
+        "content-disposition": `${inline ? "inline" : "attachment"}; filename="${safeName}"; filename*=UTF-8''${encodeURIComponent(safeName)}`,
         "x-content-type-options": "nosniff",
       },
     });

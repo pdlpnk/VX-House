@@ -8,12 +8,13 @@ import type { AuthenticatedPrincipal } from "../lib/auth/index.ts";
 import { AesGcmDataProtector } from "../lib/data-protection/index.ts";
 import type { PrismaClient } from "../lib/db/generated/client.ts";
 import { PrismaClient as NodePrismaClient } from "../lib/db/generated-node/client.ts";
-import { AdminApplicationService } from "../lib/services/index.ts";
+import { AdminApplicationService, AdminMessengerService } from "../lib/services/index.ts";
 
 const connectionString = process.env.TEST_DATABASE_URL; if (!connectionString) throw new Error("TEST_DATABASE_URL обязателен");
 const database = new NodePrismaClient({ adapter: new PrismaPg({ connectionString }) }) as unknown as PrismaClient;
 const protector = new AesGcmDataProtector("test-key", Buffer.alloc(32, 11).toString("base64url"));
 const service = new AdminApplicationService(database, protector);
+const messenger = new AdminMessengerService(database, protector);
 const permissions = ["admin.dashboard.read", "users.read", "users.write", "users.role.write", "users.partner.approve", "content.read", "content.write", "content.publish", "moderation.read", "moderation.write", "support.admin", "support.write", "appeals.write", "economy.admin", "economy.write", "notifications.write", "audit.read"];
 let admin: AuthenticatedPrincipal; let playerId: string; let partnerId: string; let marketId: string;
 
@@ -48,6 +49,37 @@ test("модерация сохраняет решение и переводит
 test("невалидное решение откатывает транзакцию модерации", async () => { const version = await createSubmittedTask(); await database.userTask.update({ where: { id: version.userTaskId }, data: { status: "CANCELLED" } }); await assert.rejects(service.execute(admin, "reviews", version.id, { action: "MODERATION_DECISION", decision: "REJECTED", reasonCode: "invalid", reason: "Решение не должно сохраниться" }), ApplicationError); assert.equal(await database.submissionReview.count({ where: { submissionVersionId: version.id } }), 0); });
 
 test("поддержка назначает оператора, пишет ответ и внутреннюю заметку append-only", async () => { const conversation = await database.supportConversation.create({ data: { userId: playerId, category: "task", subject: "Нужна помощь", context: {}, status: "CREATED" } }); await database.supportMessage.create({ data: { conversationId: conversation.id, authorType: "USER", authorId: playerId, bodyProtected: await encrypted("Первое сообщение", "support-message", conversation.id) } }); await service.execute(admin, "support", conversation.id, { action: "SUPPORT_ASSIGN", operatorId: admin.userId, reason: "Назначение по очереди" }); await service.execute(admin, "support", conversation.id, { action: "SUPPORT_REPLY", body: "Ответ оператора" }); await service.execute(admin, "support", conversation.id, { action: "SUPPORT_NOTE", body: "Внутренняя заметка" }); const stored = await database.supportConversation.findUniqueOrThrow({ where: { id: conversation.id }, include: { messages: true, internalNotes: true, statusHistory: true } }); assert.equal(stored.assignedToId, admin.userId); assert.equal(stored.messages.length, 2); assert.equal(stored.internalNotes.length, 1); assert.equal(stored.status, "WAITING_USER"); await assert.rejects(database.supportInternalNote.update({ where: { id: stored.internalNotes[0]!.id }, data: { bodyProtected: {} } })); });
+
+test("Admin Messenger синхронизирует постоянный диалог, unread и append-only заметки", async () => {
+  const initial = await messenger.list(admin);
+  assert.equal(initial.items.length, 1);
+  const conversationId = initial.items[0]!.conversationId;
+  const userMessage = await database.supportMessage.create({ data: { conversationId, authorType: "USER", authorId: playerId, bodyProtected: await encrypted("Сообщение игрока", "support-message", conversationId) } });
+  await database.supportConversation.update({ where: { id: conversationId }, data: { updatedAt: userMessage.createdAt } });
+  assert.equal((await messenger.list(admin)).items[0]!.unreadCount, 1);
+  await messenger.markRead(admin, conversationId);
+  assert.equal((await messenger.list(admin)).items[0]!.unreadCount, 0);
+  const replied = await messenger.sendMessage(admin, conversationId, "Сообщение персонального менеджера");
+  assert.equal(replied.conversation.messages.at(-1)?.authorType, "OPERATOR");
+  const created = await messenger.note(admin, conversationId, { action: "create", body: "Игрок предпочитает вечернюю связь" });
+  assert.equal(created.notes.length, 1);
+  const edited = await messenger.note(admin, conversationId, { action: "edit", logicalId: created.notes[0]!.logicalId, body: "Связаться с игроком после 18:00" });
+  assert.equal(edited.notes[0]?.edited, true);
+  const removed = await messenger.note(admin, conversationId, { action: "delete", logicalId: created.notes[0]!.logicalId });
+  assert.equal(removed.notes.length, 0);
+  assert.equal(await database.supportInternalNote.count({ where: { conversationId } }), 3);
+});
+
+test("Admin Messenger сохраняет и возвращает защищённое вложение", async () => {
+  const conversationId = (await messenger.list(admin)).items[0]!.conversationId;
+  const detail = await messenger.sendMessage(admin, conversationId, "Документ для игрока");
+  const messageId = detail.conversation.messages.findLast((item) => item.authorType === "OPERATOR")!.id;
+  const file = new File([new TextEncoder().encode("%PDF-1.4 test")], "условия.pdf", { type: "application/pdf" });
+  const attachment = await messenger.addAttachment(admin, conversationId, messageId, file);
+  const downloaded = await messenger.getAttachment(admin, conversationId, attachment.id);
+  assert.equal(downloaded.fileName, "условия.pdf");
+  assert.equal(new TextDecoder().decode(downloaded.bytes), "%PDF-1.4 test");
+});
 
 test("ручная корректировка экономики идемпотентна и не меняет прошлые записи", async () => { const key = `admin-adjust-${randomUUID()}`; const command = { action: "ECONOMY_ADJUST" as const, userId: playerId, kind: "POINTS" as const, delta: 25, reason: "Подтверждённая ручная корректировка", idempotencyKey: key }; const first = await service.execute(admin, "economy", "new", command) as { id: string }; const replay = await service.execute(admin, "economy", "new", command) as { id: string }; assert.equal(first.id, replay.id); assert.equal(await database.vXPointsLedgerEntry.count({ where: { userId: playerId } }), 1); const entry = await database.vXPointsLedgerEntry.findUniqueOrThrow({ where: { id: first.id } }); await assert.rejects(database.vXPointsLedgerEntry.update({ where: { id: entry.id }, data: { delta: 99 } })); });
 
