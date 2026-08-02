@@ -2,6 +2,15 @@ generator client {
   provider     = "prisma-client"
   output       = "../lib/db/generated"
   moduleFormat = "esm"
+  runtime      = "nodejs"
+}
+
+// Dedicated edge client retained for the Cloudflare build. The Ubuntu/PM2
+// standalone server uses the Node.js client above.
+generator edgeClient {
+  provider     = "prisma-client"
+  output       = "../lib/db/generated-edge"
+  moduleFormat = "esm"
   runtime      = "workerd"
 }
 
