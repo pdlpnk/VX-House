@@ -4,8 +4,10 @@ import test from "node:test";
 
 import {
   fromDatabaseLanguage,
+  languagesFromAcceptLanguage,
   localeFromBrowser,
   resolveInitialLocale,
+  resolveLocalePriority,
   toDatabaseLanguage,
 } from "../lib/i18n/config.ts";
 import {
@@ -19,18 +21,36 @@ import { validateRegistrationInput } from "../lib/validation/identity-profile.ts
 
 test("выбор языка из браузера использует ожидаемые языки и English fallback", () => {
   assert.equal(localeFromBrowser(["tr-TR"]), "tr");
+  assert.equal(localeFromBrowser(["tr-TR", "tr", "en"]), "tr");
   assert.equal(localeFromBrowser(["az-Latn-AZ"]), "az");
+  assert.equal(localeFromBrowser(["az-AZ"]), "az");
   assert.equal(localeFromBrowser(["ru-RU"]), "ru");
   assert.equal(localeFromBrowser(["uk-UA"]), "ru");
-  assert.equal(localeFromBrowser(["en-GB"]), "en");
+  assert.equal(localeFromBrowser(["en-US"]), "en");
   assert.equal(localeFromBrowser(["de-DE", "fr-FR"]), "en");
+  assert.equal(localeFromBrowser(["", "invalid"]), "en");
   assert.equal(localeFromBrowser(undefined), "en");
 });
 
+test("Accept-Language учитывает quality и никогда не использует геолокацию", () => {
+  assert.deepEqual(languagesFromAcceptLanguage("en-US;q=0.5, tr-TR;q=0.9, ru;q=0"), ["tr-TR", "en-US"]);
+  assert.equal(localeFromBrowser(languagesFromAcceptLanguage("tr-TR,tr;q=0.9,en;q=0.8")), "tr");
+  assert.equal(localeFromBrowser(languagesFromAcceptLanguage("de-DE,de;q=0.9,*;q=0.8")), "en");
+  assert.deepEqual(languagesFromAcceptLanguage(""), []);
+});
+
 test("сохранённый глобальный выбор имеет приоритет над языком браузера", () => {
-  assert.equal(resolveInitialLocale("az", ["tr-TR"]), "az");
+  assert.equal(resolveInitialLocale("ru", ["tr-TR"]), "ru");
   assert.equal(resolveInitialLocale("unsupported", ["ru-RU"]), "ru");
   assert.equal(toDatabaseLanguage(resolveInitialLocale("en", ["ru-RU"])), "EN");
+});
+
+test("приоритет языка: профиль, сохранённый выбор, браузер, English fallback", () => {
+  assert.deepEqual(resolveLocalePriority({ profileValue: "EN", savedValue: "tr", browserLanguages: ["ru-RU"] }), { locale: "en", source: "profile" });
+  assert.deepEqual(resolveLocalePriority({ savedValue: "RU", browserLanguages: ["tr-TR"] }), { locale: "ru", source: "saved" });
+  assert.deepEqual(resolveLocalePriority({ browserLanguages: ["az-Latn-AZ"] }), { locale: "az", source: "browser" });
+  assert.deepEqual(resolveLocalePriority({ browserLanguages: ["de-DE"] }), { locale: "en", source: "fallback" });
+  assert.deepEqual(resolveLocalePriority({ browserLanguages: [] }), { locale: "en", source: "fallback" });
 });
 
 test("язык профиля поддерживает существующие значения и English", () => {
@@ -95,4 +115,27 @@ test("в регистрации нет отдельного поля или ша
   assert.match(flow, /preferredLanguage:\s*toDatabaseLanguage\(locale\)/u);
   assert.match(flow, /step === 1[\s\S]*AccessOnboardingWelcomeStep/u);
   assert.match(workspace, /setLocale\(fromDatabaseLanguage\(profile\.preferredLanguage\)\)/u);
+});
+
+test("SSR и hydration используют один язык без фиксированного RU/EN state", async () => {
+  const [layout, provider] = await Promise.all([
+    readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../components/i18n/i18n-provider.tsx", import.meta.url), "utf8"),
+  ]);
+  assert.match(layout, /<html lang=\{resolution\.locale\}/u);
+  assert.match(layout, /initialLocale=\{resolution\.locale\}/u);
+  assert.match(layout, /initialSource=\{resolution\.source\}/u);
+  assert.match(layout, /generateMetadata/u);
+  assert.match(layout, /openGraphLocales\[locale\]/u);
+  assert.match(provider, /useState<Locale>\(initialLocale\)/u);
+  assert.doesNotMatch(provider, /useState<Locale>\((?:DEFAULT_LOCALE|["']ru["'])\)/u);
+  assert.match(provider, /useLayoutEffect/u);
+});
+
+test("ручная смена сохраняется без навигации и не теряет hash", async () => {
+  const provider = await readFile(new URL("../components/i18n/i18n-provider.tsx", import.meta.url), "utf8");
+  assert.match(provider, /localStorage\.setItem\(LOCALE_STORAGE_KEY, nextLocale\)/u);
+  assert.match(provider, /document\.cookie = `\$\{LOCALE_COOKIE\}=\$\{nextLocale\}/u);
+  assert.doesNotMatch(provider, /location\.(?:assign|replace|href)|history\.(?:pushState|replaceState)/u);
+  assert.equal(resolveLocalePriority({ savedValue: "tr", browserLanguages: ["en-US"] }).locale, "tr");
 });

@@ -2,7 +2,7 @@ import type { Money, VersionIdentifier } from "./shared";
 
 export type ProductRole = "PLAYER" | "PARTNER";
 export type MarketCode = "TR" | "AZ";
-export type LanguageCode = "RU" | "TR" | "AZ";
+export type LanguageCode = "EN" | "RU" | "TR" | "AZ";
 
 export interface ProfileDTO {
   readonly userId: string;

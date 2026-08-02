@@ -5,6 +5,13 @@ export const DEFAULT_LOCALE: Locale = "en";
 export const LOCALE_STORAGE_KEY = "vx-house:locale";
 export const LOCALE_COOKIE = "vx_house_locale";
 
+export type LocaleResolutionSource = "profile" | "saved" | "browser" | "fallback";
+
+export type LocaleResolution = Readonly<{
+  locale: Locale;
+  source: LocaleResolutionSource;
+}>;
+
 export const localeNames: Readonly<Record<Locale, string>> = {
   en: "English",
   ru: "Русский",
@@ -38,11 +45,55 @@ export function localeFromBrowser(languages: readonly string[] | undefined): Loc
   return DEFAULT_LOCALE;
 }
 
+export function languagesFromAcceptLanguage(value: string | null | undefined): readonly string[] {
+  if (!value?.trim()) return [];
+
+  return value
+    .split(",")
+    .map((part, index) => {
+      const [tag = "", ...parameters] = part.trim().split(";");
+      const qualityParameter = parameters.find((parameter) => parameter.trim().toLowerCase().startsWith("q="));
+      const quality = qualityParameter ? Number(qualityParameter.trim().slice(2)) : 1;
+      return {
+        tag: tag.trim(),
+        quality: Number.isFinite(quality) && quality >= 0 && quality <= 1 ? quality : 0,
+        index,
+      };
+    })
+    .filter((item) => item.tag && item.tag !== "*" && item.quality > 0)
+    .sort((left, right) => right.quality - left.quality || left.index - right.index)
+    .map((item) => item.tag);
+}
+
+export function resolveLocalePriority(input: {
+  profileValue?: unknown;
+  savedValue?: unknown;
+  browserLanguages?: readonly string[];
+}): LocaleResolution {
+  const profileLocale = normalizeLocale(input.profileValue);
+  if (profileLocale) return { locale: profileLocale, source: "profile" };
+
+  const savedLocale = normalizeLocale(input.savedValue);
+  if (savedLocale) return { locale: savedLocale, source: "saved" };
+
+  const browserLanguages = input.browserLanguages ?? [];
+  const browserLocale = localeFromBrowser(browserLanguages);
+  const hasSupportedBrowserLocale = browserLanguages.some((value) => {
+    const language = value.trim().toLowerCase().split("-")[0];
+    return language === "tr" || language === "az" || language === "ru" || language === "uk" || language === "en";
+  });
+
+  return {
+    locale: browserLocale,
+    source: hasSupportedBrowserLocale ? "browser" : "fallback",
+  };
+}
+
 export function resolveInitialLocale(
   storedValue: unknown,
   browserLanguages: readonly string[] | undefined,
 ): Locale {
-  return normalizeLocale(storedValue) ?? localeFromBrowser(browserLanguages);
+  return resolveLocalePriority({ savedValue: storedValue, browserLanguages }).locale;
 }
 
 export function toDatabaseLanguage(locale: Locale) {

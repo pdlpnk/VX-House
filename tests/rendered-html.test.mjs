@@ -29,7 +29,8 @@ test("server-renders the VX House landing experience", async () => {
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
 
   const html = await response.text();
-  assert.match(html, /<title>VX House — специальные условия и вознаграждения<\/title>/i);
+  assert.match(html, /<title>VX House — Private terms and rewards<\/title>/i);
+  assert.match(html, /<html[^>]*lang="en"/i);
   assert.match(html, /<html[^>]*class="dark"/i);
   assert.match(html, /<main[^>]*id="main-content"/i);
   assert.match(html, /Skip to content/i);

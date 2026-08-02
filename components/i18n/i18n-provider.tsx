@@ -1,14 +1,15 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useState } from "react";
 
 import {
-  DEFAULT_LOCALE,
   LOCALE_COOKIE,
   LOCALE_STORAGE_KEY,
+  normalizeLocale,
   resolveInitialLocale,
   translate,
   type Locale,
+  type LocaleResolutionSource,
   type MessageKey,
   type TranslationValues,
 } from "@/lib/i18n";
@@ -21,24 +22,41 @@ type I18nContextValue = {
 
 const I18nContext = createContext<I18nContextValue | null>(null);
 
-function storedLocale() {
-  if (typeof window === "undefined") return DEFAULT_LOCALE;
-  return resolveInitialLocale(
-    window.localStorage.getItem(LOCALE_STORAGE_KEY),
-    window.navigator.languages,
-  );
+function persistLocale(nextLocale: Locale) {
+  window.localStorage.setItem(LOCALE_STORAGE_KEY, nextLocale);
+  document.cookie = `${LOCALE_COOKIE}=${nextLocale}; Path=/; Max-Age=31536000; SameSite=Lax${location.protocol === "https:" ? "; Secure" : ""}`;
 }
 
-export function I18nProvider({ children }: { children: React.ReactNode }) {
-  const [locale, setLocaleState] = useState<Locale>(DEFAULT_LOCALE);
+export function I18nProvider({
+  children,
+  initialLocale,
+  initialSource,
+}: {
+  children: React.ReactNode;
+  initialLocale: Locale;
+  initialSource: LocaleResolutionSource;
+}) {
+  const [locale, setLocaleState] = useState<Locale>(initialLocale);
 
-  useEffect(() => {
-    let active = true;
-    queueMicrotask(() => {
-      if (active) setLocaleState(storedLocale());
-    });
-    return () => { active = false; };
-  }, []);
+  useLayoutEffect(() => {
+    if (initialSource === "profile" || initialSource === "saved") {
+      window.localStorage.setItem(LOCALE_STORAGE_KEY, initialLocale);
+      document.documentElement.lang = initialLocale;
+      return;
+    }
+
+    const stored = normalizeLocale(window.localStorage.getItem(LOCALE_STORAGE_KEY));
+    const resolved = resolveInitialLocale(stored, window.navigator.languages);
+    document.documentElement.lang = resolved;
+    if (stored) persistLocale(stored);
+    if (resolved !== initialLocale) {
+      let active = true;
+      queueMicrotask(() => {
+        if (active) setLocaleState(resolved);
+      });
+      return () => { active = false; };
+    }
+  }, [initialLocale, initialSource]);
 
   useEffect(() => {
     document.documentElement.lang = locale;
@@ -46,8 +64,7 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
 
   const setLocale = useCallback((nextLocale: Locale) => {
     setLocaleState(nextLocale);
-    window.localStorage.setItem(LOCALE_STORAGE_KEY, nextLocale);
-    document.cookie = `${LOCALE_COOKIE}=${nextLocale}; Path=/; Max-Age=31536000; SameSite=Lax${location.protocol === "https:" ? "; Secure" : ""}`;
+    persistLocale(nextLocale);
     document.documentElement.lang = nextLocale;
     window.dispatchEvent(new CustomEvent("vx-house:locale-change", { detail: nextLocale }));
   }, []);
