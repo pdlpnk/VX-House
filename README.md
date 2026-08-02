@@ -49,3 +49,7 @@ public/               Static assets
 The bundled vinext adapter produces a Cloudflare Workers-compatible build.
 Optional D1, R2, and workspace-auth helpers remain available but are not active
 in the foundation.
+
+Production deployment, Nginx/PM2 configuration, migrations, health checks,
+registration smoke testing and rollback are documented in
+[`DEPLOY_PRODUCTION.md`](./DEPLOY_PRODUCTION.md).

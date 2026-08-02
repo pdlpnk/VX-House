@@ -10,6 +10,7 @@ import {
   AuthenticationService,
   DevelopmentEmailProvider,
   IdentityOnboardingService,
+  ResendEmailProvider,
   UnavailableEmailProvider,
 } from "@/lib/services";
 
@@ -33,9 +34,14 @@ function buildIdentitySystem() {
     cookies,
     authenticationConfig,
   );
-  const emailProvider =
-    verificationConfig.provider === "development" && config.runtime.environment !== "production"
-      ? new DevelopmentEmailProvider(config.runtime.environment === "test" ? "test" : "development")
+  const emailProvider = verificationConfig.provider === "development" && config.runtime.environment !== "production"
+    ? new DevelopmentEmailProvider(config.runtime.environment === "test" ? "test" : "development")
+    : verificationConfig.provider === "resend" && verificationConfig.apiKey && verificationConfig.from
+      ? new ResendEmailProvider({
+          apiKey: verificationConfig.apiKey.reveal(),
+          from: verificationConfig.from,
+          timeoutMs: verificationConfig.requestTimeoutMs,
+        })
       : new UnavailableEmailProvider();
   const onboarding = new IdentityOnboardingService(
     database,

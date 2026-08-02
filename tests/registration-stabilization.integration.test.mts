@@ -20,6 +20,7 @@ Object.assign(process.env, {
   DATA_PROTECTION_KEY: randomBytes(32).toString("base64url"),
   EMAIL_VERIFICATION_SECRET: randomBytes(48).toString("base64url"),
   EMAIL_PROVIDER: "development",
+  NEXT_PUBLIC_SITE_URL: "https://vxhouse.online",
   BRUTE_FORCE_IDENTIFIER_LIMIT: "50",
   BRUTE_FORCE_NETWORK_LIMIT: "100",
 });

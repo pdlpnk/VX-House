@@ -1,37 +1,18 @@
-# VX House: production deployment on Ubuntu 24.04
+# VX House: production на Ubuntu 24.04
 
-This guide deploys VX House from `/opt/VX-House` on a single DigitalOcean Droplet. Nginx terminates HTTPS on the host and proxies requests to the application bound only to `127.0.0.1:3000`. PostgreSQL is reachable only inside the private Docker network.
+Основной production-сценарий рассчитан на репозиторий `/opt/VX-House`, локальный PostgreSQL, standalone-сборку Vinext/Next.js под PM2 на `127.0.0.1:3000` и Nginx с TLS для `https://vxhouse.online`. Docker Compose остаётся альтернативным способом запуска.
 
-## Production topology
+## Схема
 
 ```text
-Internet
-  |
-  |  HTTPS :443
-  v
-Nginx on Ubuntu
-  |
-  |  HTTP 127.0.0.1:3000
-  v
-VX House container
-  |
-  |  TLS PostgreSQL :5432 (private Docker network)
-  v
-PostgreSQL container
+Internet → HTTPS Nginx → HTTP 127.0.0.1:3000 → PM2 / standalone Node.js
+                                                ↓
+                              PostgreSQL 127.0.0.1:5432
 ```
 
-The deployment provides:
+Порты `3000` и `5432` не должны быть доступны из интернета. В firewall открываются только `22`, `80` и `443`.
 
-- a multi-stage Node.js production image;
-- automatic `prisma migrate deploy` in a one-shot migration container before the application starts;
-- TLS between the application and the bundled PostgreSQL service;
-- container and application healthchecks;
-- restart policies and bounded Docker logs;
-- persistent PostgreSQL, PostgreSQL TLS, and uploads volumes;
-- an internal backend network that is not published to the host;
-- a loopback-only application port for Nginx.
-
-## 1. Prepare the environment
+## 1. Переменные окружения
 
 ```bash
 cd /opt/VX-House
@@ -39,97 +20,105 @@ cp .env.example .env
 chmod 600 .env
 ```
 
-Generate independent values for all secrets. Do not reuse any output:
-
-```bash
-openssl rand -hex 32
-openssl rand -hex 48
-openssl rand -hex 48
-openssl rand -hex 48
-openssl rand -base64 32 | tr '/+' '_-' | tr -d '='
-```
-
-Use the first value as `POSTGRES_PASSWORD`, the next three as `SESSION_SECRET`, `RATE_LIMIT_SECRET`, and `EMAIL_VERIFICATION_SECRET`, and the last value as `DATA_PROTECTION_KEY`.
-
-Update both database URLs with the same PostgreSQL password:
+Создайте все секреты независимо и замените placeholders. Для нативного PostgreSQL на том же Droplet используйте:
 
 ```dotenv
-POSTGRES_PASSWORD=<generated-url-safe-password>
-DATABASE_URL=postgresql://vx_house:<generated-url-safe-password>@postgres:5432/vx_house?sslmode=require
-DIRECT_URL=postgresql://vx_house:<generated-url-safe-password>@postgres:5432/vx_house?sslmode=require
+NODE_ENV=production
+NEXT_PUBLIC_SITE_URL=https://vxhouse.online
+TRUST_PROXY_HEADERS=true
+DATABASE_URL=postgresql://vx_house:<url-encoded-password>@127.0.0.1:5432/vx_house?sslmode=disable
+DIRECT_URL=postgresql://vx_house:<url-encoded-password>@127.0.0.1:5432/vx_house?sslmode=disable
+
+EMAIL_PROVIDER=resend
+RESEND_API_KEY=<resend-api-key>
+EMAIL_FROM=noreply@vxhouse.online
+EMAIL_REQUEST_TIMEOUT_MS=8000
 ```
 
-Also replace `NEXT_PUBLIC_SITE_URL` with the final HTTPS origin. Do not add a trailing slash. It is passed both at build time and runtime, so a domain change requires rebuilding the application image.
+`EMAIL_FROM` должен принадлежать подтверждённому в Resend домену. Никогда не сохраняйте `.env`, API-ключи, коды подтверждения или пароли в Git и не печатайте их в логи. `NEXT_PUBLIC_SITE_URL` — единственный публичный origin без завершающего `/`; wildcard-origin запрещён.
 
-Important security rules:
+`TRUST_PROXY_HEADERS=true` безопасен только потому, что приложение слушает loopback и трафик приходит через контролируемый Nginx. При прямом публичном доступе к Node этот параметр необходимо выключить.
 
-- Keep `.env` outside Git and readable only by the deployment user.
-- Keep `DATA_PROTECTION_KEY` and `DATA_PROTECTION_KEY_ID` stable. Existing encrypted messages and attachments depend on them.
-- A future key rotation must be implemented as a controlled migration; replacing the key directly makes protected data unreadable.
-- `EMAIL_PROVIDER=disabled` is required by the current production environment contract. A real email provider must be implemented separately before enabling email delivery.
+Локальный PostgreSQL на loopback допускает `sslmode=disable`, поскольку соединение не покидает хост. Для удалённой БД production-валидатор требует `sslmode=require`, `verify-ca` или `verify-full`.
 
-## 2. Validate and start
+## 2. Установка, миграции и сборка
 
-Validate Compose interpolation before building:
+Требуется Node.js не ниже версии из `package.json` и pnpm указанной там же.
 
 ```bash
-docker compose config --quiet
+cd /opt/VX-House
+pnpm install --frozen-lockfile
+set -a
+source .env
+set +a
+pnpm exec prisma validate
+pnpm exec prisma generate
+pnpm exec prisma migrate deploy
+pnpm build
+test -f dist/standalone/dist/server/assets/query_compiler_fast_bg.js
+test -f dist/standalone/dist/server/assets/query_compiler_fast_bg.wasm
 ```
 
-Build and start the stack:
+Миграции выполняются до перезапуска приложения. При ошибке миграции остановите deploy: не запускайте новую сборку поверх несовместимой схемы.
+
+## 3. PM2
+
+Запускайте скомпилированный standalone-сервер, а не dev server:
 
 ```bash
-docker compose up -d --build
+cd /opt/VX-House
+set -a
+source .env
+set +a
+HOSTNAME=127.0.0.1 PORT=3000 pm2 start dist/standalone/server.js --name vx-house --cwd /opt/VX-House --update-env
+pm2 save
+pm2 startup systemd
 ```
 
-Startup order is enforced:
+Выполните команду с `sudo`, которую напечатает `pm2 startup`, затем снова `pm2 save`.
 
-1. PostgreSQL starts and becomes healthy.
-2. The one-shot `migrate` service runs `prisma migrate deploy`.
-3. The standalone production server starts only after successful migrations.
-4. Docker marks the application healthy only when `/api/health` confirms database readiness.
-
-Check status and logs:
+Проверка процесса и логов:
 
 ```bash
-docker compose ps
-docker compose logs --tail=100 migrate
-docker compose logs --tail=200 app
-docker compose logs --tail=100 postgres
+pm2 status vx-house
+pm2 logs vx-house --lines 200
 curl --fail --silent http://127.0.0.1:3000/api/health
 ```
 
-Expected health response has `"status":"healthy"` and HTTP status `200`. A database readiness failure returns HTTP `503`.
+Health endpoint возвращает HTTP `200` и `status: healthy`, когда приложение и БД готовы; при проблеме readiness возвращается `503`.
 
-## 3. Configure Nginx
+## 4. Nginx
 
-The Compose stack publishes no PostgreSQL port. The application is exposed only as `127.0.0.1:${APP_PORT:-3000}`. Nginx must run on the Droplet host, not inside this Compose project.
-
-Create `/etc/nginx/sites-available/vx-house`:
+Файл `/etc/nginx/sites-available/vx-house`:
 
 ```nginx
 server {
     listen 80;
     listen [::]:80;
-    server_name example.com www.example.com;
+    server_name vxhouse.online www.vxhouse.online;
 
-    location /.well-known/acme-challenge/ {
-        root /var/www/html;
-    }
-
-    location / {
-        return 301 https://example.com$request_uri;
-    }
+    location /.well-known/acme-challenge/ { root /var/www/html; }
+    location / { return 301 https://vxhouse.online$request_uri; }
 }
 
 server {
     listen 443 ssl http2;
     listen [::]:443 ssl http2;
-    server_name example.com;
+    server_name www.vxhouse.online;
 
-    ssl_certificate /etc/letsencrypt/live/example.com/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/example.com/privkey.pem;
+    ssl_certificate /etc/letsencrypt/live/vxhouse.online/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/vxhouse.online/privkey.pem;
 
+    return 301 https://vxhouse.online$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name vxhouse.online;
+
+    ssl_certificate /etc/letsencrypt/live/vxhouse.online/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/vxhouse.online/privkey.pem;
     client_max_body_size 12m;
 
     add_header X-Content-Type-Options "nosniff" always;
@@ -149,17 +138,10 @@ server {
         proxy_read_timeout 60s;
         proxy_send_timeout 60s;
     }
-
-    location /_next/static/ {
-        proxy_pass http://127.0.0.1:3000;
-        proxy_set_header Host $host;
-        expires 1y;
-        add_header Cache-Control "public, immutable";
-    }
 }
 ```
 
-Replace `example.com`, then enable and validate the site:
+Сертификат `/etc/letsencrypt/live/vxhouse.online/` должен покрывать оба имени: `vxhouse.online` и `www.vxhouse.online`.
 
 ```bash
 sudo ln -s /etc/nginx/sites-available/vx-house /etc/nginx/sites-enabled/vx-house
@@ -167,83 +149,70 @@ sudo nginx -t
 sudo systemctl reload nginx
 ```
 
-Issue the TLS certificate with the existing certificate-management policy, for example Certbot, before enabling the HTTPS server block. Open only TCP ports `22`, `80`, and `443` in the DigitalOcean firewall. Do not expose ports `3000` or `5432` publicly.
+Проверка Origin обязательно зависит от `Host`, `X-Forwarded-Proto` и `X-Forwarded-Host`. Nginx должен перезаписывать эти заголовки, а не принимать их как доверенные от внешнего клиента.
 
-`TRUST_PROXY_HEADERS=true` is intentional because Nginx is the trusted ingress. Keep the application bound to loopback; otherwise forwarded client headers could be spoofed by direct callers.
+## 5. Проверка регистрации
 
-## Application prerequisite: transactional email
+Проверяйте именно публичный HTTPS-домен:
 
-The current server configuration supports only `development` and `disabled` email transports, and correctly rejects the development transport when `NODE_ENV=production`. This deployment therefore uses `EMAIL_PROVIDER=disabled` so the application can start securely without exposing development verification codes.
+1. Откройте `https://vxhouse.online/access` в приватном окне.
+2. Создайте новый аккаунт с уникальным email.
+3. Убедитесь, что `POST /api/auth/register` возвращает `201`, а не `403`/`503`.
+4. Получите письмо от `EMAIL_FROM`, введите код и завершите onboarding.
+5. Проверьте вход, обновление страницы, выход и повторный вход.
+6. Повторите сценарий для игрока и партнёра.
 
-Before opening self-service registration to public users, a real transactional email provider must be implemented in the application and added to its validated provider list. That work is intentionally outside this infrastructure-only deployment change.
-
-## 4. Persistent data
-
-Named volumes:
-
-- `postgres_data` — all PostgreSQL data;
-- `postgres_tls` — the self-signed certificate used only on the private Docker network;
-- `uploads_data` — reserved filesystem storage at `/app/uploads`.
-
-Current messenger attachments are encrypted and stored in PostgreSQL, so they are protected by `postgres_data`. The uploads volume is provisioned for filesystem-backed uploads without requiring a future infrastructure change.
-
-Never run `docker compose down --volumes` in production unless permanent data deletion is intended.
-
-## 5. Database backup and recovery
-
-Create an encrypted off-Droplet backup policy before accepting production users. A basic logical backup can be created with:
+Безопасная диагностика (не копируйте в тикеты строки окружения или заголовок Authorization):
 
 ```bash
-mkdir -p /opt/backups/vx-house
-docker compose exec -T postgres pg_dump \
-  --username vx_house \
-  --dbname vx_house \
-  --format=custom > "/opt/backups/vx-house/vx-house-$(date +%F-%H%M%S).dump"
+pm2 logs vx-house --lines 300
+sudo tail -n 300 /var/log/nginx/error.log
+sudo tail -n 300 /var/log/nginx/access.log
+curl --fail --silent https://vxhouse.online/api/health
 ```
 
-Replace the database identifiers if `POSTGRES_USER` or `POSTGRES_DB` differs from the example. Do not store unencrypted backups on the same Droplet as the only copy.
+Сбой Resend не активирует профиль и не создаёт частично заполненную регистрацию: аккаунт остаётся в `CONTACT_PENDING`, после cooldown пользователь может запросить новый код. Повтор регистрации защищён ключом идемпотентности.
 
-Test restoration on a separate database and deployment before relying on a backup. Restoring production data must use the same data-protection key that encrypted the stored protected fields.
-
-## 6. Deploy updates
+## 6. Обновление
 
 ```bash
 cd /opt/VX-House
 git pull --ff-only
-docker compose build --pull app migrate postgres
-docker compose up -d
-docker compose ps
+pnpm install --frozen-lockfile
+set -a
+source .env
+set +a
+pnpm exec prisma validate
+pnpm exec prisma generate
+pnpm exec prisma migrate deploy
+pnpm build
+test -f dist/standalone/dist/server/assets/query_compiler_fast_bg.js
+test -f dist/standalone/dist/server/assets/query_compiler_fast_bg.wasm
+pm2 restart vx-house --update-env
 curl --fail --silent http://127.0.0.1:3000/api/health
+curl --fail --silent https://vxhouse.online/api/health
 ```
 
-Prisma migrations are forward-only and run automatically. Take a database backup before deploying a release that contains migrations.
+Перед изменяющими схему миграциями создайте проверенный внешний backup PostgreSQL.
 
-Inspect recent logs after every deployment:
+## 7. Rollback
+
+1. Зафиксируйте hash текущего и предыдущего релиза.
+2. Верните рабочее дерево к заранее проверенному release commit.
+3. Выполните `pnpm install --frozen-lockfile`, `pnpm build` и `pm2 restart vx-house --update-env`.
+4. Проверьте оба health URL и публичную регистрацию.
+
+Prisma migrations автоматически назад не откатываются. При несовместимой миграции используйте заранее проверенный backup либо отдельно проверенную forward-repair migration; не редактируйте production migration history вручную.
+
+## 8. Docker Compose как альтернатива
+
+`docker-compose.yml` запускает TLS-enabled PostgreSQL, one-shot `prisma migrate deploy` и standalone-приложение с healthcheck/restart policy. Compose сам переопределяет database URL на внутренний сервис `postgres`:
 
 ```bash
-docker compose logs --since=10m app postgres
+docker compose config --quiet
+docker compose up -d --build
+docker compose ps
+docker compose logs --tail=200 app migrate postgres
 ```
 
-## 7. Rollback expectations
-
-Application rollback:
-
-1. Check out the previously deployed Git revision.
-2. Rebuild the application image.
-3. Run `docker compose up -d`.
-
-Database migrations are not automatically rolled back. If a release contains an incompatible migration, restore a verified pre-deployment backup or apply a separately reviewed forward repair migration. Never manually edit Prisma migration history in production.
-
-## 8. Operational checklist
-
-- DNS points to the Droplet.
-- Nginx configuration passes `nginx -t`.
-- A valid HTTPS certificate is installed and renews automatically.
-- `.env` contains no placeholders and has mode `0600`.
-- PostgreSQL is not published on a host port.
-- The application listens only on `127.0.0.1:3000`.
-- `docker compose ps` reports both services healthy.
-- `/api/health` returns HTTP `200` locally and through HTTPS.
-- Registration, login, logout, and protected routes are smoke-tested through the public domain.
-- Backups are encrypted, copied off the Droplet, and restoration has been tested.
-- DigitalOcean monitoring and disk-space alerts are enabled.
+Не запускайте одновременно PM2 и Compose на одном `127.0.0.1:3000`. Не выполняйте `docker compose down --volumes`, если данные должны сохраниться.

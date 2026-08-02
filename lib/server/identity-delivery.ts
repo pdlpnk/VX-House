@@ -32,7 +32,11 @@ export async function readJsonBody(request: Request): Promise<Record<string, unk
 }
 
 export function requireTrustedOrigin(request: Request) {
-  if (!hasTrustedRequestOrigin(request)) {
+  const network = getServerConfig().security.network;
+  if (!hasTrustedRequestOrigin(request, {
+    allowedOrigins: network.allowedOrigins,
+    trustProxyHeaders: network.trustProxyHeaders,
+  })) {
     throw new ApplicationError("FORBIDDEN", "Источник запроса не подтверждён");
   }
 }

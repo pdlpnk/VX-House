@@ -35,12 +35,20 @@ export function createSecurityConfig(environment: ServerEnvironment) {
     emailVerification: Object.freeze({
       secret: new SecretValue(environment.EMAIL_VERIFICATION_SECRET),
       provider: environment.EMAIL_PROVIDER,
+      apiKey: environment.RESEND_API_KEY ? new SecretValue(environment.RESEND_API_KEY) : undefined,
+      from: environment.EMAIL_FROM,
+      requestTimeoutMs: environment.EMAIL_REQUEST_TIMEOUT_MS,
       ttlSeconds: environment.EMAIL_CODE_TTL_SECONDS,
       resendCooldownSeconds: environment.EMAIL_CODE_RESEND_COOLDOWN_SECONDS,
       maxAttempts: environment.EMAIL_CODE_MAX_ATTEMPTS,
       maxActive: environment.EMAIL_CODE_MAX_ACTIVE,
     }),
-    network: Object.freeze({ trustProxyHeaders: environment.TRUST_PROXY_HEADERS }),
+    network: Object.freeze({
+      trustProxyHeaders: environment.TRUST_PROXY_HEADERS,
+      allowedOrigins: environment.NEXT_PUBLIC_SITE_URL
+        ? Object.freeze([environment.NEXT_PUBLIC_SITE_URL])
+        : Object.freeze([] as string[]),
+    }),
   });
 }
 

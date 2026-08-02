@@ -146,7 +146,7 @@ export function AccessFlow() {
         body: JSON.stringify({ displayName: name, email, password, idempotencyKey: crypto.randomUUID() }),
       });
       go(2);
-      if (!result.deliveryAvailable) setMessage("Письмо пока не отправлено. Повторите отправку после подключения почтового сервиса.");
+      if (!result.deliveryAvailable) setMessage("Не удалось отправить письмо. Повторите попытку позже.");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Не удалось создать профиль.");
     } finally {
@@ -169,8 +169,12 @@ export function AccessFlow() {
   async function resend() {
     setPending(true); setMessage(null);
     try {
-      await api("/api/auth/email/request", { method: "POST", body: "{}" });
+      const delivery = await api<{ deliveryAvailable: boolean }>("/api/auth/email/request", { method: "POST", body: "{}" });
       setCode("");
+      if (!delivery.deliveryAvailable) {
+        setMessage("Не удалось отправить письмо. Повторите попытку позже.");
+        return;
+      }
       const result = await api<{ code: string }>("/api/auth/email/development-code").catch(() => null);
       setDevelopmentCode(result?.code ?? null);
     } catch (error) {

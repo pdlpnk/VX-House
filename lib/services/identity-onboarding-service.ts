@@ -242,12 +242,14 @@ export class IdentityOnboardingService {
     if (shouldDeliverCode && "expiresAt" in result) {
       try {
         await this.emailProvider.sendVerificationCode({
+          idempotencyKey: challengeId,
           userId: result.userId,
           email: normalizedEmail,
           code: verificationCode,
           expiresAt: result.expiresAt!,
         });
       } catch {
+        logger.warn("verification_email_delivery_failed", { correlationId, userId: result.userId });
         deliveryAvailable = false;
       }
     }
@@ -322,12 +324,17 @@ export class IdentityOnboardingService {
     let deliveryAvailable = true;
     try {
       await this.emailProvider.sendVerificationCode({
+        idempotencyKey: challengeId,
         userId: input.principal.userId,
         email: result.email,
         code,
         expiresAt: result.expiresAt,
       });
     } catch {
+      logger.warn("verification_email_delivery_failed", {
+        userId: input.principal.userId,
+        reason: "resend",
+      });
       deliveryAvailable = false;
     }
     return { ...result, deliveryAvailable };

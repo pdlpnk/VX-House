@@ -43,6 +43,7 @@ try {
   await run(node, [prisma, "validate"], env);
   await run(node, [prisma, "generate"], env);
   const testFiles = [
+    "tests/registration-production.unit.test.mts",
     "tests/database-invariants.integration.test.mts",
     "tests/identity-profile-consent.integration.test.mts",
     "tests/functional-identity-onboarding.integration.test.mts",

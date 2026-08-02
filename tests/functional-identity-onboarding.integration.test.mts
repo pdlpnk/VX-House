@@ -61,12 +61,41 @@ test("регистрация игрока атомарно создаёт identi
   assert.equal(result.profile.playerProfile?.participationStatus, "PENDING");
   assert.equal(await database.session.count({ where: { userId: result.userId } }), 1);
   assert.equal(await database.auditEvent.count({ where: { actorId: result.userId } }), 2);
+  const challenge = await database.emailVerificationChallenge.findFirstOrThrow({ where: { userId: result.userId } });
+  assert.equal(challenge.expiresAt.getTime() - challenge.createdAt.getTime(), 600_000);
 });
 
 test("регистрация партнёра создаёт только pending-профиль партнёра", async () => {
   const { result } = await register("PARTNER");
   assert.equal(result.profile.partnerProfile?.status, "PENDING");
   assert.equal(result.profile.playerProfile, null);
+});
+
+test("ошибка доставки не откатывает целостный pending-аккаунт и не активирует его", async () => {
+  const unavailable: EmailProvider = {
+    async sendVerificationCode() { throw new Error("provider unavailable"); },
+  };
+  const isolated = new IdentityOnboardingService(
+    database,
+    tokens,
+    cookies,
+    new VerificationCodeHasher("test-email-code-secret-functional-module-one"),
+    unavailable,
+    { sessionIdleTtlSeconds: 3600, sessionAbsoluteTtlSeconds: 86400, verificationTtlSeconds: 600, resendCooldownSeconds: 30, maxVerificationAttempts: 3, maxActiveChallenges: 1 },
+  );
+  const result = await isolated.register({
+    command: { displayName: "Ожидающий пользователь", email: `${randomUUID()}@test.invalid`, password: "correct horse battery staple", productRole: "PLAYER", marketCode: "TR", preferredLanguage: "RU" },
+    idempotencyKey: `register-${randomUUID()}`,
+  });
+  assert.equal(result.deliveryAvailable, false);
+  const persisted = await database.user.findUniqueOrThrow({
+    where: { id: result.userId },
+    include: { profile: { include: { playerProfile: true } }, onboardingProgress: true, emailVerificationChallenges: true },
+  });
+  assert.equal(persisted.onboardingProgress?.status, "CONTACT_PENDING");
+  assert.equal(persisted.profile?.contactVerificationStatus, "UNVERIFIED");
+  assert.equal(persisted.profile?.playerProfile?.participationStatus, "PENDING");
+  assert.equal(persisted.emailVerificationChallenges.length, 1);
 });
 
 test("новый путь создаёт identity до выбора роли и настраивает профиль после подтверждения email", async () => {

@@ -1,6 +1,6 @@
 const NODE_ENVIRONMENTS = ["development", "test", "production"] as const;
 const LOG_LEVELS = ["debug", "info", "warn", "error"] as const;
-const EMAIL_PROVIDERS = ["development", "disabled"] as const;
+const EMAIL_PROVIDERS = ["development", "disabled", "resend"] as const;
 
 export type NodeEnvironment = (typeof NODE_ENVIRONMENTS)[number];
 export type LogLevel = (typeof LOG_LEVELS)[number];
@@ -9,6 +9,7 @@ export type EnvironmentSource = Readonly<Record<string, string | undefined>>;
 export interface ValidatedEnvironment {
   readonly NODE_ENV: NodeEnvironment;
   readonly APP_NAME: string;
+  readonly NEXT_PUBLIC_SITE_URL?: string;
   readonly LOG_LEVEL: LogLevel;
   readonly DATABASE_URL: string;
   readonly DIRECT_URL?: string;
@@ -26,6 +27,9 @@ export interface ValidatedEnvironment {
   readonly HEALTH_CHECK_TIMEOUT_MS: number;
   readonly EMAIL_VERIFICATION_SECRET: string;
   readonly EMAIL_PROVIDER: (typeof EMAIL_PROVIDERS)[number];
+  readonly RESEND_API_KEY?: string;
+  readonly EMAIL_FROM?: string;
+  readonly EMAIL_REQUEST_TIMEOUT_MS: number;
   readonly EMAIL_CODE_TTL_SECONDS: number;
   readonly EMAIL_CODE_RESEND_COOLDOWN_SECONDS: number;
   readonly EMAIL_CODE_MAX_ATTEMPTS: number;
@@ -58,18 +62,31 @@ function isPostgresUrl(value: string) {
   }
 }
 
-function isSecureProductionPostgresUrl(value: string) {
+function isProductionPostgresUrl(value: string) {
   try {
     const url = new URL(value);
     const sslMode = url.searchParams.get("sslmode");
-    return (
-      url.hostname !== "localhost" &&
-      url.hostname !== "127.0.0.1" &&
-      ["require", "verify-ca", "verify-full"].includes(sslMode ?? "")
-    );
+    const loopback = ["localhost", "127.0.0.1", "[::1]", "::1"].includes(url.hostname);
+    if (loopback) return sslMode === "disable";
+    return ["require", "verify-ca", "verify-full"].includes(sslMode ?? "");
   } catch {
     return false;
   }
+}
+
+function normalizeHttpOrigin(value: string | undefined) {
+  if (!value) return undefined;
+  try {
+    const url = new URL(value);
+    if (!["http:", "https:"].includes(url.protocol) || url.username || url.password) return undefined;
+    return url.origin;
+  } catch {
+    return undefined;
+  }
+}
+
+function isEmailAddress(value: string) {
+  return /^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/u.test(value) && !/[\r\n]/u.test(value);
 }
 
 function looksLikePlaceholder(value: string) {
@@ -105,6 +122,8 @@ export function validateEnvironment(source: EnvironmentSource): ValidatedEnviron
   const issues: string[] = [];
   const nodeEnvironment = source.NODE_ENV?.trim() || "development";
   const appName = source.APP_NAME?.trim() || "VX House";
+  const rawSiteUrl = source.NEXT_PUBLIC_SITE_URL?.trim() || undefined;
+  const siteUrl = normalizeHttpOrigin(rawSiteUrl);
   const logLevel = source.LOG_LEVEL?.trim() || "info";
   const databaseUrl = required(source, "DATABASE_URL", issues);
   const directUrl = source.DIRECT_URL?.trim() || undefined;
@@ -147,6 +166,9 @@ export function validateEnvironment(source: EnvironmentSource): ValidatedEnviron
   const healthCheckTimeout = positiveInteger(source, "HEALTH_CHECK_TIMEOUT_MS", 2_000, issues);
   const emailVerificationSecret = required(source, "EMAIL_VERIFICATION_SECRET", issues);
   const emailProvider = source.EMAIL_PROVIDER?.trim() || "development";
+  const resendApiKey = source.RESEND_API_KEY?.trim() || undefined;
+  const emailFrom = source.EMAIL_FROM?.trim() || undefined;
+  const emailRequestTimeout = positiveInteger(source, "EMAIL_REQUEST_TIMEOUT_MS", 8_000, issues);
   const emailCodeTtl = positiveInteger(source, "EMAIL_CODE_TTL_SECONDS", 10 * 60, issues);
   const emailCodeCooldown = positiveInteger(source, "EMAIL_CODE_RESEND_COOLDOWN_SECONDS", 60, issues);
   const emailCodeMaxAttempts = positiveInteger(source, "EMAIL_CODE_MAX_ATTEMPTS", 5, issues);
@@ -160,7 +182,17 @@ export function validateEnvironment(source: EnvironmentSource): ValidatedEnviron
     issues.push("LOG_LEVEL: допустимы debug, info, warn или error");
   }
   if (!EMAIL_PROVIDERS.includes(emailProvider as (typeof EMAIL_PROVIDERS)[number])) {
-    issues.push("EMAIL_PROVIDER: допустимы development или disabled");
+    issues.push("EMAIL_PROVIDER: допустимы development, disabled или resend");
+  }
+  if (rawSiteUrl && !siteUrl) issues.push("NEXT_PUBLIC_SITE_URL: ожидается корректный HTTP(S) origin");
+  if (emailProvider === "resend") {
+    if (!resendApiKey) issues.push("RESEND_API_KEY: значение обязательно для EMAIL_PROVIDER=resend");
+    else if (resendApiKey.length < 16 || /\s/u.test(resendApiKey)) issues.push("RESEND_API_KEY: некорректный формат");
+    if (!emailFrom) issues.push("EMAIL_FROM: значение обязательно для EMAIL_PROVIDER=resend");
+    else if (!isEmailAddress(emailFrom)) issues.push("EMAIL_FROM: ожидается адрес электронной почты");
+  }
+  if (emailRequestTimeout < 1_000 || emailRequestTimeout > 30_000) {
+    issues.push("EMAIL_REQUEST_TIMEOUT_MS: допустим диапазон от 1000 до 30000");
   }
   if (emailVerificationSecret && emailVerificationSecret.length < 32) {
     issues.push("EMAIL_VERIFICATION_SECRET: требуется не менее 32 символов");
@@ -213,11 +245,11 @@ export function validateEnvironment(source: EnvironmentSource): ValidatedEnviron
     issues.push("Brute-force конфигурация превышает безопасные инфраструктурные границы");
   }
   if (nodeEnvironment === "production") {
-    if (!isSecureProductionPostgresUrl(databaseUrl)) {
-      issues.push("DATABASE_URL: production требует удалённый PostgreSQL с обязательным TLS sslmode");
+    if (!isProductionPostgresUrl(databaseUrl)) {
+      issues.push("DATABASE_URL: production требует PostgreSQL на loopback с sslmode=disable либо удалённый PostgreSQL с TLS");
     }
-    if (directUrl && !isSecureProductionPostgresUrl(directUrl)) {
-      issues.push("DIRECT_URL: production требует удалённый PostgreSQL с обязательным TLS sslmode");
+    if (directUrl && !isProductionPostgresUrl(directUrl)) {
+      issues.push("DIRECT_URL: production требует PostgreSQL на loopback с sslmode=disable либо удалённый PostgreSQL с TLS");
     }
     if (/^(local|dev|test)[_.:-]/u.test(dataProtectionKeyId)) {
       issues.push("DATA_PROTECTION_KEY_ID: локальный key id запрещён в production");
@@ -239,6 +271,7 @@ export function validateEnvironment(source: EnvironmentSource): ValidatedEnviron
   return Object.freeze({
     NODE_ENV: nodeEnvironment as NodeEnvironment,
     APP_NAME: appName,
+    NEXT_PUBLIC_SITE_URL: siteUrl,
     LOG_LEVEL: logLevel as LogLevel,
     DATABASE_URL: databaseUrl,
     DIRECT_URL: directUrl,
@@ -256,6 +289,9 @@ export function validateEnvironment(source: EnvironmentSource): ValidatedEnviron
     HEALTH_CHECK_TIMEOUT_MS: healthCheckTimeout,
     EMAIL_VERIFICATION_SECRET: emailVerificationSecret,
     EMAIL_PROVIDER: emailProvider as (typeof EMAIL_PROVIDERS)[number],
+    RESEND_API_KEY: resendApiKey,
+    EMAIL_FROM: emailFrom,
+    EMAIL_REQUEST_TIMEOUT_MS: emailRequestTimeout,
     EMAIL_CODE_TTL_SECONDS: emailCodeTtl,
     EMAIL_CODE_RESEND_COOLDOWN_SECONDS: emailCodeCooldown,
     EMAIL_CODE_MAX_ATTEMPTS: emailCodeMaxAttempts,
