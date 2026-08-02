@@ -54,6 +54,7 @@ set +a
 pnpm exec prisma validate
 pnpm exec prisma generate
 pnpm exec prisma migrate deploy
+CONFIRM_PRODUCTION_BOOTSTRAP=VX_HOUSE_REFERENCE_DATA pnpm db:bootstrap:production
 pnpm build
 test -f dist/standalone/dist/server/assets/query_compiler_fast_bg.js
 test -f dist/standalone/dist/server/assets/query_compiler_fast_bg.wasm
@@ -185,6 +186,7 @@ set +a
 pnpm exec prisma validate
 pnpm exec prisma generate
 pnpm exec prisma migrate deploy
+CONFIRM_PRODUCTION_BOOTSTRAP=VX_HOUSE_REFERENCE_DATA pnpm db:bootstrap:production
 pnpm build
 test -f dist/standalone/dist/server/assets/query_compiler_fast_bg.js
 test -f dist/standalone/dist/server/assets/query_compiler_fast_bg.wasm

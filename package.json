@@ -24,6 +24,7 @@
     "db:generate": "prisma generate",
     "db:validate": "prisma validate",
     "db:format": "prisma format",
+    "db:bootstrap:production": "tsx scripts/bootstrap-production-reference-data.mts",
     "postinstall": "prisma generate"
   },
   "dependencies": {
