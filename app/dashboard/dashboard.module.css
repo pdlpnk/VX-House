@@ -1219,6 +1219,15 @@
   .adminReasonField, .adminEditorCard fieldset > button { grid-column: auto; }
 }
 
+@media (max-width: 480px) {
+  .topbar { gap: 0.5rem; }
+  .topbarTitle { min-width: 0; gap: 0.5rem; }
+  .topbarTitle > div { min-width: 0; }
+  .topbarTitle strong { overflow: hidden; max-width: 5.5rem; text-overflow: ellipsis; white-space: nowrap; }
+  .topbarActions { min-width: 0; gap: 0.4rem; }
+  .topbarProfile, .rankCompactWrap { display: none; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .dashboardRoot *, .dashboardRoot *::before, .dashboardRoot *::after { scroll-behavior: auto !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
 }
