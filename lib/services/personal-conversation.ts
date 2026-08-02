@@ -240,6 +240,15 @@ export async function appendPersonalConversationMessage(
     input.userId,
     input.occurredAt,
   );
+  // Creating the personal conversation also mirrors any existing in-app
+  // notifications. The notification being appended can therefore already
+  // have become a message while the conversation was being initialized.
+  const mirroredDuringInitialization = await database.supportMessage.findUnique({
+    where: { id: input.messageId },
+    select: { id: true },
+  });
+  if (mirroredDuringInitialization) return mirroredDuringInitialization;
+
   const message = await database.supportMessage.create({
     data: {
       id: input.messageId,
