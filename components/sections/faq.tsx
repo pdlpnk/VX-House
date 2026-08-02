@@ -1,59 +1,22 @@
-import { PublicSection } from "@/components/sections/public-section";
+"use client";
 
-const questions = [
-  {
-    question: "Что такое VX House?",
-    answer:
-      "Это платформа лояльности и сотрудничества. Она объединяет доступные условия, инструкции, подтверждение результата и историю взаимодействия с партнёрскими сервисами.",
-  },
-  {
-    question: "VX House принимает ставки или депозиты?",
-    answer:
-      "Нет. VX House не является игровой платформой, не принимает ставки или депозиты и не хранит игровой баланс. Действия у партнёра выполняются на стороне соответствующего сервиса.",
-  },
-  {
-    question: "Чем отличаются сценарии игрока и партнёра?",
-    answer:
-      "Игрок получает личный маршрут к доступным персональным условиям. Партнёр работает с условиями сотрудничества, материалами и статусами взаимодействия. Состав пространства зависит от роли и доступности.",
-  },
-  {
-    question: "Как подтверждается результат?",
-    answer:
-      "До начала действия пользователь видит требования и способ подтверждения. Отправленный результат получает понятный статус; при решении отображается причина и следующий шаг.",
-  },
-  {
-    question: "Что означают VX Rewards и VX Points?",
-    answer:
-      "VX Rewards — общее название подтверждённых преимуществ. VX Points — отдельные внутренние баллы прогресса, которые не являются деньгами. Они не объединяются в один баланс.",
-  },
-  {
-    question: "Где доступна платформа?",
-    answer:
-      "Стартовые рынки VX House — Турция и Азербайджан. Доступность конкретных условий зависит от страны и подтверждается платформой отдельно.",
-  },
-  {
-    question: "Кому доступен VX House?",
-    answer:
-      "Только совершеннолетним пользователям. Перед участием необходимо подтвердить применимые правила и согласия для выбранного рынка.",
-  },
-  {
-    question: "Как получить помощь?",
-    answer:
-      "Внутренняя поддержка будет сохранять контекст возможности и проверки. Полноценный рабочий сценарий поддержки появится на соответствующем этапе развития продукта.",
-  },
-] as const;
+import { useI18n } from "@/components/i18n/i18n-provider";
+import { PublicSection } from "@/components/sections/public-section";
+import { publicContent } from "@/lib/i18n/public-content";
 
 export function Faq() {
+  const { locale } = useI18n();
+  const content = publicContent[locale].faq;
   return (
     <PublicSection
       id="faq"
-      eyebrow="Вопросы и ответы"
-      title="Главное перед регистрацией"
-      description="Коротко о возможностях VX House, условиях участия и работе личного кабинета."
+      eyebrow={content.eyebrow}
+      title={content.title}
+      description={content.description}
       className="faq-section"
     >
       <div className="faq-list">
-        {questions.map(({ question, answer }) => (
+        {content.items.map(([question, answer]) => (
           <details key={question}>
             <summary><span>{question}</span><i aria-hidden="true" /></summary>
             <p>{answer}</p>
@@ -61,8 +24,8 @@ export function Faq() {
         ))}
       </div>
       <div className="faq-cta">
-        <div><small>Доступ к платформе</small><h3>Посмотрите, какие возможности доступны вам</h3><p>Создайте аккаунт, выберите роль и получите доступ к предложениям VX House.</p><span>Регистрация занимает несколько минут.</span></div>
-        <a href="/access">Получить доступ</a>
+        <div><small>{content.ctaLabel}</small><h3>{content.ctaTitle}</h3><p>{content.ctaText}</p><span>{content.ctaNote}</span></div>
+        <a href="/access">{content.cta}</a>
       </div>
     </PublicSection>
   );

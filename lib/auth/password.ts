@@ -67,8 +67,8 @@ async function derivePassword(password: string, salt: Uint8Array, iterations: nu
 
 export async function hashPassword(password: string) {
   const byteLength = textEncoder.encode(password).length;
-  if (byteLength < 12 || byteLength > 1024) {
-    throw new RangeError("Пароль должен содержать от 12 до 1024 байт в UTF-8");
+  if (byteLength < 8 || byteLength > 1024) {
+    throw new RangeError("Пароль должен содержать от 8 до 1024 байт в UTF-8");
   }
 
   const salt = crypto.getRandomValues(new Uint8Array(SALT_BYTES));

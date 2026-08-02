@@ -1,14 +1,9 @@
 import styles from "@/app/access/access.module.css";
+import { useI18n } from "@/components/i18n/i18n-provider";
 
 const stepLabels = [
-  "Профиль",
-  "Подтверждение почты",
-  "Добро пожаловать",
-  "Задания",
-  "Прогресс",
-  "Менеджер",
-  "Подтверждения",
-  "Готово",
+  "progress.role", "progress.profile", "progress.email", "progress.tasks",
+  "progress.progress", "progress.manager", "progress.consents", "progress.done",
 ] as const;
 
 type AccessProgressProps = {
@@ -16,20 +11,22 @@ type AccessProgressProps = {
 };
 
 export function AccessProgress({ currentStep }: AccessProgressProps) {
-  const currentLabel = stepLabels[currentStep - 1] ?? stepLabels[0];
+  const { t } = useI18n();
+  const currentLabel = t(stepLabels[currentStep - 1] ?? stepLabels[0]);
+  const stepText = t("progress.step", { current: currentStep, total: stepLabels.length });
 
   return (
     <div
       className={styles.progress}
       role="progressbar"
-      aria-label={`Шаг ${currentStep} из ${stepLabels.length} — ${currentLabel.toLowerCase()}`}
+      aria-label={`${stepText} — ${currentLabel.toLowerCase()}`}
       aria-valuemin={1}
       aria-valuemax={stepLabels.length}
       aria-valuenow={currentStep}
-      aria-valuetext={`${currentLabel}. Шаг ${currentStep} из ${stepLabels.length}`}
+      aria-valuetext={`${currentLabel}. ${stepText}`}
     >
       <div className={styles.progressText}>
-        <strong>Шаг {currentStep} из {stepLabels.length}</strong>
+        <strong>{stepText}</strong>
         <span>{currentLabel}</span>
       </div>
       <div className={styles.progressTrack} aria-hidden="true">

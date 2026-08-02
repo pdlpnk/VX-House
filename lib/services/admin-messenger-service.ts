@@ -242,13 +242,17 @@ export class AdminMessengerService {
   }
 
   private async conversationView(item: NonNullable<ConversationRecord>): Promise<SupportConversationView> {
+    const context = object(item.context);
+    const readValue = context.playerMessengerReadAt;
+    const readAt = typeof readValue === "string" && Number.isFinite(new Date(readValue).getTime()) ? new Date(readValue) : null;
     return {
       id: item.id,
       category: { key: item.categoryDefinition.key, title: item.categoryDefinition.title, description: item.categoryDefinition.description },
       priority: item.priority,
       status: item.status,
       subject: item.subject,
-      context: object(item.context),
+      context,
+      unreadCount: item.messages.filter((message) => message.authorType !== "USER" && (!readAt || message.createdAt > readAt)).length,
       createdAt: item.createdAt.toISOString(),
       updatedAt: item.updatedAt.toISOString(),
       messages: await Promise.all(item.messages.map(async (message) => ({

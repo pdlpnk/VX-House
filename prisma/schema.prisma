@@ -38,6 +38,7 @@ enum MarketCode {
 }
 
 enum LanguageCode {
+  EN
   RU
   TR
   AZ

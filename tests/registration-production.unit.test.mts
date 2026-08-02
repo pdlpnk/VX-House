@@ -88,6 +88,7 @@ test("Resend получает минимальный запрос и ключ и
     email: "user@example.com",
     code: "123456",
     expiresAt: new Date("2026-08-02T12:10:00.000Z"),
+    language: "ru",
   });
   assert.equal(captured?.url, "https://api.resend.com/emails");
   const headers = new Headers(captured?.init?.headers);
@@ -114,6 +115,7 @@ test("ошибка Resend и disabled provider имеют безопасное �
     email: "user@example.com",
     code: "654321",
     expiresAt: new Date("2026-08-02T12:10:00.000Z"),
+    language: "ru" as const,
   };
   await assert.rejects(provider.sendVerificationCode(message), (error: unknown) => {
     assert.ok(error instanceof EmailDeliveryError);

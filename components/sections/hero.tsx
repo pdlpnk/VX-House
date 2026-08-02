@@ -5,12 +5,14 @@ import { ArrowDown, ArrowRight, Network } from "lucide-react";
 
 import { Container } from "@/components/container";
 import { HeroVisual } from "@/components/hero-visual";
+import { useI18n } from "@/components/i18n/i18n-provider";
 import { Button } from "@/components/ui/button";
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import { fadeUp, staggerContainer } from "@/lib/motion";
 
 export function Hero() {
   const prefersReducedMotion = useReducedMotion();
+  const { t } = useI18n();
   const contentVariants = prefersReducedMotion
     ? { hidden: { opacity: 1 }, visible: { opacity: 1 } }
     : staggerContainer(0.1, 0.14);
@@ -33,7 +35,7 @@ export function Hero() {
         >
           <motion.div variants={prefersReducedMotion ? undefined : fadeUp} className="hero-badge">
             <Network aria-hidden="true" />
-            <span>Закрытые условия и вознаграждения</span>
+            <span>{t("hero.badge")}</span>
           </motion.div>
 
           <motion.h1
@@ -41,16 +43,14 @@ export function Hero() {
             id="hero-title"
             className="mt-7 max-w-[14ch] text-balance text-[clamp(2.65rem,11.5vw,5.75rem)] font-semibold leading-[0.95] tracking-[var(--tracking-display)] text-foreground"
           >
-            Получайте больше от своей активности
+            {t("hero.title")}
           </motion.h1>
 
           <motion.p
             variants={prefersReducedMotion ? undefined : fadeUp}
             className="mt-7 max-w-xl text-pretty text-base leading-7 text-muted-foreground sm:text-lg sm:leading-8"
           >
-            VX House открывает доступ к специальным условиям, заданиям,
-            программам лояльности и денежным вознаграждениям от партнёров. Все
-            правила, сроки и этапы видны заранее.
+            {t("hero.description")}
           </motion.p>
 
           <motion.div
@@ -60,7 +60,7 @@ export function Hero() {
           >
             <Button asChild size="lg" className="group rounded-xl shadow-glow">
               <a href="/access">
-                Получить доступ
+                {t("hero.primary")}
                 <ArrowRight
                   aria-hidden="true"
                   className="transition-transform duration-200 group-hover:translate-x-0.5"
@@ -73,7 +73,7 @@ export function Hero() {
               variant="outline"
               className="rounded-xl border-white/10 bg-white/[0.035] backdrop-blur-md"
             >
-              <a href="#process">Как это работает</a>
+              <a href="#process">{t("hero.secondary")}</a>
             </Button>
           </motion.div>
         </motion.div>
@@ -90,13 +90,13 @@ export function Hero() {
 
       <motion.a
         href="#model"
-        aria-label="Прокрутить к описанию платформы"
+        aria-label={t("hero.scroll")}
         initial={prefersReducedMotion ? false : { opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 1, duration: 0.6 }}
         className="hero-scroll-indicator"
       >
-        <span>Далее</span>
+        <span>{t("hero.next")}</span>
         <ArrowDown aria-hidden="true" />
       </motion.a>
     </section>

@@ -6,6 +6,8 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 
 import { useDashboard } from "@/components/dashboard/dashboard-provider";
+import { useI18n } from "@/components/i18n/i18n-provider";
+import { formatLocalDay, formatLocalTime, type Locale } from "@/lib/i18n";
 import type { SupportConversationView, SupportMessageView } from "@/lib/support";
 import styles from "./personal-messenger.module.css";
 
@@ -14,10 +16,10 @@ const emojis = ["🙂", "👍", "❤️", "✨"];
 const allowedAttachmentTypes = new Set(["image/jpeg", "image/png", "image/webp", "application/pdf"]);
 const maxAttachmentSize = 10 * 1024 * 1024;
 
-function fileSizeLabel(value: number) {
+function fileSizeLabel(value: number, megabytes: string, kilobytes: string) {
   return value >= 1024 * 1024
-    ? `${(value / 1024 / 1024).toFixed(1)} МБ`
-    : `${Math.max(1, Math.round(value / 1024))} КБ`;
+    ? `${(value / 1024 / 1024).toFixed(1)} ${megabytes}`
+    : `${Math.max(1, Math.round(value / 1024))} ${kilobytes}`;
 }
 
 function messageAuthor(message: SupportMessageView) {
@@ -26,43 +28,23 @@ function messageAuthor(message: SupportMessageView) {
   return "manager";
 }
 
-function messagePreview(message?: SupportMessageView) {
-  if (!message) return "Напишите своему персональному менеджеру.";
+function messagePreview(message: SupportMessageView | undefined, emptyLabel: string) {
+  if (!message) return emptyLabel;
   return message.body.replace(/\s+/g, " ").trim();
-}
-
-function timeLabel(value: string) {
-  return new Intl.DateTimeFormat("ru", {
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZone: "UTC",
-  }).format(new Date(value));
-}
-
-function dayLabel(value?: string) {
-  if (!value) return "Сегодня";
-  const date = new Date(value);
-  const today = new Date();
-  if (
-    date.getUTCFullYear() === today.getUTCFullYear()
-    && date.getUTCMonth() === today.getUTCMonth()
-    && date.getUTCDate() === today.getUTCDate()
-  ) return "Сегодня";
-  return new Intl.DateTimeFormat("ru", {
-    day: "numeric",
-    month: "long",
-    timeZone: "UTC",
-  }).format(date);
 }
 
 function MessageList({
   conversation,
   pending,
   shouldReduceMotion,
+  locale,
+  todayLabel,
 }: {
   conversation: SupportConversationView;
   pending: boolean;
   shouldReduceMotion: boolean;
+  locale: Locale;
+  todayLabel: string;
 }) {
   const listRef = useRef<HTMLDivElement>(null);
   const restoredConversation = useRef("");
@@ -96,7 +78,9 @@ function MessageList({
       }}
     >
       <div className={styles.day}>
-        {dayLabel(conversation.messages.at(-1)?.createdAt)}
+        {conversation.messages.at(-1)?.createdAt
+          ? formatLocalDay(locale, conversation.messages.at(-1)!.createdAt, todayLabel)
+          : todayLabel}
       </div>
       {conversation.messages.map((message) => {
         const author = messageAuthor(message);
@@ -122,20 +106,20 @@ function MessageList({
                       <a key={attachment.id} className={styles.imageAttachment} href={href} download>
                         {/* The protected endpoint verifies ownership before returning bytes. */}
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={`${href}?inline=1`} alt={`Вложение: ${attachment.fileName}`} />
-                        <span><ImageIcon aria-hidden="true" />{attachment.fileName}<small>{fileSizeLabel(attachment.sizeBytes)}</small></span>
+                        <img src={`${href}?inline=1`} alt={attachment.fileName} />
+                        <span><ImageIcon aria-hidden="true" />{attachment.fileName}<small>{fileSizeLabel(attachment.sizeBytes, "MB", "KB")}</small></span>
                       </a>
                     ) : (
                       <a key={attachment.id} href={href} download>
                         <FileText aria-hidden="true" />
                         {attachment.fileName}
-                        <small>{fileSizeLabel(attachment.sizeBytes)}</small>
+                        <small>{fileSizeLabel(attachment.sizeBytes, "MB", "KB")}</small>
                       </a>
                     );
                   })}
                 </div>
               ) : null}
-              <time dateTime={message.createdAt}>{timeLabel(message.createdAt)}</time>
+              <time dateTime={message.createdAt}>{formatLocalTime(locale, message.createdAt)}</time>
             </div>
           </motion.article>
         );
@@ -144,7 +128,7 @@ function MessageList({
         {pending ? (
           <motion.div
             className={styles.typing}
-            aria-label="Сообщение отправляется"
+            aria-label="Message is being sent"
             initial={shouldReduceMotion ? false : { opacity: 0, y: 4 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
@@ -172,6 +156,7 @@ function Composer({
   onConversation: (value: SupportConversationView) => void;
   onPendingChange: (value: boolean) => void;
 }) {
+  const { t } = useI18n();
   const [body, setBody] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [pending, setPending] = useState(false);
@@ -188,12 +173,12 @@ function Composer({
     }
     if (!allowedAttachmentTypes.has(next.type)) {
       setFile(null);
-      setError("Разрешены изображения JPG, PNG, WEBP и документы PDF.");
+      setError(t("messenger.fileTypeError"));
       return;
     }
     if (next.size < 1 || next.size > maxAttachmentSize) {
       setFile(null);
-      setError("Размер файла не должен превышать 10 МБ.");
+      setError(t("messenger.fileSizeError"));
       return;
     }
     setFile(next);
@@ -211,16 +196,16 @@ function Composer({
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          body: cleanBody || `Вложение: ${file?.name ?? "файл"}`,
+          body: cleanBody || t("messenger.attachment", { name: file?.name ?? "file" }),
           idempotencyKey: `message-${crypto.randomUUID()}`,
         }),
       });
       let updated = await response.json() as SupportConversationView & { message?: string };
-      if (!response.ok) throw new Error(updated.message ?? "Не удалось отправить сообщение");
+      if (!response.ok) throw new Error(updated.message ?? t("messenger.sendError"));
 
       if (file) {
         const latest = updated.messages.findLast((item) => item.authorType === "USER");
-        if (!latest) throw new Error("Сообщение отправлено, но файл не прикреплён");
+        if (!latest) throw new Error(t("messenger.uploadError"));
         const attachment = new FormData();
         attachment.set("messageId", latest.id);
         attachment.set("file", file);
@@ -229,7 +214,7 @@ function Composer({
           body: attachment,
         });
         const uploadResult = await upload.json() as { message?: string };
-        if (!upload.ok) throw new Error(uploadResult.message ?? "Файл не прикреплён");
+        if (!upload.ok) throw new Error(uploadResult.message ?? t("messenger.uploadError"));
         const refreshed = await fetch(`/api/support/${conversation.id}`);
         if (refreshed.ok) updated = await refreshed.json() as SupportConversationView;
       }
@@ -239,7 +224,7 @@ function Composer({
       setFile(null);
       setEmojiOpen(false);
     } catch (problem) {
-      setError(problem instanceof Error ? problem.message : "Не удалось отправить сообщение");
+      setError(problem instanceof Error ? problem.message : t("messenger.sendError"));
     } finally {
       setPending(false);
       onPendingChange(false);
@@ -254,7 +239,7 @@ function Composer({
             // eslint-disable-next-line @next/next/no-img-element
             <img src={previewUrl} alt="" />
           ) : <FileText aria-hidden="true" />}
-          <span><strong>{file.name}</strong><small>{fileSizeLabel(file.size)}</small></span>
+          <span><strong>{file.name}</strong><small>{fileSizeLabel(file.size, t("messenger.megabytes"), t("messenger.kilobytes"))}</small></span>
           <button type="button" onClick={() => setFile(null)} aria-label={`Удалить файл ${file.name}`}><X aria-hidden="true" /></button>
         </div>
       ) : null}
@@ -304,8 +289,8 @@ function Composer({
         rows={1}
         value={body}
         maxLength={5000}
-        placeholder="Введите сообщение…"
-        aria-label="Сообщение менеджеру"
+        placeholder={t("messenger.placeholder")}
+        aria-label={t("messenger.placeholder")}
         onChange={(event) => setBody(event.target.value)}
         onKeyDown={(event) => {
           if (event.key === "Enter" && !event.shiftKey) {
@@ -318,13 +303,13 @@ function Composer({
         type="submit"
         className={styles.sendButton}
         disabled={(!body.trim() && !file) || pending}
-        aria-label="Отправить сообщение"
+        aria-label={t("messenger.send")}
       >
         {pending ? <LoaderCircle className={styles.spinner} aria-hidden="true" /> : <Send aria-hidden="true" />}
       </button>
       {error ? <p className={styles.error} role="alert">{error}</p> : null}
       <span className="sr-only" aria-live="polite">
-        {pending ? "Сообщение отправляется" : file ? `Выбран файл ${file.name}` : ""}
+        {pending ? t("messenger.sending") : file ? file.name : ""}
       </span>
     </form>
   );
@@ -339,21 +324,22 @@ function MessengerHeader({
   compact?: boolean;
   onClose?: () => void;
 }) {
+  const { t } = useI18n();
   return (
     <header className={styles.header}>
       <span className={styles.avatar} aria-hidden="true">VX</span>
       <div className={styles.manager}>
-        <strong>Менеджер VX House</strong>
-        <span>Online</span>
+        <strong>{t("messenger.manager")}</strong>
+        <span>{t("messenger.online")}</span>
       </div>
       <div className={styles.headerActions}>
         {compact ? (
-          <Link className={styles.iconButton} href={basePath} aria-label="Развернуть Messenger">
+          <Link className={styles.iconButton} href={basePath} aria-label={t("messenger.expand")}>
             <Expand aria-hidden="true" />
           </Link>
         ) : null}
         {onClose ? (
-          <button type="button" className={styles.iconButton} onClick={onClose} aria-label="Закрыть Messenger">
+          <button type="button" className={styles.iconButton} onClick={onClose} aria-label={t("common.close")}>
             <X aria-hidden="true" />
           </button>
         ) : null}
@@ -368,14 +354,17 @@ export function PersonalMessengerExperience({
   unreadCount,
   fullPage,
   onRead,
+  onUnreadChange,
 }: {
   initialConversation: SupportConversationView;
   basePath: string;
   unreadCount: number;
   fullPage: boolean;
-  onRead: () => void;
+  onRead: () => void | Promise<void>;
+  onUnreadChange: (value: number) => void;
 }) {
   const { shouldReduceMotion } = useDashboard();
+  const { locale, t } = useI18n();
   const [conversation, setConversation] = useState(initialConversation);
   const [open, setOpen] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(unreadCount > 0);
@@ -388,12 +377,19 @@ export function PersonalMessengerExperience({
       if (!response.ok) return;
       const next = await response.json() as SupportConversationView;
       if (next.messages.length > conversation.messages.length) {
+        const knownIds = new Set(conversation.messages.map((message) => message.id));
+        const newIncoming = next.messages.filter((message) => !knownIds.has(message.id) && message.authorType !== "USER").length;
         setConversation(next);
-        if (!open && !fullPage) setPreviewOpen(true);
+        if (!open && !fullPage && newIncoming > 0) {
+          onUnreadChange(unreadCount + newIncoming);
+          setPreviewOpen(true);
+        } else if (newIncoming > 0) {
+          void onRead();
+        }
       }
     }, 5000);
     return () => window.clearInterval(timer);
-  }, [conversation.id, conversation.messages.length, fullPage, open]);
+  }, [conversation.id, conversation.messages, fullPage, onRead, onUnreadChange, open, unreadCount]);
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -415,15 +411,15 @@ export function PersonalMessengerExperience({
           <div className={styles.conversationItem} aria-current="page">
             <span className={styles.avatar} aria-hidden="true">VX</span>
             <div>
-              <strong>Менеджер VX House</strong>
-              <p>{messagePreview(latest)}</p>
+              <strong>{t("messenger.manager")}</strong>
+              <p>{messagePreview(latest, t("messenger.empty"))}</p>
             </div>
-            <time dateTime={latest?.createdAt}>{latest ? timeLabel(latest.createdAt) : ""}</time>
+            <time dateTime={latest?.createdAt}>{latest ? formatLocalTime(locale, latest.createdAt) : ""}</time>
           </div>
         </aside>
         <div className={styles.conversationPanel}>
           <MessengerHeader basePath={basePath} />
-          <MessageList conversation={conversation} pending={sending} shouldReduceMotion={shouldReduceMotion} />
+          <MessageList conversation={conversation} pending={sending} shouldReduceMotion={shouldReduceMotion} locale={locale} todayLabel={t("common.today")} />
           <Composer
             conversation={conversation}
             onConversation={setConversation}
@@ -454,13 +450,13 @@ export function PersonalMessengerExperience({
                 onRead();
               }}
             >
-              <strong>Менеджер VX House</strong>
-              <p>“{messagePreview(latest)}”</p>
+              <strong>{t("messenger.manager")}</strong>
+              <p>“{messagePreview(latest, t("messenger.empty"))}”</p>
             </button>
             <button
               type="button"
               className={styles.previewClose}
-              aria-label="Скрыть сообщение"
+              aria-label={t("access.hideMessage")}
               onClick={(event) => {
                 event.stopPropagation();
                 setPreviewOpen(false);
@@ -485,7 +481,7 @@ export function PersonalMessengerExperience({
             transition={transition}
           >
             <MessengerHeader basePath={basePath} compact onClose={() => setOpen(false)} />
-            <MessageList conversation={conversation} pending={sending} shouldReduceMotion={shouldReduceMotion} />
+            <MessageList conversation={conversation} pending={sending} shouldReduceMotion={shouldReduceMotion} locale={locale} todayLabel={t("common.today")} />
             <Composer
               conversation={conversation}
               onConversation={setConversation}
@@ -496,7 +492,7 @@ export function PersonalMessengerExperience({
           <motion.button
             type="button"
             className={styles.launcher}
-            aria-label={unreadCount ? `Открыть Messenger. Непрочитано: ${unreadCount}` : "Открыть Messenger"}
+            aria-label={unreadCount ? `${t("messenger.open")}. ${t("workspace.unread", { count: unreadCount })}` : t("messenger.open")}
             onClick={() => {
               setOpen(true);
               setPreviewOpen(false);
@@ -523,7 +519,7 @@ export function PersonalMessengerExperience({
       </AnimatePresence>
 
       <Link className="sr-only" href={basePath}>
-        Открыть Messenger <ArrowUpRight aria-hidden="true" />
+        {t("messenger.open")} <ArrowUpRight aria-hidden="true" />
       </Link>
     </div>
   );

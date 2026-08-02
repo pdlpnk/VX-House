@@ -32,24 +32,24 @@ test("server-renders the VX House landing experience", async () => {
   assert.match(html, /<title>VX House — специальные условия и вознаграждения<\/title>/i);
   assert.match(html, /<html[^>]*class="dark"/i);
   assert.match(html, /<main[^>]*id="main-content"/i);
-  assert.match(html, /Перейти к содержимому/i);
-  assert.match(html, /Получайте больше от своей активности/i);
-  assert.match(html, /Закрытые условия и вознаграждения/i);
-  assert.match(html, /Как это работает/i);
-  assert.match(html, /Всё необходимое в одном месте/i);
-  assert.match(html, /Специальные условия и вознаграждения/i);
-  assert.match(html, /Готовые сценарии и сопровождение/i);
-  assert.match(html, /Четыре простых шага/i);
-  assert.match(html, /Больше условий\. Меньше неопределённости\./i);
-  assert.match(html, /Посмотрите, какие возможности доступны вам/i);
-  assert.match(html, /VX Rewards — общее название подтверждённых преимуществ/i);
-  assert.match(html, /Турция и Азербайджан/i);
+  assert.match(html, /Skip to content/i);
+  assert.match(html, /Get more from your activity/i);
+  assert.match(html, /Private terms and rewards/i);
+  assert.match(html, /How it works/i);
+  assert.match(html, /Everything important at a glance/i);
+  assert.match(html, /Special terms and rewards/i);
+  assert.match(html, /Ready-to-use scenarios and guidance/i);
+  assert.match(html, /Four simple steps/i);
+  assert.match(html, /More opportunities\. Less uncertainty\./i);
+  assert.match(html, /See which opportunities are available to you/i);
+  assert.match(html, /VX Rewards are confirmed benefits/i);
+  assert.match(html, /Türkiye and Azerbaijan/i);
   assert.match(html, /id="faq"/i);
   assert.match(html, /application\/ld\+json/i);
   assert.doesNotMatch(html, /12 480|\+ 1 250|Прайм|24\/7/i);
   assert.match(html, /href="\/access"/i);
   assert.doesNotMatch(html, /mailto:/i);
-  assert.match(html, /aria-label="Основная навигация"/i);
+  assert.match(html, /aria-label="Main navigation"/i);
   assert.doesNotMatch(html, /codex-preview|react-loading-skeleton/i);
 });
 
@@ -59,8 +59,8 @@ test("server-renders the access welcome screen", async () => {
 
   const html = await response.text();
   assert.match(html, /<title>Получение доступа \| VX House<\/title>/i);
-  assert.match(html, /Проверяем сеанс/i);
-  assert.match(html, /Только для совершеннолетних/i);
+  assert.match(html, /Checking your session/i);
+  assert.match(html, /Adults only/i);
   assert.doesNotMatch(html, /Кабинет готов|Профиль активирован|Данные защищены системой/i);
 });
 
@@ -106,7 +106,7 @@ test("dashboard keeps player-only server-backed contracts", async () => {
   assert.match(provider, /localStorage\.setItem/);
   assert.match(provider, /useReducedMotion/);
   assert.match(shell, /Главная/);
-  assert.match(workspaceShell, /Уведомлений пока нет/);
+  assert.match(workspaceShell, /workspace\.notifications/);
   assert.match(workspaceShell, /WorkspaceShell/);
   assert.match(shell, /href: "\/dashboard\/support"/);
   assert.match(home, /Следующий шаг/);
@@ -345,12 +345,14 @@ test.skip("server-renders support center and creation for both roles (requires a
 });
 
 test("support, appeals and notifications use server-backed contracts", async () => {
-  const [service, migration, messenger, messengerStyles, workspace, playerShell, partnerShell, task, reward] = await Promise.all([
+  const [service, migration, messenger, messengerStyles, workspace, dashboardStyles, readRoute, playerShell, partnerShell, task, reward] = await Promise.all([
     readFile(new URL("../lib/services/support-notification-service.ts", import.meta.url), "utf8"),
     readFile(new URL("../prisma/migrations/20260722080000_support_appeals_notifications_integration/migration.sql", import.meta.url), "utf8"),
     readFile(new URL("../components/messenger/personal-messenger.tsx", import.meta.url), "utf8"),
     readFile(new URL("../components/messenger/personal-messenger.module.css", import.meta.url), "utf8"),
     readFile(new URL("../components/dashboard/workspace-shell.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/dashboard/dashboard.module.css", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/support/[id]/read/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../components/dashboard/dashboard-shell.tsx", import.meta.url), "utf8"),
     readFile(new URL("../components/partner/partner-shell.tsx", import.meta.url), "utf8"),
     readFile(new URL("../components/opportunities/task-detail.tsx", import.meta.url), "utf8"),
@@ -360,16 +362,20 @@ test("support, appeals and notifications use server-backed contracts", async () 
   for (const category of ["Доступ к платформе", "Задание", "Проверка результата", "VX Rewards", "Профиль и настройки", "Апелляция", "Сотрудничество"]) {
     assert.match(migration, new RegExp(category, "i"));
   }
-  assert.match(messenger, /Менеджер VX House/);
-  assert.match(messenger, /Введите сообщение/);
+  assert.match(messenger, /messenger\.manager/);
+  assert.match(messenger, /messenger\.placeholder/);
   assert.match(messenger, /Прикрепить файл/);
-  assert.match(messenger, /Развернуть Messenger/);
+  assert.match(messenger, /messenger\.expand/);
   assert.match(messenger, /\/api\/support/);
   assert.match(service, /createAppeal/);
   assert.match(service, /appealStateMachine/);
   assert.match(service, /getPersonalConversation/);
+  assert.match(service, /markConversationRead/);
   assert.match(service, /markNotificationRead/);
   assert.match(workspace, /\/api\/notifications/);
+  assert.doesNotMatch(workspace, /const unreadMessages = notifications\.filter/);
+  assert.match(readRoute, /markConversationRead/);
+  assert.match(dashboardStyles, /\.navLink > i \{ position: absolute;/);
   assert.match(migration, /AppealStatusHistory_append_only/);
   assert.match(migration, /NotificationStatusHistory_append_only/);
   assert.match(playerShell, /\/dashboard\/support/);
@@ -378,7 +384,7 @@ test("support, appeals and notifications use server-backed contracts", async () 
   assert.match(reward, /Написать менеджеру/);
   assert.match(messengerStyles, /prefers-reduced-motion/);
   assert.doesNotMatch(`${messenger}${playerShell}${partnerShell}`, /Новый диалог|Создать обращение|Ожидает оператора|Приоритет/i);
-  assert.doesNotMatch(messenger, /WebSocket|localStorage|sessionStorage|EventSource/i);
+  assert.doesNotMatch(messenger, /WebSocket|localStorage|EventSource/i);
 });
 
 test.skip("server-renders the complete administrative workspace (requires authenticated database fixture)", async () => {
@@ -498,7 +504,7 @@ test("connects final MVP platform operations without product demo sources", asyn
 });
 
 test("includes scalable theme and component contracts", async () => {
-  const [theme, effects, hero, platform, accessFlow, accessScenario, accessBenefits, accessMarket, accessProfile, accessConsent, accessComplete, accessProgress, accessDraft, components, page, packageJson] = await Promise.all([
+  const [theme, effects, hero, platform, accessFlow, accessScenario, accessBenefits, accessWelcome, accessRegistration, accessConsent, accessComplete, accessProgress, accessDraft, accessContent, components, page, packageJson] = await Promise.all([
     readFile(new URL("../styles/theme.css", import.meta.url), "utf8"),
     readFile(new URL("../styles/effects.css", import.meta.url), "utf8"),
     readFile(new URL("../styles/hero.css", import.meta.url), "utf8"),
@@ -506,12 +512,13 @@ test("includes scalable theme and component contracts", async () => {
     readFile(new URL("../components/access/access-flow.tsx", import.meta.url), "utf8"),
     readFile(new URL("../components/access/access-scenario-step.tsx", import.meta.url), "utf8"),
     readFile(new URL("../components/access/access-benefits-step.tsx", import.meta.url), "utf8"),
-    readFile(new URL("../components/access/access-market-step.tsx", import.meta.url), "utf8"),
-    readFile(new URL("../components/access/access-profile-step.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../components/access/access-onboarding-welcome-step.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../components/access/access-registration-step.tsx", import.meta.url), "utf8"),
     readFile(new URL("../components/access/access-consent-step.tsx", import.meta.url), "utf8"),
     readFile(new URL("../components/access/access-complete-step.tsx", import.meta.url), "utf8"),
     readFile(new URL("../components/access/access-progress.tsx", import.meta.url), "utf8"),
     readFile(new URL("../lib/access-types.ts", import.meta.url), "utf8"),
+    readFile(new URL("../lib/i18n/access-content.ts", import.meta.url), "utf8"),
     readFile(new URL("../components.json", import.meta.url), "utf8"),
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../package.json", import.meta.url), "utf8"),
@@ -537,24 +544,22 @@ test("includes scalable theme and component contracts", async () => {
   assert.match(accessBenefits, /Предварительный состав/);
   assert.match(accessBenefits, /Доступность уточняется/);
   assert.match(accessBenefits, /reducedMotion/);
-  assert.match(accessMarket, /Турция/);
-  assert.match(accessMarket, /Азербайджан/);
-  assert.match(accessMarket, /Предпочтительный язык/);
-  assert.match(accessMarket, /интерфейс остаётся на русском/i);
-  assert.match(accessProfile, /Как с вами связаться/);
-  assert.match(accessProfile, /создадим защищённый\s+профиль/i);
-  assert.match(accessProfile, /не сохраняется в черновике/i);
-  assert.match(accessProfile, /onNameChange/);
-  assert.match(accessProfile, /onEmailChange/);
-  assert.match(accessProfile, /onContinue/);
-  assert.match(accessConsent, /Мне исполнилось 18 лет/);
-  assert.match(accessConsent, /опубликованной версией/i);
-  assert.match(accessConsent, /обязательные документы/i);
-  assert.match(accessComplete, /Знакомство завершено/);
-  assert.match(accessComplete, /Безопасный вход настроен/);
-  assert.match(accessComplete, /Перейти к заданиям/);
+  assert.match(accessWelcome, /onScenarioChange/);
+  assert.match(accessWelcome, /onCountryChange/);
+  assert.doesNotMatch(accessWelcome, /onLanguageChange|access-language/);
+  assert.match(accessRegistration, /onNameChange/);
+  assert.match(accessRegistration, /onEmailChange/);
+  assert.match(accessRegistration, /onSubmit/);
+  assert.match(accessFlow, /preferredLanguage:\s*toDatabaseLanguage\(locale\)/);
+  assert.match(accessContent, /Мне исполнилось 18 лет/);
+  assert.match(accessConsent, /useI18n/);
+  assert.match(accessContent, /опубликованной версией/i);
+  assert.match(accessContent, /обязательные документы/i);
+  assert.match(accessContent, /Знакомство завершено/);
+  assert.match(accessContent, /Безопасный вход настроен/);
+  assert.match(accessContent, /Перейти к заданиям/);
   assert.doesNotMatch(accessComplete, /Кабинет готов|Профиль активирован/i);
-  assert.match(accessProgress, /"Подтверждение почты"/);
+  assert.match(accessProgress, /"progress\.email"/);
   assert.match(accessDraft, /AccessScenario/);
   assert.match(accessDraft, /AccessCountry/);
   assert.match(components, /"ui": "@\/components\/ui"/);

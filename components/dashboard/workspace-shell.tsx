@@ -5,16 +5,19 @@ import { Bell, ChevronRight, Coins, Grid2X2, LogOut, Medal, Menu, Search, Shield
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { type CSSProperties, useEffect, useRef, useState } from "react";
+import { type CSSProperties, useCallback, useEffect, useRef, useState } from "react";
 
 import styles from "@/app/dashboard/dashboard.module.css";
 import { DashboardProvider, useDashboard } from "@/components/dashboard/dashboard-provider";
+import { LanguageSwitcher } from "@/components/i18n/language-switcher";
+import { useI18n } from "@/components/i18n/i18n-provider";
 import { PersonalMessengerExperience } from "@/components/messenger/personal-messenger";
 import type { DashboardPreferences } from "@/lib/dashboard-data";
 import type { SafeProfileDTO } from "@/lib/repositories";
 import type { NotificationView, SupportConversationView } from "@/lib/support";
 import type { GlobalSearchResult } from "@/lib/platform-operations";
 import type { EconomySnapshotView } from "@/lib/economy";
+import { formatLocalTime, fromDatabaseLanguage } from "@/lib/i18n";
 
 export type WorkspaceNavigationItem = {
   label: string;
@@ -55,6 +58,7 @@ function WorkspaceNavigation({
 }) {
   const pathname = usePathname();
   const { profile, shouldReduceMotion } = useDashboard();
+  const { t } = useI18n();
   const displayName = profile?.user.displayName ?? config.profileRole;
   const [messengerUnread, setMessengerUnread] = useState(0);
   const hasNavigationLogout = config.navigation.some((item) => item.action === "logout");
@@ -97,7 +101,7 @@ function WorkspaceNavigation({
               return (
                 <button key={label} type="button" className={styles.navLink} onClick={() => void logout()}>
                   <Icon aria-hidden="true" />
-                  <span>{label}</span>
+                  <span>{label === "Выйти" ? t("nav.logout") : label}</span>
                 </button>
               );
             }
@@ -105,8 +109,8 @@ function WorkspaceNavigation({
               <Link key={href} href={href} className={styles.navLink} data-active={active || undefined} aria-current={active ? "page" : undefined} onClick={onNavigate}>
                 <Icon aria-hidden="true" />
                 <span>{label}</span>
-                {href.endsWith("/support") && playerMessengerUnread ? <em className={styles.navUnreadBadge} aria-label={`Непрочитано: ${playerMessengerUnread}`}>{playerMessengerUnread}</em> : null}
-                {href === "/admin/messenger" && messengerUnread ? <em className={styles.navUnreadBadge} aria-label={`Непрочитано: ${messengerUnread}`}>{messengerUnread}</em> : null}
+                {href.endsWith("/support") && playerMessengerUnread ? <em className={styles.navUnreadBadge} aria-label={t("workspace.unread", { count: playerMessengerUnread })}>{playerMessengerUnread}</em> : null}
+                {href === "/admin/messenger" && messengerUnread ? <em className={styles.navUnreadBadge} aria-label={t("workspace.unread", { count: messengerUnread })}>{messengerUnread}</em> : null}
                 {active ? (
                   <motion.i
                     aria-hidden="true"
@@ -122,10 +126,10 @@ function WorkspaceNavigation({
 
       <div className={styles.sidebarFooter}>
         {config.kind !== "admin" ? <Link href="/" className={styles.publicLink} onClick={onNavigate}>
-          <Grid2X2 aria-hidden="true" />Публичная страница<ChevronRight aria-hidden="true" />
+          <Grid2X2 aria-hidden="true" />{t("nav.public")}<ChevronRight aria-hidden="true" />
         </Link> : null}
-        {config.kind !== "admin" && canAdmin ? <Link href="/admin" className={styles.publicLink} onClick={onNavigate}><ShieldCheck aria-hidden="true" />Администрирование<ChevronRight aria-hidden="true" /></Link> : null}
-        {(profile || config.kind === "admin") && !hasNavigationLogout ? <button type="button" className={styles.publicLink} onClick={() => void logout()}><LogOut aria-hidden="true" />Выйти<ChevronRight aria-hidden="true" /></button> : null}
+        {config.kind !== "admin" && canAdmin ? <Link href="/admin" className={styles.publicLink} onClick={onNavigate}><ShieldCheck aria-hidden="true" />{t("nav.administration")}<ChevronRight aria-hidden="true" /></Link> : null}
+        {(profile || config.kind === "admin") && !hasNavigationLogout ? <button type="button" className={styles.publicLink} onClick={() => void logout()}><LogOut aria-hidden="true" />{t("nav.logout")}<ChevronRight aria-hidden="true" /></button> : null}
         {config.kind !== "admin" ? config.kind === "player" ? (
           <div className={styles.sidebarProfile}>
             <span>{displayName.charAt(0).toLocaleUpperCase("ru") || "Д"}</span>
@@ -145,10 +149,12 @@ function WorkspaceNavigation({
 function WorkspaceShellContent({ children, config, initialNotifications, personalConversation, economy, canAdmin }: { children: React.ReactNode; config: WorkspaceShellConfig; initialNotifications: NotificationView[]; personalConversation?: SupportConversationView; economy?: EconomySnapshotView; canAdmin: boolean }) {
   const pathname = usePathname();
   const { profile, shouldReduceMotion } = useDashboard();
+  const { locale, setLocale, t } = useI18n();
   const displayName = profile?.user.displayName ?? config.profileRole;
   const [menuOpen, setMenuOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notifications, setNotifications] = useState(initialNotifications);
+  const [unreadMessages, setUnreadMessages] = useState(personalConversation?.unreadCount ?? 0);
   const [searchOpen, setSearchOpen] = useState(false);
   const [rankOpen, setRankOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -165,7 +171,6 @@ function WorkspaceShellContent({ children, config, initialNotifications, persona
     ?? Object.entries(config.pageTitlePrefixes ?? {}).find(([prefix]) => pathname.startsWith(prefix))?.[1]
     ?? "VX House";
   const unreadCount = notifications.filter((item) => item.status !== "READ").length;
-  const unreadMessages = notifications.filter((item) => item.status !== "READ").length;
   const supportHref = config.kind === "partner" ? "/partner/support" : "/dashboard/support";
   const messengerIsFullPage = pathname === supportHref;
   const rankLabel = economy?.rank.current ? tierLabels[economy.rank.current.code] : "Bronze";
@@ -174,17 +179,30 @@ function WorkspaceShellContent({ children, config, initialNotifications, persona
   const criteriaCount = economy?.rank.next?.criteria.length ?? 0;
   const rankProgress = criteriaCount ? Math.round(completedCriteria / criteriaCount * 100) : Math.min(100, Math.round((economy?.points.confirmedBalance ?? 0) / 10));
 
+  useEffect(() => {
+    if (profile?.preferredLanguage) setLocale(fromDatabaseLanguage(profile.preferredLanguage));
+  }, [profile?.preferredLanguage, setLocale]);
+
   async function readNotification(id: string) {
     const current = notifications.find((item) => item.id === id); if (!current || current.status === "READ") return;
     const response = await fetch(`/api/notifications/${id}/read`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ idempotencyKey: `notification-read-${id}` }) });
     if (response.ok) setNotifications((items) => items.map((item) => item.id === id ? { ...item, status: "READ", readAt: new Date().toISOString() } : item));
   }
 
-  function readMessenger() {
-    for (const item of notifications) {
-      if (item.status !== "READ") void readNotification(item.id);
-    }
-  }
+  const readMessenger = useCallback(async () => {
+    if (!personalConversation) return;
+    const response = await fetch(`/api/support/${personalConversation.id}/read`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: "{}",
+    });
+    if (response.ok) setUnreadMessages(0);
+  }, [personalConversation]);
+
+  useEffect(() => {
+    if (!messengerIsFullPage) return;
+    queueMicrotask(() => void readMessenger());
+  }, [messengerIsFullPage, readMessenger]);
 
   useEffect(() => {
     const query = searchTerm.trim();
@@ -246,7 +264,7 @@ function WorkspaceShellContent({ children, config, initialNotifications, persona
       <AnimatePresence>
         {menuOpen ? (
           <>
-            <motion.button type="button" className={styles.mobileOverlay} aria-label="Закрыть меню" onClick={() => setMenuOpen(false)} initial={shouldReduceMotion ? false : { opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} />
+            <motion.button type="button" className={styles.mobileOverlay} aria-label={t("workspace.closeMenu")} onClick={() => setMenuOpen(false)} initial={shouldReduceMotion ? false : { opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} />
             <motion.aside
               id={menuId}
               className={styles.mobileSidebar}
@@ -258,7 +276,7 @@ function WorkspaceShellContent({ children, config, initialNotifications, persona
               exit={shouldReduceMotion ? undefined : { x: "-100%" }}
               transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
             >
-              <button ref={mobileCloseRef} type="button" className={styles.mobileClose} onClick={() => setMenuOpen(false)} aria-label="Закрыть меню"><X aria-hidden="true" /></button>
+              <button ref={mobileCloseRef} type="button" className={styles.mobileClose} onClick={() => setMenuOpen(false)} aria-label={t("workspace.closeMenu")}><X aria-hidden="true" /></button>
               <WorkspaceNavigation config={config} mobile canAdmin={canAdmin} playerMessengerUnread={unreadMessages} onNavigate={() => setMenuOpen(false)} />
             </motion.aside>
           </>
@@ -273,6 +291,7 @@ function WorkspaceShellContent({ children, config, initialNotifications, persona
           </div>
 
           <div className={styles.topbarActions}>
+            <LanguageSwitcher syncProfile={config.kind !== "admin" && Boolean(profile)} />
             {config.kind === "player" && economy ? <>
               <Link href="/dashboard/economy" className={styles.pointsCompact} aria-label={`${economy.points.confirmedBalance} VX Points`}>
                 <Coins aria-hidden="true" /><span><small>VX Points</small><strong>{economy.points.confirmedBalance}</strong></span>
@@ -298,10 +317,10 @@ function WorkspaceShellContent({ children, config, initialNotifications, persona
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={shouldReduceMotion ? undefined : { opacity: 0, y: -4 }}
                     role="region"
-                    aria-label="Уведомления"
+                    aria-label={t("workspace.notifications")}
                   >
-                    <div className={styles.notificationsHeader}><strong>Уведомления</strong><span>{unreadCount ? `${unreadCount} непрочитано` : "Всё прочитано"}</span></div>
-                    {notifications.length ? <div className={styles.notificationsList}>{notifications.map((item) => <button type="button" key={item.id} data-unread={item.status !== "READ" || undefined} onClick={() => readNotification(item.id)}><span>{item.category}</span><strong>{item.title}</strong><p>{item.body}</p><small>{new Intl.DateTimeFormat("ru", { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" }).format(new Date(item.createdAt))}</small></button>)}</div> : <div className={styles.notificationsEmpty}><Bell aria-hidden="true" /><strong>Уведомлений пока нет</strong><p>{config.notificationText}</p></div>}
+                    <div className={styles.notificationsHeader}><strong>{t("workspace.notifications")}</strong><span>{unreadCount ? t("workspace.unread", { count: unreadCount }) : ""}</span></div>
+                    {notifications.length ? <div className={styles.notificationsList}>{notifications.map((item) => <button type="button" key={item.id} data-unread={item.status !== "READ" || undefined} onClick={() => readNotification(item.id)}><span>{item.category}</span><strong>{item.title}</strong><p>{item.body}</p><small>{formatLocalTime(locale, item.createdAt)}</small></button>)}</div> : <div className={styles.notificationsEmpty}><Bell aria-hidden="true" /><strong>{t("workspace.notifications")}</strong><p>{config.notificationText}</p></div>}
                   </motion.div>
                 ) : null}
               </AnimatePresence>
@@ -322,6 +341,7 @@ function WorkspaceShellContent({ children, config, initialNotifications, persona
               unreadCount={unreadMessages}
               fullPage
               onRead={readMessenger}
+              onUnreadChange={setUnreadMessages}
             />
           ) : children}
         </main>
@@ -333,6 +353,7 @@ function WorkspaceShellContent({ children, config, initialNotifications, persona
             unreadCount={unreadMessages}
             fullPage={false}
             onRead={readMessenger}
+            onUnreadChange={setUnreadMessages}
           />
         ) : null}
 

@@ -5,18 +5,21 @@ import { ArrowUpRight } from "lucide-react";
 import Image from "next/image";
 
 import { Container } from "@/components/container";
+import { LanguageSwitcher } from "@/components/i18n/language-switcher";
+import { useI18n } from "@/components/i18n/i18n-provider";
 import { Button } from "@/components/ui/button";
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
 
 const navigation = [
-  { label: "Возможности", href: "#model" },
-  { label: "Как это работает", href: "#process" },
-  { label: "Почему мы", href: "#benefits" },
-  { label: "Вопросы", href: "#faq" },
+  { label: "nav.opportunities" as const, href: "#model" },
+  { label: "nav.process" as const, href: "#process" },
+  { label: "nav.benefits" as const, href: "#benefits" },
+  { label: "nav.faq" as const, href: "#faq" },
 ] as const;
 
 export function SiteHeader() {
   const prefersReducedMotion = useReducedMotion();
+  const { t } = useI18n();
 
   return (
     <motion.header
@@ -29,7 +32,7 @@ export function SiteHeader() {
         <a
           href="#top"
           className="group inline-flex items-center gap-2.5 rounded-md"
-          aria-label="VX House — главная"
+          aria-label="VX House — home"
         >
           <span className="brand-logo" aria-hidden="true">
             <Image
@@ -44,7 +47,7 @@ export function SiteHeader() {
         </a>
 
         <nav
-          aria-label="Основная навигация"
+          aria-label={t("nav.main")}
           className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-1 min-[900px]:flex"
         >
           {navigation.map((item) => (
@@ -53,19 +56,20 @@ export function SiteHeader() {
               href={item.href}
               className="rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
             >
-              {item.label}
+              {t(item.label)}
             </a>
           ))}
         </nav>
 
         <div className="flex items-center gap-2">
+          <LanguageSwitcher />
           <Button asChild size="sm" variant="ghost" className="hidden rounded-lg px-3.5 min-[520px]:inline-flex">
-            <a href="/access?mode=login">Войти</a>
+            <a href="/access?mode=login">{t("nav.login")}</a>
           </Button>
           <Button asChild size="sm" className="rounded-lg px-3.5">
             <a href="/access">
-              <span className="hidden min-[420px]:inline">Получить доступ</span>
-              <span className="min-[420px]:hidden">Доступ</span>
+              <span className="hidden min-[420px]:inline">{t("nav.access")}</span>
+              <span className="min-[420px]:hidden">{t("nav.accessShort")}</span>
               <ArrowUpRight aria-hidden="true" />
             </a>
           </Button>

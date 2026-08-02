@@ -5,7 +5,9 @@ import styles from "@/app/access/access.module.css";
 import type { AccessScenario } from "@/components/access/access-scenario-step";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { useI18n } from "@/components/i18n/i18n-provider";
 import type { AccessCountry } from "@/lib/access-types";
+import { accessContent } from "@/lib/i18n/access-content";
 
 type AccessConsentStepProps = {
   scenario: AccessScenario;
@@ -22,9 +24,6 @@ type AccessConsentStepProps = {
   error?: string | null;
 };
 
-const roleLabels: Record<AccessScenario, string> = { player: "Игрок", partner: "Партнёр" };
-const countryLabels: Record<AccessCountry, string> = { turkey: "Турция", azerbaijan: "Азербайджан" };
-
 export function AccessConsentStep({
   scenario,
   country,
@@ -39,14 +38,17 @@ export function AccessConsentStep({
   pending = false,
   error,
 }: AccessConsentStepProps) {
+  const { locale, t } = useI18n();
+  const content = accessContent[locale];
+  const copy = content.consent;
   const canContinue = isAdult && consents.length > 0 && consents.every(({ id }) => selectedConsentIds.includes(id));
 
   return (
     <div className={styles.consentContent}>
       <header className={styles.stepHeading}>
-        <span className={styles.scenarioEyebrow}>Обязательные подтверждения</span>
-        <h1 tabIndex={-1}>Проверьте выбор и подтвердите условия</h1>
-        <p>Фиксируются только опубликованные версии обязательных документов для выбранного рынка и языка.</p>
+        <span className={styles.scenarioEyebrow}>{copy.eyebrow}</span>
+        <h1 tabIndex={-1}>{copy.title}</h1>
+        <p>{copy.description}</p>
       </header>
 
       <motion.div
@@ -56,35 +58,35 @@ export function AccessConsentStep({
         transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
       >
         <Card className={styles.consentCard}>
-          <div className={styles.consentHeading}><ShieldCheck aria-hidden="true" /><div><h2>Подтверждения</h2><p>Актуальные версии документов</p></div></div>
+          <div className={styles.consentHeading}><ShieldCheck aria-hidden="true" /><div><h2>{copy.heading}</h2><p>{copy.current}</p></div></div>
 
           <label className={styles.checkRow} data-checked={isAdult || undefined}>
             <input type="checkbox" checked={isAdult} onChange={(event) => onAdultChange(event.target.checked)} />
             <span className={styles.checkbox} aria-hidden="true">{isAdult ? <Check /> : null}</span>
-            <span><strong>Мне исполнилось 18 лет</strong><small>VX House предназначен только для совершеннолетних пользователей.</small></span>
+            <span><strong>{copy.adult}</strong><small>{copy.adultHelp}</small></span>
           </label>
 
           {consents.map((consent) => {
             const checked = selectedConsentIds.includes(consent.id);
-            return <label key={consent.id} className={styles.checkRow} data-checked={checked || undefined}><input type="checkbox" checked={checked} onChange={(event) => onConsentChange(consent.id, event.target.checked)} /><span className={styles.checkbox} aria-hidden="true">{checked ? <Check /> : null}</span><span><strong>{consent.title}</strong><small>Версия {consent.version}. Согласие будет связано именно с этой опубликованной версией.</small></span></label>;
+            return <label key={consent.id} className={styles.checkRow} data-checked={checked || undefined}><input type="checkbox" checked={checked} onChange={(event) => onConsentChange(consent.id, event.target.checked)} /><span className={styles.checkbox} aria-hidden="true">{checked ? <Check /> : null}</span><span><strong>{consent.title}</strong><small>{copy.version.replace("{version}", String(consent.version))}</small></span></label>;
           })}
-          {consents.length === 0 ? <p className={styles.fieldError} role="alert">Для выбранного рынка не опубликованы обязательные документы. Продолжение безопасно заблокировано.</p> : null}
+          {consents.length === 0 ? <p className={styles.fieldError} role="alert">{copy.missing}</p> : null}
           {error ? <p className={styles.fieldError} role="alert">{error}</p> : null}
         </Card>
 
         <Card className={styles.reviewCard}>
-          <span>Сводка</span>
-          <h2>Ваш предварительный сценарий</h2>
-          <dl><div><dt>Роль</dt><dd>{roleLabels[scenario]}</dd></div><div><dt>Страна</dt><dd>{countryLabels[country]}</dd></div></dl>
-          <p>{scenario === "partner" ? "Партнёрская роль может потребовать ручного подтверждения." : "Конкретные возможности будут определены после подтверждения профиля и рынка."}</p>
+          <span>{copy.summary}</span>
+          <h2>{copy.scenario}</h2>
+          <dl><div><dt>{copy.role}</dt><dd>{content.labels[scenario]}</dd></div><div><dt>{copy.country}</dt><dd>{content.labels[country]}</dd></div></dl>
+          <p>{scenario === "partner" ? copy.partnerNote : copy.playerNote}</p>
         </Card>
       </motion.div>
 
-      <p className={styles.consentStatus} role="status">{canContinue ? "Все обязательные подтверждения отмечены." : "Чтобы продолжить, подтвердите возраст и все документы."}</p>
+      <p className={styles.consentStatus} role="status">{canContinue ? copy.ready : copy.blocked}</p>
 
       <div className={styles.stepActions}>
-        <Button type="button" size="lg" disabled={!canContinue || pending} onClick={() => void onContinue()}>{pending ? "Завершаем…" : "Завершить настройку"} <ArrowRight aria-hidden="true" /></Button>
-        <button type="button" className={styles.stepBackButton} onClick={onBack}><ArrowLeft aria-hidden="true" />Назад</button>
+        <Button type="button" size="lg" disabled={!canContinue || pending} onClick={() => void onContinue()}>{pending ? copy.finishing : copy.finish} <ArrowRight aria-hidden="true" /></Button>
+        <button type="button" className={styles.stepBackButton} onClick={onBack}><ArrowLeft aria-hidden="true" />{t("common.back")}</button>
       </div>
     </div>
   );

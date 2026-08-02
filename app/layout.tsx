@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { I18nProvider } from "@/components/i18n/i18n-provider";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -80,14 +81,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ru" className="dark">
+    <html lang="en" className="dark">
       <body
         className={`${geistSans.variable} ${geistMono.variable} min-h-svh bg-background font-sans text-foreground antialiased`}
       >
-        <a className="skip-link" href="#main-content">
-          Перейти к содержимому
-        </a>
-        {children}
+        <I18nProvider>
+          <a className="skip-link" href="#main-content">
+            Skip to content
+          </a>
+          {children}
+        </I18nProvider>
       </body>
     </html>
   );

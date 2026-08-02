@@ -19,7 +19,7 @@ export const safeProfileSelect = {
   createdAt: true,
   updatedAt: true,
   user: { select: { email: true, displayName: true } },
-  market: { select: { id: true, code: true, name: true, isActive: true } },
+  market: { select: { id: true, code: true, name: true, defaultLanguage: true, isActive: true } },
   playerProfile: { select: { id: true, participationStatus: true } },
   partnerProfile: { select: { id: true, status: true } },
 } as const;

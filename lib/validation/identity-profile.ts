@@ -3,7 +3,7 @@ import type { LanguageCode, MarketCode, ProductRole } from "@/lib/db/generated/c
 
 const productRoles = new Set<ProductRole>(["PLAYER", "PARTNER"]);
 const marketCodes = new Set<MarketCode>(["TR", "AZ"]);
-const languages = new Set<LanguageCode>(["RU", "TR", "AZ"]);
+const languages = new Set<LanguageCode>(["EN", "RU", "TR", "AZ"]);
 const forbiddenInfrastructureFields = ["roleKeys", "permissionKeys", "infrastructureRole", "roles"];
 
 export interface CreateProfileInput {
@@ -16,9 +16,9 @@ export interface RegistrationInput {
   readonly displayName: string;
   readonly email: string;
   readonly password: string;
-  readonly productRole?: ProductRole;
-  readonly marketCode?: MarketCode;
-  readonly preferredLanguage?: LanguageCode;
+  readonly productRole: ProductRole;
+  readonly marketCode: MarketCode;
+  readonly preferredLanguage: LanguageCode;
 }
 
 export function validateCreateProfileInput(value: unknown): CreateProfileInput {
@@ -66,18 +66,15 @@ export function validateRegistrationInput(value: unknown): RegistrationInput {
   if (email.length > 320 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/u.test(email)) {
     throw new ApplicationError("VALIDATION", "Проверьте формат электронной почты");
   }
+  const passwordLength = Array.from(password).length;
   const passwordBytes = new TextEncoder().encode(password).length;
-  if (passwordBytes < 12 || passwordBytes > 1024) {
-    throw new ApplicationError("VALIDATION", "Пароль должен содержать не менее 12 символов");
+  if (passwordLength < 8 || passwordBytes > 1024) {
+    throw new ApplicationError("VALIDATION", "Пароль должен содержать не менее 8 символов");
   }
-  const profileFields = [record.productRole, record.marketCode, record.preferredLanguage];
-  const hasProfileFields = profileFields.some((field) => field !== undefined);
-  const profile = hasProfileFields
-    ? validateCreateProfileInput({
-        productRole: record.productRole,
-        marketCode: record.marketCode,
-        preferredLanguage: record.preferredLanguage,
-      })
-    : {};
+  const profile = validateCreateProfileInput({
+    productRole: record.productRole,
+    marketCode: record.marketCode,
+    preferredLanguage: record.preferredLanguage,
+  });
   return { ...profile, displayName, email, password };
 }

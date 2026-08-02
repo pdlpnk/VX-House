@@ -27,7 +27,7 @@ function submissionPayload(value: unknown) {
 }
 
 function instructionView(version: {
-  id: string; version: number; title: string; summary: string; language: "RU" | "TR" | "AZ";
+  id: string; version: number; title: string; summary: string; language: "EN" | "RU" | "TR" | "AZ";
   sections: { id: string; position: number; title: string; body: string }[];
   steps: { id: string; position: number; title: string; body: string; isRequired: boolean; warning: string | null }[];
 } | null | undefined) {

@@ -21,7 +21,7 @@ export type InstructionView = {
   version: number;
   title: string;
   summary: string;
-  language: "RU" | "TR" | "AZ";
+  language: "EN" | "RU" | "TR" | "AZ";
   sections: InstructionSectionView[];
   steps: InstructionStepView[];
 };

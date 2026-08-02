@@ -1,47 +1,28 @@
+"use client";
+
 import { BriefcaseBusiness, CircleUserRound, ShieldCheck } from "lucide-react";
 
+import { useI18n } from "@/components/i18n/i18n-provider";
 import { PublicSection } from "@/components/sections/public-section";
+import { publicContent } from "@/lib/i18n/public-content";
 
-const roles = [
-  {
-    icon: CircleUserRound,
-    label: "Для игрока",
-    title: "Специальные условия и вознаграждения",
-    description:
-      "Получайте доступ к предложениям партнёров, выполняйте понятные задания и получайте кешбэк, бонусы и другие вознаграждения по условиям программы.",
-    points: [
-      "Условия известны заранее",
-      "Пошаговые инструкции",
-      "История заданий и начислений",
-      "Поддержка на каждом этапе",
-    ],
-  },
-  {
-    icon: BriefcaseBusiness,
-    label: "Для партнёра",
-    title: "Готовые сценарии и сопровождение",
-    description:
-      "Получайте прогнозы, материалы и рабочие сценарии, отслеживайте статусы и обращайтесь за помощью внутри платформы.",
-    points: [
-      "Прогнозы и материалы",
-      "Понятные рабочие сценарии",
-      "Контроль статусов",
-      "Поддержка и сопровождение",
-    ],
-  },
-] as const;
+const icons = [CircleUserRound, BriefcaseBusiness] as const;
 
 export function ProductModel() {
+  const { locale } = useI18n();
+  const content = publicContent[locale].model;
   return (
     <PublicSection
       id="model"
-      eyebrow="Возможности VX House"
-      title="Всё необходимое в одном месте"
-      description="Вы видите доступные предложения, заранее знакомитесь с условиями, выполняете необходимые действия и отслеживаете вознаграждения в личном кабинете."
+      eyebrow={content.eyebrow}
+      title={content.title}
+      description={content.description}
       className="product-model"
     >
-      <div className="role-grid" aria-label="Сценарии использования VX House">
-        {roles.map(({ icon: Icon, label, title, description, points }) => (
+      <div className="role-grid" aria-label={content.aria}>
+        {content.roles.map(({ label, title, description, points }, index) => {
+          const Icon = icons[index] ?? CircleUserRound;
+          return (
           <article className="role-card" key={label}>
             <div className="role-card__top">
               <span className="role-card__icon"><Icon aria-hidden="true" /></span>
@@ -55,10 +36,11 @@ export function ProductModel() {
               ))}
             </ul>
           </article>
-        ))}
+          );
+        })}
       </div>
       <p className="model-boundary">
-        VX House не принимает ставки и не хранит пользовательские средства. Все действия выполняются на стороне партнёрских сервисов.
+        {content.boundary}
       </p>
     </PublicSection>
   );

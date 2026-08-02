@@ -1,11 +1,14 @@
 import "server-only";
 
+import { intlLocales, translate, type Locale } from "@/lib/i18n";
+
 export interface VerificationEmail {
   readonly idempotencyKey: string;
   readonly userId: string;
   readonly email: string;
   readonly code: string;
   readonly expiresAt: Date;
+  readonly language: Locale;
 }
 
 export interface EmailProvider {
@@ -28,13 +31,19 @@ export interface ResendEmailProviderOptions {
   readonly fetchImplementation?: typeof fetch;
 }
 
-function verificationEmailHtml(code: string, expiresAt: Date) {
-  const expires = new Intl.DateTimeFormat("ru-RU", {
+export function verificationEmailContent(code: string, expiresAt: Date, language: Locale) {
+  const expires = new Intl.DateTimeFormat(intlLocales[language], {
     dateStyle: "medium",
     timeStyle: "short",
     timeZone: "UTC",
   }).format(expiresAt);
-  return `<!doctype html><html lang="ru"><body style="margin:0;background:#090707;color:#f7f4f4;font-family:Arial,sans-serif"><div style="max-width:560px;margin:0 auto;padding:48px 24px"><p style="color:#ef3340;font-weight:700;letter-spacing:.08em">VX HOUSE</p><h1 style="font-size:28px">Подтвердите электронную почту</h1><p style="color:#c8bebe;line-height:1.6">Введите этот код в VX House. Никому его не сообщайте.</p><p style="font-size:36px;font-weight:700;letter-spacing:.18em;margin:32px 0">${code}</p><p style="color:#8f8585;font-size:14px">Код действует до ${expires} UTC. Если вы не запрашивали доступ, проигнорируйте письмо.</p></div></body></html>`;
+  const subject = translate(language, "email.subject");
+  const heading = translate(language, "email.heading");
+  const instruction = translate(language, "email.instruction");
+  const expiration = translate(language, "email.expiration", { expires });
+  const text = translate(language, "email.text", { code });
+  const html = `<!doctype html><html lang="${language}"><body style="margin:0;background:#090707;color:#f7f4f4;font-family:Arial,sans-serif"><div style="max-width:560px;margin:0 auto;padding:48px 24px"><p style="color:#ef3340;font-weight:700;letter-spacing:.08em">VX HOUSE</p><h1 style="font-size:28px">${heading}</h1><p style="color:#c8bebe;line-height:1.6">${instruction}</p><p style="font-size:36px;font-weight:700;letter-spacing:.18em;margin:32px 0">${code}</p><p style="color:#8f8585;font-size:14px">${expiration}</p></div></body></html>`;
+  return { subject, html, text };
 }
 
 export class ResendEmailProvider implements EmailProvider {
@@ -46,6 +55,7 @@ export class ResendEmailProvider implements EmailProvider {
 
   async sendVerificationCode(message: VerificationEmail) {
     try {
+      const content = verificationEmailContent(message.code, message.expiresAt, message.language);
       const response = await this.request(RESEND_EMAILS_URL, {
         method: "POST",
         headers: {
@@ -56,9 +66,9 @@ export class ResendEmailProvider implements EmailProvider {
         body: JSON.stringify({
           from: this.options.from,
           to: [message.email],
-          subject: "Код подтверждения VX House",
-          html: verificationEmailHtml(message.code, message.expiresAt),
-          text: `Код подтверждения VX House: ${message.code}. Никому его не сообщайте.`,
+          subject: content.subject,
+          html: content.html,
+          text: content.text,
         }),
         signal: AbortSignal.timeout(this.options.timeoutMs),
       });

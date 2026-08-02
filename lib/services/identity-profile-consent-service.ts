@@ -158,7 +158,7 @@ export class ProfileApplicationService {
   updateLanguage(input: { principal: AuthenticatedPrincipal; preferredLanguage: LanguageCode }) {
     return this.transactions.run(async ({ database, occurredAt }) => {
       authorizeSelf(input.principal);
-      if (!(["RU", "TR", "AZ"] as const).includes(input.preferredLanguage)) {
+      if (!(["EN", "RU", "TR", "AZ"] as const).includes(input.preferredLanguage)) {
         throw new ApplicationError("VALIDATION", "Некорректный язык");
       }
       const result = await new PrismaUserProfileRepository(database).updateLanguage(

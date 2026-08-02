@@ -49,16 +49,22 @@ beforeEach(async () => {
 
 after(async () => database.$disconnect());
 
-async function register(role: "PLAYER" | "PARTNER" = "PLAYER", email = `${randomUUID()}@test.invalid`) {
-  const result = await service.register({ command: { displayName: "Тестовый пользователь", email, password: "correct horse battery staple", productRole: role, marketCode: "TR", preferredLanguage: "RU" }, idempotencyKey: `register-${randomUUID()}` });
+async function register(
+  role: "PLAYER" | "PARTNER" = "PLAYER",
+  email = `${randomUUID()}@test.invalid`,
+  preferredLanguage: "EN" | "RU" | "TR" | "AZ" = "RU",
+) {
+  const result = await service.register({ command: { displayName: "Тестовый пользователь", email, password: "correct horse battery staple", productRole: role, marketCode: "TR", preferredLanguage }, idempotencyKey: `register-${randomUUID()}` });
   const principal: AuthenticatedPrincipal = { userId: result.userId, sessionId: result.session.sessionId, roleKeys: ["authenticated"], permissionKeys: [] };
   return { result, principal, code: mail.latest(result.userId)!.code };
 }
 
 test("регистрация игрока атомарно создаёт identity, профиль, onboarding, challenge и audit", async () => {
-  const { result } = await register();
+  const { result } = await register("PLAYER", undefined, "EN");
   assert.equal(result.profile.productRole, "PLAYER");
+  assert.equal(result.profile.preferredLanguage, "EN");
   assert.equal(result.profile.playerProfile?.participationStatus, "PENDING");
+  assert.equal(mail.latest(result.userId)?.language, "en");
   assert.equal(await database.session.count({ where: { userId: result.userId } }), 1);
   assert.equal(await database.auditEvent.count({ where: { actorId: result.userId } }), 2);
   const challenge = await database.emailVerificationChallenge.findFirstOrThrow({ where: { userId: result.userId } });
@@ -98,23 +104,9 @@ test("ошибка доставки не откатывает целостный
   assert.equal(persisted.emailVerificationChallenges.length, 1);
 });
 
-test("новый путь создаёт identity до выбора роли и настраивает профиль после подтверждения email", async () => {
-  const result = await service.register({
-    command: { displayName: "Новый участник", email: `${randomUUID()}@test.invalid`, password: "correct horse battery staple" },
-    idempotencyKey: `register-${randomUUID()}`,
-  });
-  assert.equal(result.profile, null);
-  const principal: AuthenticatedPrincipal = { userId: result.userId, sessionId: result.session.sessionId, roleKeys: ["authenticated"], permissionKeys: [] };
-  await service.verifyEmail({ principal, code: mail.latest(result.userId)!.code });
-  assert.equal((await service.getSnapshot(principal)).status, "CONTACT_VERIFIED");
-  const configured = await service.configureProfile({ principal, command: { productRole: "PLAYER", marketCode: "TR", preferredLanguage: "RU" } });
-  assert.equal(configured.profile?.productRole, "PLAYER");
-  assert.equal(configured.profile?.contactVerificationStatus, "VERIFIED");
-});
-
 test("неподтверждённый аккаунт старше 12 часов удаляется полностью", async () => {
   const result = await service.register({
-    command: { displayName: "Просроченный участник", email: `${randomUUID()}@test.invalid`, password: "correct horse battery staple" },
+    command: { displayName: "Просроченный участник", email: `${randomUUID()}@test.invalid`, password: "correct horse battery staple", productRole: "PLAYER", marketCode: "TR", preferredLanguage: "RU" },
     idempotencyKey: `register-${randomUUID()}`,
   });
   await database.user.update({ where: { id: result.userId }, data: { createdAt: new Date(Date.now() - 13 * 60 * 60 * 1000) } });

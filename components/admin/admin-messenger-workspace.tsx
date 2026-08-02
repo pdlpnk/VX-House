@@ -6,7 +6,9 @@ import { ArrowLeft, Download, FileText, Image as ImageIcon, Info, LoaderCircle, 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 
+import { useI18n } from "@/components/i18n/i18n-provider";
 import type { AdminMessengerDetail, AdminMessengerList, AdminMessengerNote, AdminMessengerPlayer } from "@/lib/admin-messenger";
+import { formatLocalDateTime, formatLocalTime } from "@/lib/i18n";
 import type { SupportMessageView } from "@/lib/support";
 import styles from "./admin-messenger-workspace.module.css";
 
@@ -14,25 +16,17 @@ const transition = { duration: 0.25, ease: [0.22, 1, 0.36, 1] as const };
 const allowedTypes = new Set(["image/jpeg", "image/png", "image/webp", "application/pdf"]);
 const emojis = ["🙂", "👍", "❤️", "✨", "👋", "✅"];
 
-function time(value: string | null) {
-  if (!value) return "";
-  return new Intl.DateTimeFormat("ru", { hour: "2-digit", minute: "2-digit", timeZone: "UTC" }).format(new Date(value));
-}
-
-function dateTime(value: string) {
-  return new Intl.DateTimeFormat("ru", { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" }).format(new Date(value));
-}
-
 function size(value: number) {
   return value >= 1024 * 1024 ? `${(value / 1024 / 1024).toFixed(1)} МБ` : `${Math.max(1, Math.round(value / 1024))} КБ`;
 }
 
 function ChatListItem({ item, active, onClick }: { item: AdminMessengerPlayer; active: boolean; onClick: () => void }) {
+  const { locale } = useI18n();
   return (
     <button type="button" className={styles.chatItem} data-active={active || undefined} onClick={onClick}>
       <span className={styles.avatar} data-status={item.online ? "online" : "offline"} aria-label={`${item.name}: ${item.online ? "в сети" : "не в сети"}`}>{item.initials}</span>
       <span className={styles.chatCopy}>
-        <span><strong>{item.name}</strong><time dateTime={item.lastMessageAt ?? undefined}>{time(item.lastMessageAt)}</time></span>
+        <span><strong>{item.name}</strong><time dateTime={item.lastMessageAt ?? undefined}>{item.lastMessageAt ? formatLocalTime(locale, item.lastMessageAt) : ""}</time></span>
         <span><small>{item.lastMessage}</small>{item.hasNotes ? <NotebookPen aria-label="Есть внутренняя заметка" /> : null}</span>
       </span>
       {item.unreadCount ? <b aria-label={`Непрочитано: ${item.unreadCount}`}>{item.unreadCount}</b> : null}
@@ -55,6 +49,7 @@ function Attachment({ conversationId, attachment }: { conversationId: string; at
 }
 
 function Messages({ detail, pending }: { detail: AdminMessengerDetail; pending: boolean }) {
+  const { locale } = useI18n();
   const scrollRef = useRef<HTMLDivElement>(null);
   const restoredConversation = useRef("");
   const stickToBottom = useRef(true);
@@ -92,7 +87,7 @@ function Messages({ detail, pending }: { detail: AdminMessengerDetail; pending: 
               <small>{message.authorLabel}</small>
               <p>{message.body}</p>
               {message.attachments.length ? <div className={styles.messageAttachments}>{message.attachments.map((attachment) => <Attachment key={attachment.id} conversationId={detail.conversation.id} attachment={attachment} />)}</div> : null}
-              <time dateTime={message.createdAt}>{time(message.createdAt)}</time>
+              <time dateTime={message.createdAt}>{formatLocalTime(locale, message.createdAt)}</time>
             </div>
           </motion.article>
         );
@@ -165,6 +160,7 @@ function AdminComposer({ detail, onUpdate }: { detail: AdminMessengerDetail; onU
 }
 
 function PlayerPanel({ detail, onUpdate, onClose }: { detail: AdminMessengerDetail; onUpdate: (value: AdminMessengerDetail) => void; onClose: () => void }) {
+  const { locale } = useI18n();
   const [draft, setDraft] = useState("");
   const [editing, setEditing] = useState<AdminMessengerNote | null>(null);
   const [pending, setPending] = useState(false);
@@ -186,7 +182,7 @@ function PlayerPanel({ detail, onUpdate, onClose }: { detail: AdminMessengerDeta
       <div className={styles.profileBlock}><span className={styles.profileAvatar} data-status={detail.player.online ? "online" : "offline"} aria-label={`${detail.player.name}: ${detail.player.online ? "в сети" : "не в сети"}`}>{detail.player.initials}</span><strong>{detail.player.name}</strong><small>{detail.player.email}</small><Link href={detail.player.profileHref}>Открыть полный профиль</Link></div>
       <dl className={styles.profileFacts}>
         <div><dt>Роль</dt><dd>Игрок</dd></div><div><dt>Рынок</dt><dd>{detail.player.market}</dd></div>
-        <div><dt>Дата регистрации</dt><dd>{dateTime(detail.player.registeredAt)}</dd></div><div><dt>Уровень</dt><dd>{detail.player.rank}</dd></div>
+        <div><dt>Дата регистрации</dt><dd>{formatLocalDateTime(locale, detail.player.registeredAt)}</dd></div><div><dt>Уровень</dt><dd>{detail.player.rank}</dd></div>
         <div><dt>VX Points</dt><dd>{detail.player.points}</dd></div><div><dt>Текущее задание</dt><dd>{detail.player.currentTask}</dd></div>
         <div><dt>Последнее действие</dt><dd>{detail.player.lastAction}</dd></div>
       </dl>
@@ -194,7 +190,7 @@ function PlayerPanel({ detail, onUpdate, onClose }: { detail: AdminMessengerDeta
         <header><div><small>Только для администратора</small><h2>Внутренние заметки</h2></div><NotebookPen aria-hidden="true" /></header>
         <textarea value={draft} maxLength={3000} placeholder={editing ? "Измените заметку…" : "Добавить заметку об игроке…"} aria-label="Текст внутренней заметки" onChange={(event) => setDraft(event.target.value)} />
         <div className={styles.noteActions}>{editing ? <button type="button" onClick={() => { setEditing(null); setDraft(""); }}>Отмена</button> : null}<button type="button" disabled={!draft.trim() || pending} onClick={() => save(editing ? "edit" : "create")}>{pending ? "Сохраняем…" : editing ? "Сохранить" : "Добавить заметку"}</button></div>
-        <div className={styles.noteHistory}>{detail.notes.length ? detail.notes.map((note) => <article key={note.logicalId}><p>{note.body}</p><small>{note.author} · создано {dateTime(note.createdAt)}{note.modifiedAt ? ` · изменено ${dateTime(note.modifiedAt)}` : ""}</small><div><button type="button" onClick={() => { setEditing(note); setDraft(note.body); }} aria-label="Редактировать заметку"><Pencil aria-hidden="true" /></button><button type="button" onClick={() => save("delete", note)} aria-label="Удалить заметку"><Trash2 aria-hidden="true" /></button></div></article>) : <p className={styles.noNotes}>Внутренних заметок пока нет.</p>}</div>
+        <div className={styles.noteHistory}>{detail.notes.length ? detail.notes.map((note) => <article key={note.logicalId}><p>{note.body}</p><small>{note.author} · создано {formatLocalDateTime(locale, note.createdAt)}{note.modifiedAt ? ` · изменено ${formatLocalDateTime(locale, note.modifiedAt)}` : ""}</small><div><button type="button" onClick={() => { setEditing(note); setDraft(note.body); }} aria-label="Редактировать заметку"><Pencil aria-hidden="true" /></button><button type="button" onClick={() => save("delete", note)} aria-label="Удалить заметку"><Trash2 aria-hidden="true" /></button></div></article>) : <p className={styles.noNotes}>Внутренних заметок пока нет.</p>}</div>
       </section>
     </aside>
   );

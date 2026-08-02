@@ -35,10 +35,10 @@ import {
 import { hashPassword } from "@/lib/auth/password";
 import { SECURITY_EVENT_TYPES } from "@/lib/security";
 import { validateRegistrationInput } from "@/lib/validation";
-import { validateCreateProfileInput } from "@/lib/validation";
 import type { EmailProvider } from "./email-provider";
 import { createLogger } from "@/lib/logger";
 import { createProductNotification } from "./product-notification";
+import { fromDatabaseLanguage } from "@/lib/i18n";
 
 const IDEMPOTENCY_KEY = /^[A-Za-z0-9_.:-]{8,160}$/;
 const logger = createLogger({ level: "info", context: { component: "identity-onboarding" } });
@@ -56,9 +56,9 @@ export interface RegistrationCommand {
   readonly displayName: string;
   readonly email: string;
   readonly password: string;
-  readonly productRole?: ProductRole;
-  readonly marketCode?: MarketCode;
-  readonly preferredLanguage?: LanguageCode;
+  readonly productRole: ProductRole;
+  readonly marketCode: MarketCode;
+  readonly preferredLanguage: LanguageCode;
 }
 
 function addSeconds(date: Date, seconds: number) {
@@ -113,9 +113,9 @@ export class IdentityOnboardingService {
     const requestHash = hashCommandPayload({
       displayName: command.displayName,
       email: normalizedEmail,
-      productRole: command.productRole ?? null,
-      marketCode: command.marketCode ?? null,
-      preferredLanguage: command.preferredLanguage ?? null,
+      productRole: command.productRole,
+      marketCode: command.marketCode,
+      preferredLanguage: command.preferredLanguage,
     });
     const challengeId = randomUUID();
     const verificationCode = createVerificationCode();
@@ -161,21 +161,19 @@ export class IdentityOnboardingService {
       });
       logger.info("user_created", { correlationId, userId: user.id });
       const profiles = new PrismaUserProfileRepository(database);
-      if (command.productRole && command.marketCode && command.preferredLanguage) {
-        const market = await new PrismaMarketRepository(database).findActiveByCode(command.marketCode);
-        if (!market) throw new ApplicationError("VALIDATION", "Выбранный рынок сейчас недоступен");
-        const profile = await profiles.create({
-          userId: user.id,
-          productRole: command.productRole,
-          marketId: market.id,
-          preferredLanguage: command.preferredLanguage,
-        });
-        logger.info("profile_created", { correlationId, userId: user.id, productRole: command.productRole });
-        if (command.productRole === "PLAYER") {
-          await new PrismaPlayerProfileRepository(database).createPending(profile.id);
-        } else {
-          await new PrismaPartnerProfileRepository(database).createPending(profile.id);
-        }
+      const market = await new PrismaMarketRepository(database).findActiveByCode(command.marketCode);
+      if (!market) throw new ApplicationError("VALIDATION", "Выбранный рынок сейчас недоступен");
+      const profile = await profiles.create({
+        userId: user.id,
+        productRole: command.productRole,
+        marketId: market.id,
+        preferredLanguage: command.preferredLanguage,
+      });
+      logger.info("profile_created", { correlationId, userId: user.id, productRole: command.productRole });
+      if (command.productRole === "PLAYER") {
+        await new PrismaPlayerProfileRepository(database).createPending(profile.id);
+      } else {
+        await new PrismaPartnerProfileRepository(database).createPending(profile.id);
       }
       await new PrismaOnboardingRepository(database).create(user.id, "CONTACT_PENDING");
       const expiresAt = addSeconds(occurredAt, this.config.verificationTtlSeconds);
@@ -202,8 +200,8 @@ export class IdentityOnboardingService {
         actor,
         target: { type: "user", id: user.id },
         metadata: {
-          productRole: command.productRole ?? "UNSELECTED",
-          market: command.marketCode ?? "UNSELECTED",
+          productRole: command.productRole,
+          market: command.marketCode,
         },
       });
       await events.security.record({
@@ -247,6 +245,7 @@ export class IdentityOnboardingService {
           email: normalizedEmail,
           code: verificationCode,
           expiresAt: result.expiresAt!,
+          language: fromDatabaseLanguage(command.preferredLanguage),
         });
       } catch {
         logger.warn("verification_email_delivery_failed", { correlationId, userId: result.userId });
@@ -319,7 +318,7 @@ export class IdentityOnboardingService {
         target: { type: "email-verification", id: challengeId },
         metadata: { reason: "resend" },
       });
-      return { email: user.email, expiresAt, resendAvailableAt };
+      return { email: user.email, expiresAt, resendAvailableAt, language: fromDatabaseLanguage(profile?.preferredLanguage) };
     });
     let deliveryAvailable = true;
     try {
@@ -329,6 +328,7 @@ export class IdentityOnboardingService {
         email: result.email,
         code,
         expiresAt: result.expiresAt,
+        language: result.language,
       });
     } catch {
       logger.warn("verification_email_delivery_failed", {
@@ -422,11 +422,19 @@ export class IdentityOnboardingService {
         redirectTo: "/access",
       };
     }
-    const versions = await new PrismaConsentVersionRepository(this.database).listPublished({
+    const consentVersions = new PrismaConsentVersionRepository(this.database);
+    let versions = await consentVersions.listPublished({
       marketId: profile.market.id,
       language: profile.preferredLanguage,
       at,
     });
+    if (!versions.length && profile.preferredLanguage === "EN") {
+      versions = await consentVersions.listPublished({
+        marketId: profile.market.id,
+        language: profile.market.defaultLanguage,
+        at,
+      });
+    }
     const required = latestRequiredVersions(versions);
     const accepted = await new PrismaUserConsentRepository(this.database).listAcceptedVersionIds(
       principal.userId,
@@ -448,50 +456,6 @@ export class IdentityOnboardingService {
       resendAvailableAt: latestChallenge?.resendAvailableAt ?? null,
       redirectTo: this.resolveDestination(profile.productRole, progress.status, profile.accountStatus),
     };
-  }
-
-  async configureProfile(input: {
-    principal: AuthenticatedPrincipal;
-    command: unknown;
-  }) {
-    const command = validateCreateProfileInput(input.command);
-    await this.transactions.run(async ({ database, occurredAt }) => {
-      const progress = await new PrismaOnboardingRepository(database).findByUserId(input.principal.userId);
-      if (!progress || !["CONTACT_VERIFIED", "CONSENTS_PENDING", "PROFILE_READY"].includes(progress.status)) {
-        throw new ApplicationError("FORBIDDEN", "Сначала подтвердите электронную почту");
-      }
-      const profiles = new PrismaUserProfileRepository(database);
-      const existing = await profiles.findByUserId(input.principal.userId);
-      if (existing) {
-        if (
-          existing.productRole !== command.productRole ||
-          existing.market.code !== command.marketCode ||
-          existing.preferredLanguage !== command.preferredLanguage
-        ) {
-          throw new ApplicationError("CONFLICT", "Параметры пространства уже сохранены");
-        }
-        return;
-      }
-      const market = await new PrismaMarketRepository(database).findActiveByCode(command.marketCode);
-      if (!market) throw new ApplicationError("VALIDATION", "Выбранный рынок сейчас недоступен");
-      const profile = await profiles.create({
-        userId: input.principal.userId,
-        productRole: command.productRole,
-        marketId: market.id,
-        preferredLanguage: command.preferredLanguage,
-      });
-      await profiles.markContactVerified(input.principal.userId, occurredAt);
-      if (command.productRole === "PLAYER") {
-        await new PrismaPlayerProfileRepository(database).createPending(profile.id);
-      } else {
-        await new PrismaPartnerProfileRepository(database).createPending(profile.id);
-      }
-      await new PrismaOnboardingRepository(database).update(input.principal.userId, {
-        status: "CONSENTS_PENDING",
-        profileReadyAt: occurredAt,
-      });
-    });
-    return this.getSnapshot(input.principal);
   }
 
   async complete(input: {
@@ -525,11 +489,19 @@ export class IdentityOnboardingService {
       if (!profile || profile.contactVerificationStatus !== "VERIFIED") {
         throw new ApplicationError("FORBIDDEN", "Сначала подтвердите электронную почту");
       }
-      const versions = await new PrismaConsentVersionRepository(database).listPublished({
+      const consentVersions = new PrismaConsentVersionRepository(database);
+      let versions = await consentVersions.listPublished({
         marketId: profile.market.id,
         language: profile.preferredLanguage,
         at: occurredAt,
       });
+      if (!versions.length && profile.preferredLanguage === "EN") {
+        versions = await consentVersions.listPublished({
+          marketId: profile.market.id,
+          language: profile.market.defaultLanguage,
+          at: occurredAt,
+        });
+      }
       const required = latestRequiredVersions(versions);
       const requiredDocuments = await new PrismaConsentDocumentRepository(database).listRequired();
       const provided = new Set(input.consentVersionIds);
