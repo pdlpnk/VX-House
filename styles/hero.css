@@ -12,6 +12,19 @@
 
   .site-header a[href="/access"] { min-height: 2.75rem; }
 
+  .site-header__inner {
+    display: flex;
+    height: var(--header-height);
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .site-header__tools {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
   .brand-logo {
     position: relative;
     display: block;
@@ -268,6 +281,60 @@
   .account-panel { width: 72%; padding: 0.9rem; }
   .reward-card { right: -1%; }
   .conditions-card { left: -1%; }
+}
+
+@media (max-width: 32.499rem) {
+  .site-header__inner {
+    display: grid;
+    min-height: 7.5rem;
+    height: auto;
+    grid-template-columns: minmax(0, 0.78fr) minmax(0, 1.22fr);
+    grid-template-rows: 3.25rem 2.75rem;
+    gap: 0.5rem;
+    padding-block: 0.5rem;
+  }
+
+  .site-header__brand {
+    grid-column: 1;
+    grid-row: 1;
+    justify-self: start;
+  }
+
+  .site-header__tools { display: contents; }
+
+  .site-header__language {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: end;
+  }
+
+  .site-header__login,
+  .site-header__access {
+    width: 100%;
+    min-width: 0;
+    min-height: 2.75rem;
+  }
+
+  .site-header__login {
+    grid-column: 1;
+    grid-row: 2;
+    border: 1px solid color-mix(in oklab, var(--border) 74%, transparent);
+    background: color-mix(in oklab, var(--background) 76%, transparent);
+  }
+
+  .site-header__access {
+    grid-column: 2;
+    grid-row: 2;
+  }
+}
+
+@media (max-width: 22.499rem) {
+  .site-header__inner {
+    grid-template-columns: minmax(0, 0.72fr) minmax(0, 1.28fr);
+  }
+
+  .brand-logo { width: 7rem; }
+  .brand-logo img { width: 11rem; height: 11rem; }
 }
 
 @media (max-width: 25rem) {

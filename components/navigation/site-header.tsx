@@ -28,10 +28,10 @@ export function SiteHeader() {
       transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
       className="site-header"
     >
-      <Container className="flex h-[var(--header-height)] items-center justify-between">
+      <Container className="site-header__inner">
         <a
           href="#top"
-          className="group inline-flex items-center gap-2.5 rounded-md"
+          className="site-header__brand group inline-flex items-center gap-2.5 rounded-md"
           aria-label="VX House — home"
         >
           <span className="brand-logo" aria-hidden="true">
@@ -61,15 +61,14 @@ export function SiteHeader() {
           ))}
         </nav>
 
-        <div className="flex items-center gap-2">
-          <LanguageSwitcher />
-          <Button asChild size="sm" variant="ghost" className="hidden rounded-lg px-3.5 min-[520px]:inline-flex">
+        <div className="site-header__tools">
+          <LanguageSwitcher className="site-header__language" />
+          <Button asChild size="sm" variant="ghost" className="site-header__login rounded-lg px-3.5">
             <a href="/access?mode=login">{t("nav.login")}</a>
           </Button>
-          <Button asChild size="sm" className="rounded-lg px-3.5">
+          <Button asChild size="sm" className="site-header__access rounded-lg px-3.5">
             <a href="/access">
-              <span className="hidden min-[420px]:inline">{t("nav.access")}</span>
-              <span className="min-[420px]:hidden">{t("nav.accessShort")}</span>
+              <span>{t("nav.access")}</span>
               <ArrowUpRight aria-hidden="true" />
             </a>
           </Button>
