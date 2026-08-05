@@ -40,6 +40,12 @@ test("статус пользователя, блокировка и разбл�
 
 test("Partner approval активирует профиль и сохраняет отдельную историю", async () => { await service.execute(admin, "users", partnerId, { action: "PARTNER_APPROVAL", status: "ACTIVE", reason: "Партнёрская проверка завершена" }); const profile = await database.userProfile.findUniqueOrThrow({ where: { userId: partnerId }, include: { partnerProfile: { include: { approvalHistory: true } } } }); assert.equal(profile.accountStatus, "ACTIVE"); assert.equal(profile.partnerProfile?.status, "ACTIVE"); assert.equal(profile.partnerProfile?.approvalHistory.length, 1); });
 
+test("список участников показывает игроков и ожидающих одобрения партнёров", async () => {
+  const participants = await service.list(admin, "users");
+  assert.deepEqual(new Set(participants.items.map((item) => item.eyebrow)), new Set(["Игрок", "Партнёр"]));
+  assert.ok(participants.items.some((item) => item.id === partnerId && item.status === "PENDING"));
+});
+
 test("Opportunity, Instruction, Task и Reward получают обязательные версии", async () => { const inputs = [
   ["opportunities", "OPPORTUNITY", "Возможность для теста"], ["content", "INSTRUCTION", "Инструкция для теста"], ["tasks", "TASK", "Задание для теста"], ["rewards", "REWARD", "Тип Reward для теста"],
 ] as const; for (const [section, kind, title] of inputs) { const created = await service.create(admin, section, { action: "CONTENT_DRAFT", content: { kind, title, description: "Проверяемая версия административного контента", role: "PLAYER", market: "TR", nextStep: "Открыть условия", reason: "Создание тестовой версии" } }) as { id: string }; await service.execute(admin, section, created.id, { action: "CONTENT_PUBLISH", reason: "Контент прошёл тестовую проверку" }); const revisions = await database.adminContentRevision.findMany({ where: { entityType: kind, entityId: created.id }, orderBy: { version: "asc" } }); assert.deepEqual(revisions.map((item) => item.status), ["DRAFT", "PUBLISHED"]); await assert.rejects(database.adminContentRevision.update({ where: { id: revisions[0]!.id }, data: { reason: "Скрытая замена" } })); } assert.equal((await database.instructionVersion.findFirstOrThrow()).status, "PUBLISHED"); assert.equal((await database.taskVersion.findFirstOrThrow()).status, "PUBLISHED"); });
@@ -52,8 +58,12 @@ test("поддержка назначает оператора, пишет от�
 
 test("Admin Messenger синхронизирует постоянный диалог, unread и append-only заметки", async () => {
   const initial = await messenger.list(admin);
-  assert.equal(initial.items.length, 1);
-  const conversationId = initial.items[0]!.conversationId;
+  assert.equal(initial.items.length, 2);
+  assert.deepEqual(new Set(initial.items.map((item) => item.role)), new Set(["PLAYER", "PARTNER"]));
+  const partnerConversation = initial.items.find((item) => item.userId === partnerId);
+  assert.equal(partnerConversation?.role, "PARTNER");
+  assert.equal((await messenger.detail(admin, partnerConversation!.conversationId)).player.userId, partnerId);
+  const conversationId = initial.items.find((item) => item.userId === playerId)!.conversationId;
   const userMessage = await database.supportMessage.create({ data: { conversationId, authorType: "USER", authorId: playerId, bodyProtected: await encrypted("Сообщение игрока", "support-message", conversationId) } });
   await database.supportConversation.update({ where: { id: conversationId }, data: { updatedAt: userMessage.createdAt } });
   assert.equal((await messenger.list(admin)).items[0]!.unreadCount, 1);
@@ -71,7 +81,7 @@ test("Admin Messenger синхронизирует постоянный диал
 });
 
 test("Admin Messenger сохраняет и возвращает защищённое вложение", async () => {
-  const conversationId = (await messenger.list(admin)).items[0]!.conversationId;
+  const conversationId = (await messenger.list(admin)).items.find((item) => item.userId === playerId)!.conversationId;
   const detail = await messenger.sendMessage(admin, conversationId, "Документ для игрока");
   const messageId = detail.conversation.messages.findLast((item) => item.authorType === "OPERATOR")!.id;
   const file = new File([new TextEncoder().encode("%PDF-1.4 test")], "условия.pdf", { type: "application/pdf" });

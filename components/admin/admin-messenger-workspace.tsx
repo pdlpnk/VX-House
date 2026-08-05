@@ -177,18 +177,18 @@ function PlayerPanel({ detail, onUpdate, onClose }: { detail: AdminMessengerDeta
   }
 
   return (
-    <aside className={styles.playerPanel} aria-label="Информация об игроке">
-      <header><div><small>Профиль игрока</small><strong>{detail.player.name}</strong></div><button type="button" onClick={onClose} aria-label="Закрыть панель"><X aria-hidden="true" /></button></header>
+    <aside className={styles.playerPanel} aria-label="Информация об участнике">
+      <header><div><small>{detail.player.role === "PARTNER" ? "Профиль партнёра" : "Профиль игрока"}</small><strong>{detail.player.name}</strong></div><button type="button" onClick={onClose} aria-label="Закрыть панель"><X aria-hidden="true" /></button></header>
       <div className={styles.profileBlock}><span className={styles.profileAvatar} data-status={detail.player.online ? "online" : "offline"} aria-label={`${detail.player.name}: ${detail.player.online ? "в сети" : "не в сети"}`}>{detail.player.initials}</span><strong>{detail.player.name}</strong><small>{detail.player.email}</small><Link href={detail.player.profileHref}>Открыть полный профиль</Link></div>
       <dl className={styles.profileFacts}>
-        <div><dt>Роль</dt><dd>Игрок</dd></div><div><dt>Рынок</dt><dd>{detail.player.market}</dd></div>
+        <div><dt>Роль</dt><dd>{detail.player.role === "PARTNER" ? "Партнёр" : "Игрок"}</dd></div><div><dt>Рынок</dt><dd>{detail.player.market}</dd></div>
         <div><dt>Дата регистрации</dt><dd>{formatLocalDateTime(locale, detail.player.registeredAt)}</dd></div><div><dt>Уровень</dt><dd>{detail.player.rank}</dd></div>
         <div><dt>VX Points</dt><dd>{detail.player.points}</dd></div><div><dt>Текущее задание</dt><dd>{detail.player.currentTask}</dd></div>
         <div><dt>Последнее действие</dt><dd>{detail.player.lastAction}</dd></div>
       </dl>
       <section className={styles.notes}>
         <header><div><small>Только для администратора</small><h2>Внутренние заметки</h2></div><NotebookPen aria-hidden="true" /></header>
-        <textarea value={draft} maxLength={3000} placeholder={editing ? "Измените заметку…" : "Добавить заметку об игроке…"} aria-label="Текст внутренней заметки" onChange={(event) => setDraft(event.target.value)} />
+        <textarea value={draft} maxLength={3000} placeholder={editing ? "Измените заметку…" : "Добавить заметку об участнике…"} aria-label="Текст внутренней заметки" onChange={(event) => setDraft(event.target.value)} />
         <div className={styles.noteActions}>{editing ? <button type="button" onClick={() => { setEditing(null); setDraft(""); }}>Отмена</button> : null}<button type="button" disabled={!draft.trim() || pending} onClick={() => save(editing ? "edit" : "create")}>{pending ? "Сохраняем…" : editing ? "Сохранить" : "Добавить заметку"}</button></div>
         <div className={styles.noteHistory}>{detail.notes.length ? detail.notes.map((note) => <article key={note.logicalId}><p>{note.body}</p><small>{note.author} · создано {formatLocalDateTime(locale, note.createdAt)}{note.modifiedAt ? ` · изменено ${formatLocalDateTime(locale, note.modifiedAt)}` : ""}</small><div><button type="button" onClick={() => { setEditing(note); setDraft(note.body); }} aria-label="Редактировать заметку"><Pencil aria-hidden="true" /></button><button type="button" onClick={() => save("delete", note)} aria-label="Удалить заметку"><Trash2 aria-hidden="true" /></button></div></article>) : <p className={styles.noNotes}>Внутренних заметок пока нет.</p>}</div>
       </section>
@@ -256,27 +256,27 @@ export function AdminMessengerWorkspace({ initialList, initialDetail }: { initia
     <section className={styles.workspace} data-mobile-chat={mobileChat || undefined} data-panel-open={panelOpen || undefined}>
       <aside className={styles.chatList}>
         <header><div><small>Личный канал связи</small><h1 tabIndex={-1}>Messenger</h1></div>{list.unreadCount ? <b>{list.unreadCount}</b> : null}</header>
-        <label className={styles.search}><Search aria-hidden="true" /><span className="sr-only">Поиск игрока</span><input value={search} placeholder="Имя, email или внутренний ID" onChange={(event) => setSearch(event.target.value)} /></label>
-        <div className={styles.chatItems}>{visible.length ? visible.map((item) => <ChatListItem key={item.conversationId} item={item} active={selectedId === item.conversationId} onClick={() => openChat(item)} />) : <div className={styles.emptyList}><MessageCircle aria-hidden="true" /><strong>Пока нет активных диалогов</strong><p>Новые игроки появятся здесь автоматически.</p></div>}</div>
+        <label className={styles.search}><Search aria-hidden="true" /><span className="sr-only">Поиск участника</span><input value={search} placeholder="Имя, email или внутренний ID" onChange={(event) => setSearch(event.target.value)} /></label>
+        <div className={styles.chatItems}>{visible.length ? visible.map((item) => <ChatListItem key={item.conversationId} item={item} active={selectedId === item.conversationId} onClick={() => openChat(item)} />) : <div className={styles.emptyList}><MessageCircle aria-hidden="true" /><strong>Пока нет активных диалогов</strong><p>Новые участники появятся здесь автоматически.</p></div>}</div>
       </aside>
 
       <main className={styles.conversation}>
         {loading ? <div className={styles.loading}><LoaderCircle aria-hidden="true" /><span>Открываем переписку…</span></div> : detail ? <>
           <header className={styles.conversationHeader}>
-            <button type="button" className={styles.mobileBack} onClick={() => setMobileChat(false)} aria-label="Назад к списку игроков"><ArrowLeft aria-hidden="true" /></button>
+            <button type="button" className={styles.mobileBack} onClick={() => setMobileChat(false)} aria-label="Назад к списку участников"><ArrowLeft aria-hidden="true" /></button>
             <span className={styles.avatar} data-status={detail.player.online ? "online" : "offline"} aria-label={`${detail.player.name}: ${detail.player.online ? "в сети" : "не в сети"}`}>{detail.player.initials}</span>
             <div><strong>{detail.player.name}</strong><small>{detail.player.online ? "В сети" : "Не в сети"}</small></div>
-            <button type="button" className={styles.infoButton} data-active={panelOpen || undefined} onClick={() => setPanelOpen((open) => !open)} aria-label={panelOpen ? "Закрыть информацию об игроке" : "Открыть информацию об игроке"} aria-expanded={panelOpen}><Info aria-hidden="true" /></button>
+            <button type="button" className={styles.infoButton} data-active={panelOpen || undefined} onClick={() => setPanelOpen((open) => !open)} aria-label={panelOpen ? "Закрыть информацию об участнике" : "Открыть информацию об участнике"} aria-expanded={panelOpen}><Info aria-hidden="true" /></button>
           </header>
           <Messages detail={detail} pending={false} />
           <AdminComposer detail={detail} onUpdate={(value) => { setDetail(value); void loadList(); }} />
-        </> : <div className={styles.noSelection}><MessageCircle aria-hidden="true" /><strong>Выберите игрока, чтобы открыть переписку</strong><p>Вся история постоянного диалога появится здесь.</p></div>}
+        </> : <div className={styles.noSelection}><MessageCircle aria-hidden="true" /><strong>Выберите участника, чтобы открыть переписку</strong><p>Вся история постоянного диалога появится здесь.</p></div>}
       </main>
 
       <AnimatePresence>
         {detail && panelOpen ? <motion.div className={styles.panelWrap} data-open initial={reduced ? false : { opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} exit={reduced ? undefined : { opacity: 0, x: 12 }} transition={transition}><PlayerPanel detail={detail} onUpdate={setDetail} onClose={() => setPanelOpen(false)} /></motion.div> : null}
       </AnimatePresence>
-      {panelOpen ? <button type="button" className={styles.panelOverlay} onClick={() => setPanelOpen(false)} aria-label="Закрыть информацию об игроке" /> : null}
+      {panelOpen ? <button type="button" className={styles.panelOverlay} onClick={() => setPanelOpen(false)} aria-label="Закрыть информацию об участнике" /> : null}
       <button type="button" className="sr-only"><MoreHorizontal aria-hidden="true" />Дополнительные действия</button>
     </section>
   );

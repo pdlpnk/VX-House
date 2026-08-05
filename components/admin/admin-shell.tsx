@@ -26,14 +26,14 @@ const adminConfig = {
   defaultPreferences: adminPreferences,
   navigation: [
     { label: "Dashboard", href: "/admin", icon: LayoutDashboard },
-    { label: "Игроки", href: "/admin/users", icon: UsersRound },
+    { label: "Участники", href: "/admin/users", icon: UsersRound },
     { label: "Messenger", href: "/admin/messenger", icon: MessageCircle },
     { label: "CMS", href: "/admin/content", icon: BookOpenText },
     { label: "Профиль", href: "/admin/profile", icon: UserRound },
   ],
   pageTitles: {
     "/admin": "Dashboard",
-    "/admin/users": "Игроки",
+    "/admin/users": "Участники",
     "/admin/services": "Партнёрские сервисы",
     "/admin/opportunities": "Возможности",
     "/admin/tasks": "Задания",

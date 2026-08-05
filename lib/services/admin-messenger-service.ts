@@ -2,7 +2,7 @@ import "server-only";
 
 import { randomUUID } from "node:crypto";
 
-import type { AdminMessengerDetail, AdminMessengerList, AdminMessengerNote } from "@/lib/admin-messenger";
+import { ADMIN_MESSENGER_ROLES, isAdminMessengerRole, type AdminMessengerDetail, type AdminMessengerList, type AdminMessengerNote } from "@/lib/admin-messenger";
 import type { AuthenticatedPrincipal } from "@/lib/auth";
 import { ApplicationError, createTransactionalEventServices, PrismaTransactionRunner } from "@/lib/application";
 import type { AesGcmDataProtector, EncryptedPayload } from "@/lib/data-protection";
@@ -57,7 +57,7 @@ export class AdminMessengerService {
     ] : [];
     const profiles = await this.database.userProfile.findMany({
       where: {
-        productRole: "PLAYER",
+        productRole: { in: [...ADMIN_MESSENGER_ROLES] },
         user: { disabledAt: null },
         ...(query ? { OR: searchFilters } : {}),
       },
@@ -66,7 +66,8 @@ export class AdminMessengerService {
       take: 100,
     });
 
-    const items = await Promise.all(profiles.map(async (profile) => {
+    const items: AdminMessengerList["items"] = [];
+    for (const profile of profiles) {
       const ensured = await ensurePersonalConversationRecord(this.database, this.protector, profile.userId);
       const conversation = await this.database.supportConversation.findUniqueOrThrow({
         where: { id: ensured.id },
@@ -92,22 +93,22 @@ export class AdminMessengerService {
           resourceId: conversation.id,
         }))
         : "Диалог создан";
-      return {
+      items.push({
         userId: profile.userId,
         conversationId: conversation.id,
         name: profile.user.displayName || "Участник VX House",
         email: profile.user.email,
         initials: (profile.user.displayName || profile.user.email).split(/\s+/).slice(0, 2).map((part) => part[0]).join("").toLocaleUpperCase("ru"),
         market: profile.market.name,
-        role: "PLAYER" as const,
+        role: profile.productRole,
         registeredAt: profile.user.createdAt.toISOString(),
         online: Boolean(profile.user.updatedAt && Date.now() - profile.user.updatedAt.getTime() < 15 * 60_000),
         lastMessage: lastMessage.replace(/\s+/g, " ").trim(),
         lastMessageAt: last?.createdAt.toISOString() ?? null,
         unreadCount,
         hasNotes: conversation._count.internalNotes > 0,
-      };
-    }));
+      });
+    }
 
     items.sort((a, b) => (b.lastMessageAt ?? "").localeCompare(a.lastMessageAt ?? ""));
     return { items, unreadCount: items.reduce((sum, item) => sum + item.unreadCount, 0) };
@@ -116,9 +117,11 @@ export class AdminMessengerService {
   async detail(actor: AuthenticatedPrincipal, conversationId: string): Promise<AdminMessengerDetail> {
     requireAdmin(actor);
     const record = await this.conversationRecord(conversationId);
-    if (!record || record.user.profile?.productRole !== "PLAYER") throw new ApplicationError("NOT_FOUND", "Диалог игрока не найден");
+    if (!record || !isAdminMessengerRole(record.user.profile?.productRole ?? "")) {
+      throw new ApplicationError("NOT_FOUND", "Диалог участника не найден");
+    }
     const listItem = (await this.list(actor, record.user.email)).items.find((item) => item.conversationId === conversationId);
-    if (!listItem) throw new ApplicationError("NOT_FOUND", "Диалог игрока не найден");
+    if (!listItem) throw new ApplicationError("NOT_FOUND", "Диалог участника не найден");
     const [rank, points, task, action] = await Promise.all([
       this.database.userRank.findFirst({ where: { userId: record.userId }, include: { rankDefinition: true }, orderBy: { assignedAt: "desc" } }),
       this.database.vXPointsLedgerEntry.aggregate({ where: { userId: record.userId, status: "CONFIRMED" }, _sum: { delta: true } }),

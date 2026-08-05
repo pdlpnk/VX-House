@@ -8,8 +8,8 @@ import type { AdminDashboardView } from "@/lib/admin";
 
 export function AdminOverview({ stats }: { stats: AdminDashboardView }) {
   const coreSections = [
-    { href: "/admin/users", label: "Игроки", description: "Профили и состояние участников.", purpose: "Открыть список игроков", icon: UsersRound },
-    { href: "/admin/messenger", label: "Messenger", description: "Постоянные личные диалоги с игроками.", purpose: "Открыть переписку", icon: MessageCircle },
+    { href: "/admin/users", label: "Участники", description: "Профили и состояние игроков и партнёров.", purpose: "Открыть список участников", icon: UsersRound },
+    { href: "/admin/messenger", label: "Messenger", description: "Постоянные личные диалоги с участниками.", purpose: "Открыть переписку", icon: MessageCircle },
     { href: "/admin/content", label: "CMS", description: "Управление опубликованными материалами.", purpose: "Открыть контент", icon: BookOpenText },
   ];
   const primary = [
