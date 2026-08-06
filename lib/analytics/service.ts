@@ -239,12 +239,15 @@ export class AnalyticsService {
       },
       select: { eventName: true, analyticsSessionId: true, userId: true },
     });
-    const count = (name: typeof events[number]["eventName"]) => events.filter((event) => event.eventName === name).length;
-    const landingViewed = new Set(events.filter((event) => event.eventName === "LANDING_VIEWED").map((event) => event.analyticsSessionId).filter(Boolean)).size;
-    const accessClicked = count("ACCESS_CLICKED");
-    const registrationStarted = count("REGISTRATION_STARTED");
-    const emailConfirmed = count("EMAIL_CONFIRMED");
-    const dashboardOpened = count("DASHBOARD_OPENED");
+    const uniqueCount = (
+      name: typeof events[number]["eventName"],
+      identity: (event: typeof events[number]) => string | null,
+    ) => new Set(events.filter((event) => event.eventName === name).map(identity).filter((value): value is string => Boolean(value))).size;
+    const landingViewed = uniqueCount("LANDING_VIEWED", (event) => event.analyticsSessionId);
+    const accessClicked = uniqueCount("ACCESS_CLICKED", (event) => event.analyticsSessionId);
+    const registrationStarted = uniqueCount("REGISTRATION_STARTED", (event) => event.userId ?? event.analyticsSessionId);
+    const emailConfirmed = uniqueCount("EMAIL_CONFIRMED", (event) => event.userId);
+    const dashboardOpened = uniqueCount("DASHBOARD_OPENED", (event) => event.userId);
     return {
       from: from.toISOString(), to: to.toISOString(), landingViewed,
       accessClicked: { count: accessClicked, rate: rate(accessClicked, landingViewed) },

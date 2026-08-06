@@ -74,6 +74,10 @@ test("email и Dashboard — серверные события с дедупли
   assert.equal(await database.analyticsEvent.count({ where: { eventName: "DASHBOARD_OPENED" } }), 1);
   await service.recordDashboardOpened({ ...principal, sessionId: randomUUID() });
   assert.equal(await database.analyticsEvent.count({ where: { eventName: "DASHBOARD_OPENED" } }), 2);
+  const report = await service.funnel(new Date(Date.now() - 60_000), new Date(Date.now() + 60_000));
+  assert.equal(report.emailConfirmed.count, 1);
+  assert.equal(report.dashboardOpened.count, 1);
+  assert.equal(report.dashboardOpened.rate, 100);
 });
 
 test("Keitaro outbox доставляет один раз, 5xx уходит в retry, disabled не создаёт delivery", async () => {
