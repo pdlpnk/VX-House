@@ -5,8 +5,9 @@ import styles from "@/app/dashboard/dashboard.module.css";
 import { DashboardGrid, DashboardGridItem, DashboardHeading, DashboardPage, StatusPill } from "@/components/dashboard/dashboard-ui";
 import { Card } from "@/components/ui/card";
 import type { AdminDashboardView } from "@/lib/admin";
+import type { FunnelReport } from "@/lib/analytics";
 
-export function AdminOverview({ stats }: { stats: AdminDashboardView }) {
+export function AdminOverview({ stats, funnel }: { stats: AdminDashboardView; funnel: FunnelReport }) {
   const coreSections = [
     { href: "/admin/users", label: "Участники", description: "Профили и состояние игроков и партнёров.", purpose: "Открыть список участников", icon: UsersRound },
     { href: "/admin/messenger", label: "Messenger", description: "Постоянные личные диалоги с участниками.", purpose: "Открыть переписку", icon: MessageCircle },
@@ -49,6 +50,19 @@ export function AdminOverview({ stats }: { stats: AdminDashboardView }) {
       <section className={styles.adminOperationsSummary} aria-labelledby="admin-operations-title">
         <header><div><span>Операционная статистика</span><h2 id="admin-operations-title">Текущая рабочая очередь</h2><p>Показатели отражают реальные записи и не рассчитываются на клиенте.</p></div><StatusPill tone="success">Обновлено</StatusPill></header>
         <div>{operations.map((area) => <article key={area.label}><small>{area.label}</small><strong>{area.state}</strong><p>{area.nextStep}</p></article>)}</div>
+      </section>
+
+      <section className={styles.adminOperationsSummary} aria-labelledby="admin-funnel-title">
+        <header><div><span>First-party аналитика · 30 дней</span><h2 id="admin-funnel-title">Воронка получения доступа</h2><p>Тестовые и smoke-аккаунты исключены. Проценты рассчитываются сервером.</p></div><StatusPill tone="success">Внутренние события</StatusPill></header>
+        <div>
+          {[
+            ["Уникальные посетители", funnel.landingViewed, null],
+            ["Нажали «Получить доступ»", funnel.accessClicked.count, funnel.accessClicked.rate],
+            ["Начали регистрацию", funnel.registrationStarted.count, funnel.registrationStarted.rate],
+            ["Подтвердили email", funnel.emailConfirmed.count, funnel.emailConfirmed.rate],
+            ["Открыли Dashboard", funnel.dashboardOpened.count, funnel.dashboardOpened.rate],
+          ].map(([label, value, conversion]) => <article key={String(label)}><small>{label}</small><strong>{value}</strong><p>{conversion === null ? "Первый подтверждённый просмотр" : `Конверсия этапа: ${conversion}%`}</p></article>)}
+        </div>
       </section>
 
       <section className={styles.adminSectionHub} aria-labelledby="admin-sections-title">

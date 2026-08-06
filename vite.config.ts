@@ -34,6 +34,11 @@ const SERVER_ENV_KEYS = [
   "EMAIL_CODE_MAX_ATTEMPTS",
   "EMAIL_CODE_MAX_ACTIVE",
   "TRUST_PROXY_HEADERS",
+  "KEITARO_ENABLED",
+  "KEITARO_POSTBACK_URL",
+  "KEITARO_REQUEST_TIMEOUT_MS",
+  "KEITARO_MAX_RETRIES",
+  "KEITARO_DASHBOARD_STATUS",
 ] as const;
 
 // macOS Seatbelt blocks FSEvents, so Codex previews need polling for HMR.

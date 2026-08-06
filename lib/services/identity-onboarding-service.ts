@@ -16,7 +16,7 @@ import {
   hashCommandPayload,
   PrismaTransactionRunner,
 } from "@/lib/application";
-import type { PrismaClient } from "@/lib/db";
+import type { DatabaseClient, PrismaClient } from "@/lib/db";
 import type { LanguageCode, MarketCode, ProductRole } from "@/lib/db/generated/client";
 import {
   PrismaAuthRepository,
@@ -50,6 +50,11 @@ export interface IdentityOnboardingConfig {
   readonly resendCooldownSeconds: number;
   readonly maxVerificationAttempts: number;
   readonly maxActiveChallenges: number;
+}
+
+export interface IdentityAnalyticsHooks {
+  linkAnonymousSession(database: DatabaseClient, input: { anonymousId?: string | null; userId: string; email: string; productRole: ProductRole; occurredAt: Date }): Promise<unknown>;
+  recordEmailConfirmed(database: DatabaseClient, input: { userId: string; authSessionId: string; occurredAt: Date }): Promise<unknown>;
 }
 
 export interface RegistrationCommand {
@@ -93,6 +98,7 @@ export class IdentityOnboardingService {
     private readonly codes: VerificationCodeHasher,
     private readonly emailProvider: EmailProvider,
     private readonly config: IdentityOnboardingConfig,
+    private readonly analytics?: IdentityAnalyticsHooks,
   ) {
     this.transactions = new PrismaTransactionRunner(database);
   }
@@ -102,6 +108,7 @@ export class IdentityOnboardingService {
     idempotencyKey: string;
     now?: Date;
     correlationId?: string;
+    analyticsAnonymousId?: string | null;
   }) {
     await this.purgeExpiredUnverifiedAccounts();
     const correlationId = input.correlationId ?? randomUUID();
@@ -139,6 +146,7 @@ export class IdentityOnboardingService {
           expiresAt: addSeconds(occurredAt, this.config.sessionIdleTtlSeconds),
           absoluteExpiresAt: addSeconds(occurredAt, this.config.sessionAbsoluteTtlSeconds),
         });
+        await this.analytics?.linkAnonymousSession(database, { anonymousId: input.analyticsAnonymousId, userId: receipt.actorId, email: existingUser.email, productRole: command.productRole, occurredAt });
         return {
           userId: receipt.actorId,
           user: existingUser,
@@ -219,6 +227,7 @@ export class IdentityOnboardingService {
         resultId: user.id,
         createdAt: occurredAt,
       });
+      await this.analytics?.linkAnonymousSession(database, { anonymousId: input.analyticsAnonymousId, userId: user.id, email: normalizedEmail, productRole: command.productRole, occurredAt });
       shouldDeliverCode = true;
       const safeProfile = await profiles.findByUserId(user.id);
       return {
@@ -399,6 +408,11 @@ export class IdentityOnboardingService {
         actor,
         target: { type: "email-verification", id: challenge.id },
         metadata: { method: "email_code" },
+      });
+      await this.analytics?.recordEmailConfirmed(database, {
+        userId: input.principal.userId,
+        authSessionId: input.principal.sessionId,
+        occurredAt,
       });
       return { ok: true as const };
     });

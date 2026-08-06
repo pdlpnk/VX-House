@@ -10,6 +10,7 @@ import { PrismaClient as NodePrismaClient } from "../lib/db/generated-node/clien
 import { PrismaAuthRepository, PrismaRateLimitRepository } from "../lib/repositories/index.ts";
 import { AuthenticationService, IdentityOnboardingService, RateLimitService, type EmailProvider, type VerificationEmail } from "../lib/services/index.ts";
 import { EnvironmentValidationError, validateEnvironment } from "../lib/validation/index.ts";
+import { AnalyticsService } from "../lib/analytics/service.ts";
 
 const connectionString = process.env.TEST_DATABASE_URL;
 if (!connectionString) throw new Error("TEST_DATABASE_URL обязателен");
@@ -41,10 +42,10 @@ async function seed() {
 }
 
 beforeEach(async () => {
-  await database.$executeRawUnsafe('TRUNCATE TABLE "AuditEvent", "User", "Market", "ConsentDocument" CASCADE');
+  await database.$executeRawUnsafe('TRUNCATE TABLE "ConversionDelivery", "AnalyticsEvent", "AnalyticsSession", "AuditEvent", "User", "Market", "ConsentDocument" CASCADE');
   await seed();
   mail = new CaptureEmailProvider();
-  service = new IdentityOnboardingService(database, tokens, cookies, new VerificationCodeHasher("test-email-code-secret-functional-module-one"), mail, { sessionIdleTtlSeconds: 3600, sessionAbsoluteTtlSeconds: 86400, verificationTtlSeconds: 600, resendCooldownSeconds: 30, maxVerificationAttempts: 3, maxActiveChallenges: 1 });
+  service = new IdentityOnboardingService(database, tokens, cookies, new VerificationCodeHasher("test-email-code-secret-functional-module-one"), mail, { sessionIdleTtlSeconds: 3600, sessionAbsoluteTtlSeconds: 86400, verificationTtlSeconds: 600, resendCooldownSeconds: 30, maxVerificationAttempts: 3, maxActiveChallenges: 1 }, new AnalyticsService(database, { enabled: false, requestTimeoutMs: 500, maxRetries: 5 }));
 });
 
 after(async () => database.$disconnect());
@@ -128,6 +129,7 @@ test("корректный одноразовый код подтверждае�
   const snapshot = await service.getSnapshot(principal);
   assert.equal(snapshot.status, "CONSENTS_PENDING");
   assert.equal(snapshot.profile!.contactVerificationStatus, "VERIFIED");
+  assert.equal(await database.analyticsEvent.count({ where: { eventName: "EMAIL_CONFIRMED" } }), 1);
 });
 
 test("неверный код ограничен числом попыток и не подтверждает профиль", async () => {
@@ -135,6 +137,7 @@ test("неверный код ограничен числом попыток и 
   assert.equal((await service.verifyEmail({ principal, code: "000000" })).ok, false);
   assert.equal((await service.verifyEmail({ principal, code: "000001" })).ok, false);
   assert.deepEqual(await service.verifyEmail({ principal, code: "000002" }), { ok: false, code: "ATTEMPTS_EXHAUSTED" });
+  assert.equal(await database.analyticsEvent.count({ where: { eventName: "EMAIL_CONFIRMED" } }), 0);
 });
 
 test("истёкший и уже использованный код не принимаются", async () => {

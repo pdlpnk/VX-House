@@ -1,4 +1,5 @@
 import { SiteHeader } from "@/components/navigation/site-header";
+import { AnalyticsLandingTracker } from "@/components/analytics/analytics-landing-tracker";
 import { Benefits } from "@/components/sections/benefits";
 import { Faq } from "@/components/sections/faq";
 import { Hero } from "@/components/sections/hero";
@@ -27,6 +28,7 @@ const structuredData = {
 export default function Home() {
   return (
     <div className="public-site">
+      <AnalyticsLandingTracker />
       <SiteHeader />
       <main id="main-content">
         <Hero />

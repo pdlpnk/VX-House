@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { ArrowRight, LayoutDashboard } from "lucide-react";
 
 import { PlatformDashboard } from "@/components/platform-dashboard";
+import { TrackedAccessLink } from "@/components/analytics/tracked-access-link";
 import { Section } from "@/components/sections/section";
 import { Button } from "@/components/ui/button";
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
@@ -59,13 +60,13 @@ export function InsidePlatform() {
 
         <motion.div variants={prefersReducedMotion ? undefined : fadeUp}>
           <Button asChild size="lg" className="group rounded-xl shadow-glow">
-            <a href="/access">
+            <TrackedAccessLink placement="process">
               {content.cta}
               <ArrowRight
                 aria-hidden="true"
                 className="transition-transform duration-200 group-hover:translate-x-0.5"
               />
-            </a>
+            </TrackedAccessLink>
           </Button>
         </motion.div>
       </motion.div>

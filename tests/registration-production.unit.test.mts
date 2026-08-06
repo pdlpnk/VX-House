@@ -166,3 +166,29 @@ test("environment отклоняет невалидный site URL", () => {
       && error.issues.some((issue) => issue.includes("корректный HTTP(S) origin")),
   );
 });
+
+test("Keitaro включается только с публичным HTTPS endpoint в production", () => {
+  const enabled = validateEnvironment(productionEnvironment({
+    KEITARO_ENABLED: "true",
+    KEITARO_POSTBACK_URL: "https://tracker.example/private-key/postback",
+  }));
+  assert.equal(enabled.KEITARO_ENABLED, true);
+  assert.equal(enabled.KEITARO_REQUEST_TIMEOUT_MS, 5_000);
+  assert.equal(enabled.KEITARO_MAX_RETRIES, 5);
+
+  for (const unsafeUrl of [
+    "http://tracker.example/postback",
+    "https://localhost/postback",
+    "https://127.0.0.1/postback",
+    "https://10.0.0.1/postback",
+    "https://192.168.1.10/postback",
+    "https://[::1]/postback",
+    "https://[fd00::1]/postback",
+  ]) {
+    assert.throws(
+      () => validateEnvironment(productionEnvironment({ KEITARO_ENABLED: "true", KEITARO_POSTBACK_URL: unsafeUrl })),
+      (error: unknown) => error instanceof EnvironmentValidationError
+        && error.issues.some((issue) => issue.includes("публичный HTTPS endpoint")),
+    );
+  }
+});

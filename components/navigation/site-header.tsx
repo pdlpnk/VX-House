@@ -5,6 +5,7 @@ import { ArrowUpRight } from "lucide-react";
 import Image from "next/image";
 
 import { Container } from "@/components/container";
+import { TrackedAccessLink } from "@/components/analytics/tracked-access-link";
 import { LanguageSwitcher } from "@/components/i18n/language-switcher";
 import { useI18n } from "@/components/i18n/i18n-provider";
 import { Button } from "@/components/ui/button";
@@ -67,10 +68,10 @@ export function SiteHeader() {
             <a href="/access?mode=login">{t("nav.login")}</a>
           </Button>
           <Button asChild size="sm" className="site-header__access rounded-lg px-3.5">
-            <a href="/access">
+            <TrackedAccessLink placement="header">
               <span>{t("nav.access")}</span>
               <ArrowUpRight aria-hidden="true" />
-            </a>
+            </TrackedAccessLink>
           </Button>
         </div>
       </Container>

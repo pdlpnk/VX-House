@@ -42,11 +42,12 @@ try {
   await run(node, [prisma, "migrate", "deploy"], env);
   await run(node, [prisma, "validate"], env);
   await run(node, [prisma, "generate"], env);
-  const testFiles = [
+  const defaultTestFiles = [
     "tests/registration-production.unit.test.mts",
     "tests/database-invariants.integration.test.mts",
     "tests/identity-profile-consent.integration.test.mts",
     "tests/functional-identity-onboarding.integration.test.mts",
+    "tests/functional-analytics.integration.test.mts",
     "tests/registration-stabilization.integration.test.mts",
     "tests/functional-opportunities-tasks.integration.test.mts",
     "tests/functional-economy-rewards.integration.test.mts",
@@ -54,6 +55,7 @@ try {
     "tests/functional-admin-cms-moderation.integration.test.mts",
     "tests/functional-platform-operations.integration.test.mts",
   ];
+  const testFiles = process.argv.length > 2 ? process.argv.slice(2) : defaultTestFiles;
   for (const file of testFiles) await run(node, [tsx, "--conditions=react-server", "--test", "--test-concurrency=1", file], env);
 } finally {
   await databaseLock.close();

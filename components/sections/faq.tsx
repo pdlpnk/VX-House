@@ -1,6 +1,7 @@
 "use client";
 
 import { useI18n } from "@/components/i18n/i18n-provider";
+import { TrackedAccessLink } from "@/components/analytics/tracked-access-link";
 import { PublicSection } from "@/components/sections/public-section";
 import { publicContent } from "@/lib/i18n/public-content";
 
@@ -25,7 +26,7 @@ export function Faq() {
       </div>
       <div className="faq-cta">
         <div><small>{content.ctaLabel}</small><h3>{content.ctaTitle}</h3><p>{content.ctaText}</p><span>{content.ctaNote}</span></div>
-        <a href="/access">{content.cta}</a>
+        <TrackedAccessLink placement="final_cta">{content.cta}</TrackedAccessLink>
       </div>
     </PublicSection>
   );

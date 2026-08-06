@@ -1,0 +1,18 @@
+[Unit]
+Description=VX House analytics conversion delivery
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/VX-House
+EnvironmentFile=/opt/VX-House/.env
+Environment=NODE_ENV=production
+ExecStart=/usr/bin/flock --nonblock /run/lock/vx-house-analytics-delivery.lock /usr/bin/pnpm analytics:deliver
+TimeoutStartSec=50
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+StandardOutput=journal
+StandardError=journal
+

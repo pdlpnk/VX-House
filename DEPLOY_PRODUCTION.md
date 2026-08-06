@@ -206,7 +206,47 @@ curl --fail --silent https://vxhouse.online/api/health
 
 Prisma migrations автоматически назад не откатываются. При несовместимой миграции используйте заранее проверенный backup либо отдельно проверенную forward-repair migration; не редактируйте production migration history вручную.
 
-## 8. Docker Compose как альтернатива
+## 8. Доставка аналитических конверсий
+
+`ConversionDelivery` обрабатывается one-shot worker-процессом. Не запускайте его как бесконечный PM2-процесс. Версионируемые systemd units находятся в `deploy/systemd/`.
+
+Перед установкой проверьте путь `command -v pnpm`. Если он отличается от `/usr/bin/pnpm`, замените только `ExecStart` в установленной копии service-файла на фактический абсолютный путь.
+
+```bash
+sudo install -m 0644 deploy/systemd/vx-house-analytics-delivery.service /etc/systemd/system/
+sudo install -m 0644 deploy/systemd/vx-house-analytics-delivery.timer /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now vx-house-analytics-delivery.timer
+```
+
+Проверка, перезапуск и журналы:
+
+```bash
+systemctl status vx-house-analytics-delivery.timer
+systemctl list-timers vx-house-analytics-delivery.timer
+sudo systemctl restart vx-house-analytics-delivery.service
+journalctl -u vx-house-analytics-delivery.service --since "1 hour ago" --no-pager
+```
+
+Ручной безопасный запуск использует production environment из защищённого файла:
+
+```bash
+cd /opt/VX-House
+set -a
+source .env
+set +a
+pnpm analytics:deliver
+```
+
+Отключение расписания без удаления данных outbox:
+
+```bash
+sudo systemctl disable --now vx-house-analytics-delivery.timer
+```
+
+Systemd не запускает второй экземпляр уже активного unit, а `flock` дополнительно предотвращает параллельную обработку. Worker не выводит postback URL, ключ, `subid` или query string в журнал.
+
+## 9. Docker Compose как альтернатива
 
 `docker-compose.yml` запускает TLS-enabled PostgreSQL, one-shot `prisma migrate deploy` и standalone-приложение с healthcheck/restart policy. Compose сам переопределяет database URL на внутренний сервис `postgres`:
 

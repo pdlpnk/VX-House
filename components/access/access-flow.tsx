@@ -21,6 +21,7 @@ import { useI18n } from "@/components/i18n/i18n-provider";
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import type { AccessCountry, AccessScenario } from "@/lib/access-types";
 import { fromDatabaseLanguage, toDatabaseLanguage } from "@/lib/i18n";
+import { trackAnalyticsEvent } from "@/lib/analytics/client";
 
 const TOTAL_STEPS = 8;
 const stepVariants: Variants = {
@@ -140,6 +141,14 @@ export function AccessFlow() {
       .catch(() => { if (active) setDevelopmentCode(null); });
     return () => { active = false; };
   }, [ready, step]);
+
+  useEffect(() => {
+    if (!ready || !scenario || mode !== "onboarding") return;
+    void trackAnalyticsEvent({
+      eventName: "registration_started",
+      metadata: { role: scenario === "partner" ? "PARTNER" : "PLAYER" },
+    });
+  }, [mode, ready, scenario]);
 
   async function register() {
     setPending(true); setMessage(null);

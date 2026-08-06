@@ -1,4 +1,5 @@
 import { errorResponse, deriveNetworkIdentifier, getIdentitySystem, json, limitRequest, normalizedIdentifier, readJsonBody, requireTrustedOrigin } from "@/lib/server/identity-delivery";
+import { getAnalyticsSystem, scheduleAnalyticsDelivery } from "@/lib/server/analytics";
 
 export async function POST(request: Request) {
   try {
@@ -13,7 +14,9 @@ export async function POST(request: Request) {
       command: body,
       idempotencyKey: String(body.idempotencyKey ?? request.headers.get("idempotency-key") ?? ""),
       correlationId,
+      analyticsAnonymousId: getAnalyticsSystem().cookies.read(request),
     });
+    scheduleAnalyticsDelivery();
     return json(
       {
         user: { id: result.userId, displayName: result.user.displayName },

@@ -224,6 +224,23 @@ enum PromocodeActivationStatus {
   CANCELLED
 }
 
+enum AnalyticsEventName {
+  LANDING_VIEWED
+  ACCESS_CLICKED
+  REGISTRATION_STARTED
+  EMAIL_CONFIRMED
+  DASHBOARD_OPENED
+}
+
+enum ConversionDeliveryStatus {
+  PENDING
+  PROCESSING
+  RETRY
+  DELIVERED
+  SKIPPED
+  EXHAUSTED
+}
+
 model User {
   id                          String                       @id @default(uuid()) @db.Uuid
   email                       String                       @unique @db.VarChar(320)
@@ -265,6 +282,8 @@ model User {
   notificationBatches         NotificationBatch[]          @relation("NotificationBatchActor")
   forecastAccessRules         ForecastAccessRule[]
   promocodeActivations        PromocodeActivation[]
+  analyticsSessions           AnalyticsSession[]
+  analyticsEvents             AnalyticsEvent[]
 
   @@index([createdAt])
 }
@@ -316,6 +335,64 @@ model Session {
   @@index([userId])
   @@index([expiresAt])
   @@index([absoluteExpiresAt])
+}
+
+model AnalyticsSession {
+  id           String           @id @default(uuid()) @db.Uuid
+  anonymousId  String           @unique @db.VarChar(64)
+  userId       String?          @db.Uuid
+  keitaroSubId String?          @db.VarChar(255)
+  firstTouch   Json
+  isTest       Boolean          @default(false)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  user         User?            @relation(fields: [userId], references: [id], onDelete: SetNull)
+  events       AnalyticsEvent[]
+
+  @@index([userId, createdAt])
+  @@index([keitaroSubId])
+  @@index([createdAt])
+}
+
+model AnalyticsEvent {
+  id                 String               @id @default(uuid()) @db.Uuid
+  eventName          AnalyticsEventName
+  analyticsSessionId String?              @db.Uuid
+  userId             String?              @db.Uuid
+  authSessionId      String?              @db.Uuid
+  metadata           Json
+  occurredAt         DateTime             @default(now())
+  idempotencyKey     String               @unique @db.VarChar(200)
+  isTest             Boolean              @default(false)
+  analyticsSession   AnalyticsSession?    @relation(fields: [analyticsSessionId], references: [id], onDelete: SetNull)
+  user               User?                @relation(fields: [userId], references: [id], onDelete: SetNull)
+  deliveries         ConversionDelivery[]
+
+  @@index([eventName, occurredAt])
+  @@index([analyticsSessionId, occurredAt])
+  @@index([userId, occurredAt])
+  @@index([authSessionId, eventName])
+}
+
+model ConversionDelivery {
+  id                    String                   @id @default(uuid()) @db.Uuid
+  eventId               String                   @db.Uuid
+  provider              String                   @db.VarChar(40)
+  status                ConversionDeliveryStatus @default(PENDING)
+  providerStatus        String                   @db.VarChar(80)
+  transactionId         String                   @unique @db.VarChar(200)
+  attemptCount          Int                      @default(0)
+  nextAttemptAt         DateTime                 @default(now())
+  lastErrorSafe         String?                  @db.VarChar(500)
+  deliveredAt           DateTime?
+  providerTransactionId String?                  @db.VarChar(255)
+  createdAt             DateTime                 @default(now())
+  updatedAt             DateTime                 @updatedAt
+  event                 AnalyticsEvent           @relation(fields: [eventId], references: [id], onDelete: Restrict)
+
+  @@unique([eventId, provider])
+  @@index([status, nextAttemptAt])
+  @@index([createdAt])
 }
 
 model Role {

@@ -1,4 +1,5 @@
 import { deriveNetworkIdentifier, errorResponse, getIdentitySystem, json, limitRequest, readJsonBody, requireRequestPrincipal, requireTrustedOrigin } from "@/lib/server/identity-delivery";
+import { scheduleAnalyticsDelivery } from "@/lib/server/analytics";
 
 export async function POST(request: Request) {
   try {
@@ -11,6 +12,7 @@ export async function POST(request: Request) {
       principal,
       code: typeof body.code === "string" ? body.code : "",
     });
+    if (result.ok) scheduleAnalyticsDelivery();
     return result.ok
       ? json({ ok: true, nextStep: "CONSENTS_PENDING" })
       : json({ error: result.code, message: result.code === "EXPIRED_CODE" ? "Срок действия кода истёк." : result.code === "ATTEMPTS_EXHAUSTED" ? "Лимит попыток исчерпан. Запросите новый код." : "Код не подошёл." }, { status: 400 });

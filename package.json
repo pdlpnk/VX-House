@@ -16,6 +16,8 @@
     "test:domain": "node --test tests/domain-foundation.test.mts",
     "test:registration-production": "tsx --conditions=react-server --test tests/registration-production.unit.test.mts",
     "test:i18n-registration": "tsx --conditions=react-server --test tests/i18n-registration.unit.test.mts",
+    "test:analytics": "tsx --conditions=react-server --test tests/analytics.unit.test.mts",
+    "analytics:deliver": "tsx --conditions=react-server scripts/process-analytics-outbox.mts",
     "test:database": "node scripts/run-isolated-database-tests.mjs",
     "db:dev:up": "docker compose -f compose.database.yaml up -d postgres-dev",
     "db:dev:down": "docker compose -f compose.database.yaml down",

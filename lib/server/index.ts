@@ -12,3 +12,4 @@ export * from "./economy-rewards";
 export * from "./support-notifications";
 export * from "./admin";
 export * from "./platform-operations";
+export * from "./analytics";

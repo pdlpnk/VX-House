@@ -35,6 +35,11 @@ export interface ValidatedEnvironment {
   readonly EMAIL_CODE_MAX_ATTEMPTS: number;
   readonly EMAIL_CODE_MAX_ACTIVE: number;
   readonly TRUST_PROXY_HEADERS: boolean;
+  readonly KEITARO_ENABLED: boolean;
+  readonly KEITARO_POSTBACK_URL?: string;
+  readonly KEITARO_REQUEST_TIMEOUT_MS: number;
+  readonly KEITARO_MAX_RETRIES: number;
+  readonly KEITARO_DASHBOARD_STATUS?: string;
 }
 
 export class EnvironmentValidationError extends Error {
@@ -118,6 +123,18 @@ function booleanValue(source: EnvironmentSource, key: string, fallback: boolean,
   return fallback;
 }
 
+function isPrivatePostbackTarget(value: string) {
+  try {
+    const { hostname } = new URL(value);
+    const host = hostname.toLowerCase().replace(/^\[|\]$/gu, "");
+    if (["localhost", "::", "::1", "0.0.0.0", "127.0.0.1"].includes(host)) return true;
+    if (/^(fc|fd)/u.test(host) || /^fe[89ab]/u.test(host) || /^::ffff:(127|10|192\.168|169\.254|172\.(1[6-9]|2\d|3[01]))\./u.test(host)) return true;
+    if (/^127\./u.test(host) || /^10\./u.test(host) || /^192\.168\./u.test(host) || /^169\.254\./u.test(host)) return true;
+    const match = /^172\.(\d{1,3})\./u.exec(host);
+    return Boolean(match && Number(match[1]) >= 16 && Number(match[1]) <= 31);
+  } catch { return true; }
+}
+
 export function validateEnvironment(source: EnvironmentSource): ValidatedEnvironment {
   const issues: string[] = [];
   const nodeEnvironment = source.NODE_ENV?.trim() || "development";
@@ -174,6 +191,11 @@ export function validateEnvironment(source: EnvironmentSource): ValidatedEnviron
   const emailCodeMaxAttempts = positiveInteger(source, "EMAIL_CODE_MAX_ATTEMPTS", 5, issues);
   const emailCodeMaxActive = positiveInteger(source, "EMAIL_CODE_MAX_ACTIVE", 2, issues);
   const trustProxyHeaders = booleanValue(source, "TRUST_PROXY_HEADERS", false, issues);
+  const keitaroEnabled = booleanValue(source, "KEITARO_ENABLED", false, issues);
+  const keitaroPostbackUrl = source.KEITARO_POSTBACK_URL?.trim() || undefined;
+  const keitaroRequestTimeout = positiveInteger(source, "KEITARO_REQUEST_TIMEOUT_MS", 5_000, issues);
+  const keitaroMaxRetries = positiveInteger(source, "KEITARO_MAX_RETRIES", 5, issues);
+  const keitaroDashboardStatus = source.KEITARO_DASHBOARD_STATUS?.trim() || undefined;
 
   if (!NODE_ENVIRONMENTS.includes(nodeEnvironment as NodeEnvironment)) {
     issues.push("NODE_ENV: допустимы development, test или production");
@@ -236,6 +258,21 @@ export function validateEnvironment(source: EnvironmentSource): ValidatedEnviron
   if (healthCheckTimeout < 100 || healthCheckTimeout > 30_000) {
     issues.push("HEALTH_CHECK_TIMEOUT_MS: допустим диапазон от 100 до 30000");
   }
+  if (keitaroEnabled && !keitaroPostbackUrl) issues.push("KEITARO_POSTBACK_URL: значение обязательно при KEITARO_ENABLED=true");
+  if (keitaroPostbackUrl) {
+    try {
+      const url = new URL(keitaroPostbackUrl);
+      if (!["http:", "https:"].includes(url.protocol) || url.username || url.password) throw new Error();
+      if (nodeEnvironment === "production" && (url.protocol !== "https:" || isPrivatePostbackTarget(keitaroPostbackUrl))) {
+        issues.push("KEITARO_POSTBACK_URL: production требует публичный HTTPS endpoint");
+      }
+    } catch {
+      issues.push("KEITARO_POSTBACK_URL: ожидается корректный server-side HTTP(S) URL");
+    }
+  }
+  if (keitaroRequestTimeout < 500 || keitaroRequestTimeout > 30_000) issues.push("KEITARO_REQUEST_TIMEOUT_MS: допустим диапазон от 500 до 30000");
+  if (keitaroMaxRetries > 20) issues.push("KEITARO_MAX_RETRIES: допустимо не более 20 попыток");
+  if (keitaroDashboardStatus && !/^[A-Za-z0-9_-]{1,80}$/u.test(keitaroDashboardStatus)) issues.push("KEITARO_DASHBOARD_STATUS: некорректный статус");
   if (
     bruteForceIdentifierLimit > 1_000_000 ||
     bruteForceNetworkLimit > 1_000_000 ||
@@ -297,5 +334,10 @@ export function validateEnvironment(source: EnvironmentSource): ValidatedEnviron
     EMAIL_CODE_MAX_ATTEMPTS: emailCodeMaxAttempts,
     EMAIL_CODE_MAX_ACTIVE: emailCodeMaxActive,
     TRUST_PROXY_HEADERS: trustProxyHeaders,
+    KEITARO_ENABLED: keitaroEnabled,
+    KEITARO_POSTBACK_URL: keitaroPostbackUrl,
+    KEITARO_REQUEST_TIMEOUT_MS: keitaroRequestTimeout,
+    KEITARO_MAX_RETRIES: keitaroMaxRetries,
+    KEITARO_DASHBOARD_STATUS: keitaroDashboardStatus,
   });
 }

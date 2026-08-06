@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { ArrowDown, ArrowRight, Network } from "lucide-react";
 
 import { Container } from "@/components/container";
+import { TrackedAccessLink } from "@/components/analytics/tracked-access-link";
 import { HeroVisual } from "@/components/hero-visual";
 import { useI18n } from "@/components/i18n/i18n-provider";
 import { Button } from "@/components/ui/button";
@@ -59,13 +60,13 @@ export function Hero() {
             className="mt-9 flex w-full flex-col items-stretch gap-3 min-[420px]:w-auto min-[420px]:flex-row min-[420px]:items-center"
           >
             <Button asChild size="lg" className="group rounded-xl shadow-glow">
-              <a href="/access">
+              <TrackedAccessLink placement="hero">
                 {t("hero.primary")}
                 <ArrowRight
                   aria-hidden="true"
                   className="transition-transform duration-200 group-hover:translate-x-0.5"
                 />
-              </a>
+              </TrackedAccessLink>
             </Button>
             <Button
               asChild

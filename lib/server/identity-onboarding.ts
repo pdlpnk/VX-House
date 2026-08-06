@@ -13,6 +13,7 @@ import {
   ResendEmailProvider,
   UnavailableEmailProvider,
 } from "@/lib/services";
+import { getAnalyticsSystem } from "./analytics";
 
 const globalIdentity = globalThis as typeof globalThis & {
   vxHouseIdentitySystem?: ReturnType<typeof buildIdentitySystem>;
@@ -57,6 +58,7 @@ function buildIdentitySystem() {
       maxVerificationAttempts: verificationConfig.maxAttempts,
       maxActiveChallenges: verificationConfig.maxActive,
     },
+    getAnalyticsSystem().service,
   );
   return Object.freeze({ authentication, onboarding, cookies, emailProvider, config, database });
 }

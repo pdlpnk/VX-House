@@ -2,6 +2,7 @@ import "server-only";
 
 import { getServerEnvironment } from "./env";
 import { createSecurityConfig } from "./security-config";
+import { SecretValue } from "./secrets";
 
 export function getServerConfig() {
   const environment = getServerEnvironment();
@@ -15,6 +16,15 @@ export function getServerConfig() {
       directUrl: environment.DIRECT_URL,
     }),
     security: createSecurityConfig(environment),
+    analytics: Object.freeze({
+      keitaro: Object.freeze({
+        enabled: environment.KEITARO_ENABLED,
+        postbackUrl: environment.KEITARO_POSTBACK_URL ? new SecretValue(environment.KEITARO_POSTBACK_URL) : undefined,
+        requestTimeoutMs: environment.KEITARO_REQUEST_TIMEOUT_MS,
+        maxRetries: environment.KEITARO_MAX_RETRIES,
+        dashboardStatus: environment.KEITARO_DASHBOARD_STATUS,
+      }),
+    }),
   });
 }
 

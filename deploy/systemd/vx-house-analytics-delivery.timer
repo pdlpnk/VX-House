@@ -1,0 +1,14 @@
+[Unit]
+Description=Run VX House analytics conversion delivery every minute
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=1min
+AccuracySec=10s
+RandomizedDelaySec=5s
+Persistent=true
+Unit=vx-house-analytics-delivery.service
+
+[Install]
+WantedBy=timers.target
+
