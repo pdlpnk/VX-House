@@ -237,17 +237,25 @@ export class AnalyticsService {
         isTest: false,
         OR: [{ analyticsSession: null }, { analyticsSession: { isTest: false } }],
       },
-      select: { eventName: true, analyticsSessionId: true, userId: true },
+      select: {
+        eventName: true,
+        analyticsSessionId: true,
+        userId: true,
+        analyticsSession: { select: { userId: true } },
+      },
     });
-    const uniqueCount = (
-      name: typeof events[number]["eventName"],
-      identity: (event: typeof events[number]) => string | null,
-    ) => new Set(events.filter((event) => event.eventName === name).map(identity).filter((value): value is string => Boolean(value))).size;
-    const landingViewed = uniqueCount("LANDING_VIEWED", (event) => event.analyticsSessionId);
-    const accessClicked = uniqueCount("ACCESS_CLICKED", (event) => event.analyticsSessionId);
-    const registrationStarted = uniqueCount("REGISTRATION_STARTED", (event) => event.userId ?? event.analyticsSessionId);
-    const emailConfirmed = uniqueCount("EMAIL_CONFIRMED", (event) => event.userId);
-    const dashboardOpened = uniqueCount("DASHBOARD_OPENED", (event) => event.userId);
+    const landingSessions = new Set(events.filter((event) => event.eventName === "LANDING_VIEWED").map((event) => event.analyticsSessionId).filter((value): value is string => Boolean(value)));
+    const accessSessions = new Set(events.filter((event) => event.eventName === "ACCESS_CLICKED" && event.analyticsSessionId && landingSessions.has(event.analyticsSessionId)).map((event) => event.analyticsSessionId as string));
+    const registrationEvents = events.filter((event) => event.eventName === "REGISTRATION_STARTED" && event.analyticsSessionId && accessSessions.has(event.analyticsSessionId));
+    const registrationSessions = new Set(registrationEvents.map((event) => event.analyticsSessionId as string));
+    const registrationUsers = new Set(registrationEvents.map((event) => event.userId ?? event.analyticsSession?.userId).filter((value): value is string => Boolean(value)));
+    const confirmedUsers = new Set(events.filter((event) => event.eventName === "EMAIL_CONFIRMED" && event.userId && registrationUsers.has(event.userId)).map((event) => event.userId as string));
+    const dashboardUsers = new Set(events.filter((event) => event.eventName === "DASHBOARD_OPENED" && event.userId && confirmedUsers.has(event.userId)).map((event) => event.userId as string));
+    const landingViewed = landingSessions.size;
+    const accessClicked = accessSessions.size;
+    const registrationStarted = registrationSessions.size;
+    const emailConfirmed = confirmedUsers.size;
+    const dashboardOpened = dashboardUsers.size;
     return {
       from: from.toISOString(), to: to.toISOString(), landingViewed,
       accessClicked: { count: accessClicked, rate: rate(accessClicked, landingViewed) },

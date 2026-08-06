@@ -63,7 +63,11 @@ test("серверная регистрация гарантирует registrat
 
 test("email и Dashboard — серверные события с дедупликацией auth session", async () => {
   const service = disabled();
+  const landing = await service.captureClientEvent({ command: command("landing_viewed") });
+  await service.captureClientEvent({ anonymousId: landing.anonymousId, command: command("access_clicked", { clientEventId: `click-${randomUUID()}`, metadata: { placement: "header" } }) });
+  await service.captureClientEvent({ anonymousId: landing.anonymousId, command: command("registration_started", { metadata: { role: "PLAYER" } }) });
   const user = await database.user.create({ data: { email: `${randomUUID()}@example.com` } });
+  await database.$transaction((tx) => service.linkAnonymousSession(tx, { anonymousId: landing.anonymousId, userId: user.id, email: user.email, productRole: "PLAYER", occurredAt: new Date() }));
   const sessionId = randomUUID();
   await database.$transaction((tx) => service.recordEmailConfirmed(tx, { userId: user.id, authSessionId: sessionId, occurredAt: new Date() }));
   await database.$transaction((tx) => service.recordEmailConfirmed(tx, { userId: user.id, authSessionId: sessionId, occurredAt: new Date() }));
