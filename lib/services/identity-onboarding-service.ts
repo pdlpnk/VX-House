@@ -398,6 +398,7 @@ export class IdentityOnboardingService {
           idempotencyKey: `email-verified:${challenge.id}`,
           actorId: input.principal.userId,
           occurredAt,
+          systemMessage: { key: "system.emailVerified" },
         });
       }
       await new PrismaOnboardingRepository(database).update(input.principal.userId, {
@@ -554,6 +555,7 @@ export class IdentityOnboardingService {
         idempotencyKey: `onboarding-completed:${input.principal.userId}`,
         actorId: input.principal.userId,
         occurredAt,
+        systemMessage: { key: profile.productRole === "PLAYER" ? "system.onboardingPlayer" : "system.onboardingPartner" },
       });
       const events = createTransactionalEventServices(database, occurredAt);
       await events.security.record({

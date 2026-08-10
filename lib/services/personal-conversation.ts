@@ -4,6 +4,7 @@ import { createHash } from "node:crypto";
 
 import type { AesGcmDataProtector } from "@/lib/data-protection";
 import type { DatabaseClient } from "@/lib/db";
+import { databaseLocale, encodeSystemMessage, type SystemMessageKey } from "@/lib/i18n";
 
 const encoder = new TextEncoder();
 
@@ -44,6 +45,7 @@ export async function ensurePersonalConversationRecord(
     where: { userId },
     select: {
       productRole: true,
+      preferredLanguage: true,
       marketId: true,
       createdAt: true,
       user: { select: { displayName: true } },
@@ -59,6 +61,7 @@ export async function ensurePersonalConversationRecord(
     orderBy: { createdAt: "asc" },
   });
 
+  const conversationWasMissing = !conversation;
   if (!conversation) {
     const legacyConversation = await database.supportConversation.findFirst({
       where: { userId, status: { not: "CLOSED" } },
@@ -155,7 +158,7 @@ export async function ensurePersonalConversationRecord(
     }
   }
 
-  const notifications = await database.notification.findMany({
+  const notifications = conversationWasMissing ? await database.notification.findMany({
     where: {
       userId,
       channel: "IN_APP",
@@ -164,18 +167,14 @@ export async function ensurePersonalConversationRecord(
     },
     orderBy: { createdAt: "asc" },
     take: 20,
-  });
+  }) : [];
   const hasMessages = await database.supportMessage.findFirst({
     where: { conversationId: conversation.id },
     select: { id: true },
   });
   if (!hasMessages) {
-    const name = profile.user.displayName?.trim() || "участник";
-    const greeting = [
-      `Здравствуйте, ${name}!`,
-      "Добро пожаловать в VX House.",
-      "Я ваш персональный менеджер. Если возникнут вопросы — просто напишите мне.",
-    ].join("\n\n");
+    const name = profile.user.displayName?.trim() || "VX House";
+    const greeting = encodeSystemMessage("system.welcome", { name }, databaseLocale(profile.preferredLanguage));
     await database.supportMessage.create({
       data: {
         conversationId: conversation.id,
@@ -225,6 +224,7 @@ export async function appendPersonalConversationMessage(
     userId: string;
     messageId: string;
     body: string;
+    systemMessage?: { key: SystemMessageKey; params?: Readonly<Record<string, string | number>>; locale: "en" | "ru" | "tr" | "az" };
     occurredAt: Date;
   },
 ) {
@@ -258,7 +258,9 @@ export async function appendPersonalConversationMessage(
       bodyProtected: await protectedBody(
         protector,
         conversation.id,
-        input.body,
+        input.systemMessage
+          ? encodeSystemMessage(input.systemMessage.key, input.systemMessage.params ?? {}, input.systemMessage.locale)
+          : input.body,
       ) as never,
       createdAt: input.occurredAt,
     },

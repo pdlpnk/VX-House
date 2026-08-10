@@ -120,7 +120,7 @@ export class OpportunityTaskApplicationService {
       const attemptNumber = (await repository.countAttempts(principal.userId, view.task.definitionId)) + 1;
       const created = await database.userTask.create({ data: { userId: principal.userId, taskDefinitionId: view.task.definitionId, taskVersionId: view.task.id, attemptNumber, status: "ACCEPTED", assignmentKey: idempotencyKey, acceptedAt: occurredAt, expiresAt: view.task.completionDeadline ? new Date(view.task.completionDeadline) : null }, select: { id: true } });
       await database.userTaskStatusHistory.create({ data: { userTaskId: created.id, fromStatus: null, toStatus: "ACCEPTED", actorId: principal.userId, reason: "Пользователь принял опубликованную версию задания", occurredAt } });
-      await createProductNotification(database, { userId: principal.userId, type: "task.accepted", title: "Задание принято", body: `Откройте инструкцию «${view.task.title}» и выполните следующий шаг.`, relatedType: "USER_TASK", relatedId: created.id, idempotencyKey: `task-accepted:${created.id}`, actorId: principal.userId, occurredAt });
+      await createProductNotification(database, { userId: principal.userId, type: "task.accepted", title: "Задание принято", body: `Откройте инструкцию «${view.task.title}» и выполните следующий шаг.`, relatedType: "USER_TASK", relatedId: created.id, idempotencyKey: `task-accepted:${created.id}`, actorId: principal.userId, occurredAt, systemMessage: { key: "system.taskAccepted", params: { title: view.task.title } } });
       const { audit } = createTransactionalEventServices(database, occurredAt);
       await audit.record({ actor: { type: "user", id: principal.userId, sessionId: principal.sessionId }, action: "task.accepted", target: { type: "user-task", id: created.id }, metadata: { taskVersionId: view.task.id, instructionVersionId: view.task.instruction?.id ?? null } });
       return this.requireTask(principal, created.id, repository);
@@ -160,7 +160,7 @@ export class OpportunityTaskApplicationService {
       current = await this.updateStatus(database, current, "SUBMITTED", principal.userId, "Результат отправлен менеджеру", occurredAt);
       await this.updateStatus(database, current, "UNDER_REVIEW", null, "Менеджер получил результат на проверку", occurredAt);
       await receipts.create({ operation: "task.complete", key: idempotencyKey, actorId: principal.userId, requestHash, resultType: "SubmissionVersion", resultId: created.id, createdAt: occurredAt });
-      await createProductNotification(database, { userId: principal.userId, type: "task.submitted", title: "Задание отправлено", body: "Менеджер проверит результат. Следующее задание откроется после подтверждения.", relatedType: "USER_TASK", relatedId: id, idempotencyKey: `task-completed:${created.id}`, actorId: principal.userId, occurredAt });
+      await createProductNotification(database, { userId: principal.userId, type: "task.submitted", title: "Задание отправлено", body: "Менеджер проверит результат. Следующее задание откроется после подтверждения.", relatedType: "USER_TASK", relatedId: id, idempotencyKey: `task-completed:${created.id}`, actorId: principal.userId, occurredAt, systemMessage: { key: "system.taskCompleted" } });
       return this.requireTask(principal, id, repository);
     });
   }
@@ -209,7 +209,7 @@ export class OpportunityTaskApplicationService {
       const created = await database.submissionVersion.create({ data: { taskSubmissionId: submission.id, version, status: "SUBMITTED", payload: normalized, contentHash: createHash("sha256").update(JSON.stringify(normalized)).digest("hex"), submittedAt: occurredAt }, select: { id: true } });
       const submitted = await this.updateStatus(database, task, "SUBMITTED", principal.userId, "Результат отправлен отдельной версией", occurredAt);
       await this.updateStatus(database, submitted, "UNDER_REVIEW", null, "Результат поставлен в очередь проверки", occurredAt);
-      await createProductNotification(database, { userId: principal.userId, type: "task.submitted", title: "Результат отправлен", body: "Результат сохранён и ожидает проверки.", relatedType: "USER_TASK", relatedId: id, idempotencyKey: `task-submitted:${created.id}`, actorId: principal.userId, occurredAt });
+      await createProductNotification(database, { userId: principal.userId, type: "task.submitted", title: "Результат отправлен", body: "Результат сохранён и ожидает проверки.", relatedType: "USER_TASK", relatedId: id, idempotencyKey: `task-submitted:${created.id}`, actorId: principal.userId, occurredAt, systemMessage: { key: "system.taskSubmitted" } });
       const { audit } = createTransactionalEventServices(database, occurredAt);
       await audit.record({ actor: { type: "user", id: principal.userId, sessionId: principal.sessionId }, action: "task.submission.created", target: { type: "submission-version", id: created.id }, metadata: { userTaskId: id, version } });
       await receipts.create({ operation: "task.submission.submit", key: idempotencyKey, actorId: principal.userId, requestHash, resultType: "SubmissionVersion", resultId: created.id, createdAt: occurredAt });

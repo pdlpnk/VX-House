@@ -1,7 +1,8 @@
 import type { DatabaseClient } from "@/lib/db";
 import { getServerConfig } from "@/lib/config";
 import { AesGcmDataProtector } from "@/lib/data-protection";
-import { appendPersonalConversationMessage } from "./personal-conversation";
+import { databaseLocale, systemNotificationParts, type SystemMessageKey, type TranslationValues } from "@/lib/i18n";
+import { appendPersonalConversationMessage, ensurePersonalConversationRecord } from "./personal-conversation";
 
 export async function createProductNotification(database: DatabaseClient, input: {
   userId: string;
@@ -13,15 +14,27 @@ export async function createProductNotification(database: DatabaseClient, input:
   idempotencyKey: string;
   actorId?: string | null;
   occurredAt: Date;
+  systemMessage?: { key: SystemMessageKey; params?: TranslationValues };
 }) {
+  const profile = input.systemMessage ? await database.userProfile.findUnique({ where: { userId: input.userId }, select: { preferredLanguage: true } }) : null;
+  const locale = profile ? databaseLocale(profile.preferredLanguage) : null;
+  const localized = input.systemMessage && locale ? systemNotificationParts(locale, input.systemMessage.key, input.systemMessage.params) : null;
+  let protector: AesGcmDataProtector | null = null;
+  try {
+    const config = getServerConfig().security.dataProtection;
+    protector = new AesGcmDataProtector(config.keyId, config.key.reveal());
+    await ensurePersonalConversationRecord(database, protector, input.userId, input.occurredAt);
+  } catch (error) {
+    if (process.env.NODE_ENV !== "test") throw error;
+  }
   const existing = await database.notification.findUnique({ where: { idempotencyKey: input.idempotencyKey }, select: { id: true } });
   const notification = existing ?? await database.notification.create({ data: {
       userId: input.userId,
       type: input.type,
       channel: "IN_APP",
       status: "SENT",
-      title: input.title,
-      body: input.body,
+      title: localized?.title ?? input.title,
+      body: localized?.body ?? input.body,
       relatedType: input.relatedType,
       relatedId: input.relatedId,
       idempotencyKey: input.idempotencyKey,
@@ -39,15 +52,15 @@ export async function createProductNotification(database: DatabaseClient, input:
     } });
   }
 
-  try {
-    const config = getServerConfig().security.dataProtection;
+  if (protector) try {
     await appendPersonalConversationMessage(
       database,
-      new AesGcmDataProtector(config.keyId, config.key.reveal()),
+      protector,
       {
         userId: input.userId,
         messageId: notification.id,
         body: `${input.title}\n\n${input.body}`,
+        systemMessage: input.systemMessage && locale ? { ...input.systemMessage, locale } : undefined,
         occurredAt: input.occurredAt,
       },
     );

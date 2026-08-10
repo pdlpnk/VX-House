@@ -8,6 +8,7 @@ import { ApplicationError, createTransactionalEventServices, PrismaTransactionRu
 import type { AesGcmDataProtector, EncryptedPayload } from "@/lib/data-protection";
 import { Prisma, type PrismaClient } from "@/lib/db";
 import type { SupportConversationView } from "@/lib/support";
+import { databaseLocale, decodeSystemMessage, renderSystemMessage } from "@/lib/i18n";
 import { ensurePersonalConversationRecord } from "./personal-conversation";
 
 const encoder = new TextEncoder();
@@ -256,6 +257,7 @@ export class AdminMessengerService {
     const context = object(item.context);
     const readValue = context.playerMessengerReadAt;
     const readAt = typeof readValue === "string" && Number.isFinite(new Date(readValue).getTime()) ? new Date(readValue) : null;
+    const locale = databaseLocale(item.user.profile?.preferredLanguage ?? "EN");
     return {
       id: item.id,
       category: { key: item.categoryDefinition.key, title: item.categoryDefinition.title, description: item.categoryDefinition.description },
@@ -266,16 +268,13 @@ export class AdminMessengerService {
       unreadCount: item.messages.filter((message) => message.authorType !== "USER" && (!readAt || message.createdAt > readAt)).length,
       createdAt: item.createdAt.toISOString(),
       updatedAt: item.updatedAt.toISOString(),
-      messages: await Promise.all(item.messages.map(async (message) => ({
-        id: message.id,
-        authorType: message.authorType,
-        authorLabel: message.authorType === "USER" ? item.user.displayName || "Игрок" : message.author?.displayName || (message.authorType === "SYSTEM" ? "VX House" : "Менеджер"),
-        body: decoder.decode(await this.protector.decrypt(message.bodyProtected as unknown as EncryptedPayload, {
+      messages: await Promise.all(item.messages.map(async (message) => {
+        const raw = decoder.decode(await this.protector.decrypt(message.bodyProtected as unknown as EncryptedPayload, {
           classification: "confidential", purpose: "support-message", resourceType: "SupportConversation", resourceId: item.id,
-        })),
-        createdAt: message.createdAt.toISOString(),
-        attachments: message.attachments.map(({ id, fileName, mediaType, sizeBytes }) => ({ id, fileName, mediaType, sizeBytes })),
-      }))),
+        }));
+        const system = message.authorType === "SYSTEM" ? decodeSystemMessage(raw) : null;
+        return { id: message.id, authorType: message.authorType, authorLabel: message.authorType === "USER" ? item.user.displayName || "Игрок" : message.author?.displayName || (message.authorType === "SYSTEM" ? "VX House" : "Менеджер"), body: system ? renderSystemMessage(locale, system.key, system.params) : raw, ...(system ? { systemKey: system.key, systemParams: system.params } : {}), createdAt: message.createdAt.toISOString(), attachments: message.attachments.map(({ id, fileName, mediaType, sizeBytes }) => ({ id, fileName, mediaType, sizeBytes })) };
+      })),
       history: item.statusHistory.map((entry) => ({ ...entry, occurredAt: entry.occurredAt.toISOString() })),
       appeals: [],
     };

@@ -8,8 +8,8 @@ import { getEconomyRewardService, getSupportNotificationService, requireProductW
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Кабинет игрока",
-  description: "Защищённый кабинет игрока VX House.",
+  title: "VX House",
+  description: "VX House private member workspace.",
   robots: { index: false, follow: false },
 };
 

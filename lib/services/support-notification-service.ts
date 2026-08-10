@@ -6,6 +6,7 @@ import { ApplicationError, hashCommandPayload, PrismaTransactionRunner } from "@
 import type { AesGcmDataProtector, EncryptedPayload } from "@/lib/data-protection";
 import type { PrismaClient } from "@/lib/db";
 import { assertTransition, appealStateMachine, supportStateMachine } from "@/lib/domain";
+import { databaseLocale, decodeSystemMessage, renderSystemMessage } from "@/lib/i18n";
 import { PrismaIdempotencyRepository, PrismaSupportNotificationRepository } from "@/lib/repositories";
 import type { AppealStatus, AppealView, CreateAppealInput, CreateConversationInput, NotificationView, SupportConversationView, SupportStatus } from "@/lib/support";
 import { ensurePersonalConversationRecord } from "./personal-conversation";
@@ -145,8 +146,14 @@ export class SupportNotificationApplicationService {
   private async conversationView(item: ConversationRecord): Promise<SupportConversationView> {
     const context = conversationContext(item.context);
     const readAt = playerReadAt(context);
+    const profile = await this.database.userProfile.findUnique({ where: { userId: item.userId }, select: { preferredLanguage: true } });
+    const locale = databaseLocale(profile?.preferredLanguage ?? "EN");
     const unreadCount = item.messages.filter((message) => message.authorType !== "USER" && (!readAt || message.createdAt > readAt)).length;
-    return { id: item.id, category: { key: item.categoryDefinition.key, title: item.categoryDefinition.title, description: item.categoryDefinition.description }, priority: item.priority, status: item.status, subject: item.subject, context, unreadCount, createdAt: item.createdAt.toISOString(), updatedAt: item.updatedAt.toISOString(), messages: await Promise.all(item.messages.map(async (message) => ({ id: message.id, authorType: message.authorType, authorLabel: message.authorType === "USER" ? "Вы" : message.author?.displayName ?? (message.authorType === "SYSTEM" ? "VX House" : "Ваш менеджер"), body: decoder.decode(await this.protector.decrypt(message.bodyProtected as unknown as EncryptedPayload, { classification: "confidential", purpose: "support-message", resourceType: "SupportConversation", resourceId: item.id })), createdAt: message.createdAt.toISOString(), attachments: message.attachments.map(({ id, fileName, mediaType, sizeBytes }) => ({ id, fileName, mediaType, sizeBytes })) }))), history: history(item.statusHistory), appeals: item.appeals.map((appeal) => this.appealView(appeal)) };
+    return { id: item.id, category: { key: item.categoryDefinition.key, title: item.categoryDefinition.title, description: item.categoryDefinition.description }, priority: item.priority, status: item.status, subject: item.subject, context, unreadCount, createdAt: item.createdAt.toISOString(), updatedAt: item.updatedAt.toISOString(), messages: await Promise.all(item.messages.map(async (message) => {
+      const raw = decoder.decode(await this.protector.decrypt(message.bodyProtected as unknown as EncryptedPayload, { classification: "confidential", purpose: "support-message", resourceType: "SupportConversation", resourceId: item.id }));
+      const system = message.authorType === "SYSTEM" ? decodeSystemMessage(raw) : null;
+      return { id: message.id, authorType: message.authorType, authorLabel: message.authorType === "USER" ? "Вы" : message.author?.displayName ?? (message.authorType === "SYSTEM" ? "VX House" : "Ваш менеджер"), body: system ? renderSystemMessage(locale, system.key, system.params) : raw, ...(system ? { systemKey: system.key, systemParams: system.params } : {}), createdAt: message.createdAt.toISOString(), attachments: message.attachments.map(({ id, fileName, mediaType, sizeBytes }) => ({ id, fileName, mediaType, sizeBytes })) };
+    })), history: history(item.statusHistory), appeals: item.appeals.map((appeal) => this.appealView(appeal)) };
   }
   private appealView(item: AppealRecord): AppealView { return { id: item.id, status: item.status, reason: item.reason, decisionReason: item.decisionReason, userTaskId: item.userTaskId, rewardId: item.rewardId, createdAt: item.createdAt.toISOString(), submittedAt: item.submittedAt?.toISOString() ?? null, decidedAt: item.decidedAt?.toISOString() ?? null, history: history(item.statusHistory) }; }
   private notificationView(item: NotificationRecord): NotificationView { return { id: item.id, category: item.type, status: item.status, title: item.title, body: item.body, relatedType: item.relatedType, relatedId: item.relatedId, createdAt: item.createdAt.toISOString(), sentAt: item.sentAt?.toISOString() ?? null, readAt: item.readAt?.toISOString() ?? null, history: history(item.statusHistory) }; }

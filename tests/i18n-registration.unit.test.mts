@@ -16,6 +16,7 @@ import {
   parseServerTimestamp,
 } from "../lib/i18n/date-time.ts";
 import { translate } from "../lib/i18n/translate.ts";
+import { decodeSystemMessage, encodeSystemMessage, renderSystemMessage } from "../lib/i18n/system-messages.ts";
 import { verificationEmailContent } from "../lib/services/email-provider.ts";
 import { validateRegistrationInput } from "../lib/validation/identity-profile.ts";
 
@@ -66,6 +67,41 @@ test("переводы типизированы, интерполируются 
   assert.match(translate("ru", "email.text", { code: "123456" }), /123456/);
   assert.match(translate("tr", "email.text", { code: "123456" }), /123456/);
   assert.match(translate("az", "email.text", { code: "123456" }), /123456/);
+});
+
+test("системные сообщения хранят ключ и параметры и рендерятся на текущем языке", () => {
+  const stored = encodeSystemMessage("system.welcome", { name: "Roman" }, "tr");
+  const envelope = decodeSystemMessage(stored);
+  assert.ok(envelope);
+  assert.equal(envelope.createdLocale, "tr");
+  assert.match(renderSystemMessage("tr", envelope.key, envelope.params), /Roman/);
+  assert.match(renderSystemMessage("en", envelope.key, envelope.params), /Welcome to VX House/);
+  assert.match(renderSystemMessage("az", envelope.key, envelope.params), /VX House-a xoş gəlmisiniz/);
+  assert.match(renderSystemMessage("ru", envelope.key, envelope.params), /Добро пожаловать в VX House/);
+  assert.equal(decodeSystemMessage("Обычное пользовательское сообщение"), null);
+});
+
+test("TR → EN меняет только UI и системный рендер, но не свободный текст", () => {
+  const stored = encodeSystemMessage("system.emailVerified", {}, "tr");
+  const envelope = decodeSystemMessage(stored)!;
+  assert.notEqual(renderSystemMessage("tr", envelope.key, envelope.params), renderSystemMessage("en", envelope.key, envelope.params));
+  const userText = "Merhaba, yardım eder misiniz?";
+  const adminText = "I'll check this for you.";
+  assert.equal(decodeSystemMessage(userText), null);
+  assert.equal(decodeSystemMessage(adminText), null);
+});
+
+test("основные player UI-строки доступны без русского fallback", () => {
+  for (const locale of ["en", "ru", "tr", "az"] as const) {
+    assert.notEqual(translate(locale, "economy.title"), "");
+    assert.notEqual(translate(locale, "messenger.personalChannel"), "");
+    assert.notEqual(translate(locale, "opportunity.playerTitle"), "");
+    assert.notEqual(translate(locale, "rewardUi.title"), "");
+  }
+  assert.equal(translate("tr", "economy.title"), "VX House yolculuğunuz");
+  assert.equal(translate("az", "messenger.personalChannel"), "Şəxsi kanal");
+  assert.equal(translate("en", "rewardUi.title"), "Your benefits");
+  assert.equal(translate("ru", "opportunity.playerTitle"), "Доступные задания");
 });
 
 test("серверные timestamp безопасно нормализуются как UTC и форматируются в локальной зоне", () => {

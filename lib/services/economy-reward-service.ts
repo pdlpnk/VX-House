@@ -139,7 +139,7 @@ export class EconomyRewardApplicationService {
       if (command.pointsRuleKey) await this.appendPointsByRule(database, repository, policy, command, idempotencyKey, occurredAt);
       if (command.trustRuleKey) await this.appendTrustByRule(database, repository, policy, command, idempotencyKey, occurredAt);
       await this.promoteRank(database, repository, profile, command.userId, derivedKey("rank", idempotencyKey), occurredAt);
-      await createProductNotification(database, { userId: command.userId, type: "economy.updated", title: "Обновлён прогресс", body: command.reason, relatedType: "ECONOMY", relatedId: command.sourceId, idempotencyKey: `economy-updated:${idempotencyKey}`, actorId: actor.userId, occurredAt });
+      await createProductNotification(database, { userId: command.userId, type: "economy.updated", title: "Обновлён прогресс", body: command.reason, relatedType: "ECONOMY", relatedId: command.sourceId, idempotencyKey: `economy-updated:${idempotencyKey}`, actorId: actor.userId, occurredAt, systemMessage: { key: "system.economyUpdated", params: { reason: command.reason } } });
       await receipts.create({ operation: "economy.rules.apply", key: idempotencyKey, actorId: actor.userId, requestHash, resultType: "EconomySnapshot", resultId: command.userId, createdAt: occurredAt });
       const { audit } = createTransactionalEventServices(database, occurredAt);
       await audit.record({ actor: { type: "user", id: actor.userId, sessionId: actor.sessionId }, action: "economy.rules.applied", target: { type: "user", id: command.userId }, metadata: { sourceType: command.sourceType, sourceId: command.sourceId, policyVersion: policy.version } });
@@ -158,7 +158,7 @@ export class EconomyRewardApplicationService {
         return existing;
       }
       const created = await database.vXPointsLedgerEntry.create({ data: { userId, userTaskId: original.userTaskId, delta: -original.delta, status: "REVERSED", sourceType: "REVERSAL", sourceId: original.id, reason, ruleVersion: original.ruleVersion, idempotencyKey, reversesEntryId: original.id, occurredAt } });
-      await createProductNotification(database, { userId, type: "economy.adjusted", title: "Скорректированы VX Points", body: reason, relatedType: "POINTS_ENTRY", relatedId: created.id, idempotencyKey: `economy-reversed:${created.id}`, actorId: actor.userId, occurredAt });
+      await createProductNotification(database, { userId, type: "economy.adjusted", title: "Скорректированы VX Points", body: reason, relatedType: "POINTS_ENTRY", relatedId: created.id, idempotencyKey: `economy-reversed:${created.id}`, actorId: actor.userId, occurredAt, systemMessage: { key: "system.economyAdjusted", params: { reason } } });
       const profile = await repository.findProfile(userId); assertProfile(profile); await this.promoteRank(database, repository, profile, userId, derivedKey("rank", idempotencyKey), occurredAt);
       return created;
     });
@@ -182,7 +182,7 @@ export class EconomyRewardApplicationService {
       if (type.valueKind === "NON_MONETARY" && !input.nonMonetaryValue) throw new ApplicationError("VALIDATION", "Неденежный Reward требует точное описание значения");
       const reward = await database.vXReward.create({ data: { userId: input.userId, rewardTypeId: type.id, userTaskId: input.userTaskId, submissionReviewId: input.submissionReviewId, status: "EXPECTED", title: input.title, description: input.description, amount: input.amount, currency: input.currency, nonMonetaryValue: input.nonMonetaryValue as never, validFrom: input.validFrom, validUntil: input.validUntil, idempotencyKey }, select: { id: true } });
       await database.rewardStatusHistory.create({ data: { rewardId: reward.id, fromStatus: null, toStatus: "EXPECTED", actorId: actor.userId, reason: "Reward создан по подтверждённому серверному основанию", occurredAt } });
-      await createProductNotification(database, { userId: input.userId, type: "reward.created", title: "Создан VX Reward", body: input.title, relatedType: "REWARD", relatedId: reward.id, idempotencyKey: `reward-created:${reward.id}`, actorId: actor.userId, occurredAt });
+      await createProductNotification(database, { userId: input.userId, type: "reward.created", title: "Создан VX Reward", body: input.title, relatedType: "REWARD", relatedId: reward.id, idempotencyKey: `reward-created:${reward.id}`, actorId: actor.userId, occurredAt, systemMessage: { key: "system.rewardCreated", params: { title: input.title } } });
       await receipts.create({ operation: "reward.issue", key: idempotencyKey, actorId: actor.userId, requestHash, resultType: "VXReward", resultId: reward.id, createdAt: occurredAt });
       const stored = await repository.findReward(reward.id, input.userId); return rewardView(stored!, occurredAt);
     });
@@ -199,7 +199,7 @@ export class EconomyRewardApplicationService {
       if (["REJECTED", "CANCELLED", "EXPIRED"].includes(target) && reason.trim().length < 3) throw new ApplicationError("VALIDATION", "Для статуса требуется причина");
       await database.vXReward.update({ where: { id: reward.id }, data: { status: target } });
       await database.rewardStatusHistory.create({ data: { rewardId: reward.id, fromStatus: reward.status, toStatus: target, actorId: actor.userId, reason, occurredAt } });
-      await createProductNotification(database, { userId: reward.userId, type: "reward.status", title: "Изменился статус VX Reward", body: `${reward.title}: ${target}. ${reason}`, relatedType: "REWARD", relatedId: reward.id, idempotencyKey: `reward-status:${reward.id}:${target}:${occurredAt.getTime()}`, actorId: actor.userId, occurredAt });
+      await createProductNotification(database, { userId: reward.userId, type: "reward.status", title: "Изменился статус VX Reward", body: `${reward.title}: ${target}. ${reason}`, relatedType: "REWARD", relatedId: reward.id, idempotencyKey: `reward-status:${reward.id}:${target}:${occurredAt.getTime()}`, actorId: actor.userId, occurredAt, systemMessage: { key: "system.rewardStatus", params: { title: reward.title, status: target, reason } } });
       await receipts.create({ operation: "reward.transition", key: idempotencyKey, actorId: actor.userId, requestHash, resultType: "VXReward", resultId: reward.id, createdAt: occurredAt });
       const stored = await repository.findReward(reward.id, reward.userId); return rewardView(stored!, occurredAt);
     });
@@ -216,7 +216,7 @@ export class EconomyRewardApplicationService {
       try { assertTransition(rewardStateMachine, reward.status, "PROVIDED"); } catch { throw new ApplicationError("CONFLICT", "Reward нельзя получить в текущем статусе"); }
       await database.vXReward.update({ where: { id: reward.id }, data: { status: "PROVIDED" } });
       await database.rewardStatusHistory.create({ data: { rewardId: reward.id, fromStatus: reward.status, toStatus: "PROVIDED", actorId: principal.userId, reason: "Пользователь получил доступный Reward", occurredAt } });
-      await createProductNotification(database, { userId: principal.userId, type: "reward.provided", title: "VX Reward предоставлен", body: reward.title, relatedType: "REWARD", relatedId: reward.id, idempotencyKey: `reward-provided:${reward.id}`, actorId: principal.userId, occurredAt });
+      await createProductNotification(database, { userId: principal.userId, type: "reward.provided", title: "VX Reward предоставлен", body: reward.title, relatedType: "REWARD", relatedId: reward.id, idempotencyKey: `reward-provided:${reward.id}`, actorId: principal.userId, occurredAt, systemMessage: { key: "system.rewardProvided", params: { title: reward.title } } });
       await receipts.create({ operation: "reward.claim", key: idempotencyKey, actorId: principal.userId, requestHash, resultType: "VXReward", resultId: reward.id, createdAt: occurredAt });
       const stored = await repository.findReward(reward.id, principal.userId); return rewardView(stored!, occurredAt);
     });

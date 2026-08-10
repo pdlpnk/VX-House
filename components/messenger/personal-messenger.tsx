@@ -46,6 +46,7 @@ function MessageList({
   locale: Locale;
   todayLabel: string;
 }) {
+  const { t } = useI18n();
   const listRef = useRef<HTMLDivElement>(null);
   const restoredConversation = useRef("");
   const stickToBottom = useRef(true);
@@ -97,7 +98,7 @@ function MessageList({
               {author === "system" ? "VX" : "M"}
             </span>
             <div className={styles.bubble}>
-              <p>{message.body}</p>
+              <p>{message.systemKey ? t(message.systemKey, message.systemParams) : message.body}</p>
               {message.attachments.length ? (
                 <div className={styles.attachments}>
                   {message.attachments.map((attachment) => {
@@ -128,7 +129,7 @@ function MessageList({
         {pending ? (
           <motion.div
             className={styles.typing}
-            aria-label="Message is being sent"
+            aria-label={t("messenger.sending")}
             initial={shouldReduceMotion ? false : { opacity: 0, y: 4 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
@@ -240,10 +241,10 @@ function Composer({
             <img src={previewUrl} alt="" />
           ) : <FileText aria-hidden="true" />}
           <span><strong>{file.name}</strong><small>{fileSizeLabel(file.size, t("messenger.megabytes"), t("messenger.kilobytes"))}</small></span>
-          <button type="button" onClick={() => setFile(null)} aria-label={`Удалить файл ${file.name}`}><X aria-hidden="true" /></button>
+          <button type="button" onClick={() => setFile(null)} aria-label={t("messenger.removeFile", { name: file.name })}><X aria-hidden="true" /></button>
         </div>
       ) : null}
-      <label className={styles.iconButton} aria-label={file ? `Выбран файл: ${file.name}` : "Прикрепить файл"}>
+      <label className={styles.iconButton} aria-label={file ? t("messenger.selectedFile", { name: file.name }) : t("messenger.attachFile")}>
         <Paperclip aria-hidden="true" />
         <input
           type="file"
@@ -258,7 +259,7 @@ function Composer({
       <button
         type="button"
         className={styles.iconButton}
-        aria-label="Добавить эмодзи"
+        aria-label={t("messenger.addEmoji")}
         aria-expanded={emojiOpen}
         onClick={() => setEmojiOpen((open) => !open)}
       >
@@ -276,7 +277,7 @@ function Composer({
               <button
                 key={emoji}
                 type="button"
-                aria-label={`Добавить ${emoji}`}
+                aria-label={t("messenger.addEmojiValue", { emoji })}
                 onClick={() => setBody((current) => `${current}${emoji}`)}
               >
                 {emoji}
@@ -404,9 +405,9 @@ export function PersonalMessengerExperience({
       <section className={`${styles.experience} ${styles.full}`} aria-label="Messenger VX House">
         <aside className={styles.dialogList}>
           <header>
-            <small>Личный канал</small>
+            <small>{t("messenger.personalChannel")}</small>
             <h1 tabIndex={-1}>Messenger</h1>
-            <p>Все сообщения VX House и вашего менеджера — в одном разговоре.</p>
+            <p>{t("messenger.personalDescription")}</p>
           </header>
           <div className={styles.conversationItem} aria-current="page">
             <span className={styles.avatar} aria-hidden="true">VX</span>

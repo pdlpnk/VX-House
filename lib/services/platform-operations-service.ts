@@ -103,7 +103,7 @@ export class PlatformOperationsService {
         await database.promocodeActivationHistory.create({ data: { activationId: activation.id, fromStatus: null, toStatus: "ACTIVE", actorId: principal.userId, reason: "Пользователь активировал доступный промокод", occurredAt } });
       }
       await database.idempotencyRecord.create({ data: { operation: "promocode.activate", key: idempotencyKey, actorId: principal.userId, requestHash, resultType: "PromocodeActivation", resultId: activation.id, createdAt: occurredAt } });
-      await createProductNotification(database, { userId: principal.userId, type: "promocode.activated", title: "Промокод активирован", body: `Код ${row.partnerService.name} доступен до указанного срока.`, relatedType: "PROMOCODE", relatedId: id, idempotencyKey: `promocode-activated:${activation.id}`, actorId: principal.userId, occurredAt });
+      await createProductNotification(database, { userId: principal.userId, type: "promocode.activated", title: "Промокод активирован", body: `Код ${row.partnerService.name} доступен до указанного срока.`, relatedType: "PROMOCODE", relatedId: id, idempotencyKey: `promocode-activated:${activation.id}`, actorId: principal.userId, occurredAt, systemMessage: { key: "system.promocodeActivated", params: { partner: row.partnerService.name } } });
       await createTransactionalEventServices(database, occurredAt).audit.record({ actor: { type: "user", id: principal.userId, sessionId: principal.sessionId }, action: "promocode.activated", target: { type: "promocode", id }, metadata: { activationId: activation.id, market: profile.market.code, role: profile.productRole } });
       return this.promocodeView((await repository.findPromocode(id, principal.userId))!, principal.userId, occurredAt);
     });

@@ -14,6 +14,7 @@ test("инициализация личного диалога не создаё
     userProfile: {
       findUnique: async () => ({
         productRole: "PLAYER",
+        preferredLanguage: "TR",
         marketId: "market-tr",
         createdAt: new Date("2026-08-02T12:00:00.000Z"),
         user: { displayName: "Роман" },
