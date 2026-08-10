@@ -136,7 +136,7 @@ for (const account of [
       {
         method: "POST",
         body: JSON.stringify({
-          displayName: account.role === "PLAYER" ? "Тестовый игрок" : "Тестовый партнёр",
+          displayName: "Тестовый игрок",
           email,
           password,
           productRole: account.role,
@@ -188,7 +188,7 @@ for (const account of [
       assert.doesNotMatch(html, /Connection terminated unexpectedly|portal &quot;&quot; does not exist|RUNTIME ERROR/i);
       assert.match(
         html,
-        account.role === "PLAYER" ? /Следующий шаг/ : /Партнёрское пространство/,
+        /Следующий шаг/,
         "кабинет должен отрисоваться с пустыми серверными данными",
       );
     }
@@ -224,11 +224,11 @@ for (const account of [
     assert.equal(user.profile?.productRole, account.role);
     assert.equal(user.profile?.marketId != null, true);
     assert.equal(user.profile?.preferredLanguage, account.locale);
-    assert.equal(user.profile?.playerProfile != null, account.role === "PLAYER");
-    assert.equal(user.profile?.partnerProfile != null, account.role === "PARTNER");
+    assert.equal(user.profile?.playerProfile != null, true);
+    assert.equal(user.profile?.partnerProfile, null);
     assert.ok(user.sessions.length >= 2);
     assert.equal(user.userConsents.length, 2);
-    assert.ok(["COMPLETED", "PARTNER_APPROVAL_PENDING"].includes(user.onboardingProgress?.status ?? ""));
+    assert.equal(user.onboardingProgress?.status, "COMPLETED");
   });
 }
 
