@@ -12,6 +12,7 @@ import { AccessConsentStep } from "@/components/access/access-consent-step";
 import { AccessLoginStep } from "@/components/access/access-login-step";
 import { AccessOnboardingStoryStep } from "@/components/access/access-onboarding-story-step";
 import { AccessOnboardingWelcomeStep } from "@/components/access/access-onboarding-welcome-step";
+import { AccessPasswordResetStep, type PasswordResetStage } from "@/components/access/access-password-reset-step";
 import { AccessProgress } from "@/components/access/access-progress";
 import { AccessRegistrationStep } from "@/components/access/access-registration-step";
 import { AccessVerificationStep } from "@/components/access/access-verification-step";
@@ -45,14 +46,18 @@ type Snapshot = {
   redirectTo: string;
 };
 
+class ApiRequestError extends Error {
+  constructor(message: string, readonly code?: string, readonly details?: Record<string, string>) { super(message); }
+}
+
 async function api<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, {
     ...init,
     credentials: "same-origin",
     headers: { "content-type": "application/json", ...(init?.headers ?? {}) },
   });
-  const body = await response.json().catch(() => ({})) as { message?: string } & T;
-  if (!response.ok) throw new Error(body.message ?? "Не удалось выполнить запрос. Повторите попытку.");
+  const body = await response.json().catch(() => ({})) as { message?: string; error?: string; details?: Record<string, string> } & T;
+  if (!response.ok) throw new ApiRequestError(body.message ?? "Не удалось выполнить запрос. Повторите попытку.", body.error, body.details);
   return body;
 }
 
@@ -61,8 +66,8 @@ export function AccessFlow() {
   const { locale, setLocale, t } = useI18n();
   const [step, setStep] = useState(1);
   const [direction, setDirection] = useState(1);
-  const [mode, setMode] = useState<"onboarding" | "login">("onboarding");
-  const [scenario, setScenario] = useState<AccessScenario | null>(null);
+  const [mode, setMode] = useState<"onboarding" | "login" | "password-reset">("onboarding");
+  const [scenario, setScenario] = useState<AccessScenario | null>("player");
   const [country, setCountry] = useState<AccessCountry | null>(null);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -76,6 +81,11 @@ export function AccessFlow() {
   const [pending, setPending] = useState(false);
   const [ready, setReady] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [resetStage, setResetStage] = useState<PasswordResetStage>("email");
+  const [resetCode, setResetCode] = useState("");
+  const [resetPassword, setResetPassword] = useState("");
+  const [resetConfirmation, setResetConfirmation] = useState("");
+  const [resetCooldown, setResetCooldown] = useState(0);
   const panelRef = useRef<HTMLElement>(null);
 
   function go(next: number) {
@@ -134,6 +144,12 @@ export function AccessFlow() {
   }, [mode, ready, step]);
 
   useEffect(() => {
+    if (resetCooldown <= 0) return;
+    const timer = window.setInterval(() => setResetCooldown((current) => Math.max(0, current - 1)), 1000);
+    return () => window.clearInterval(timer);
+  }, [resetCooldown]);
+
+  useEffect(() => {
     if (!ready || step !== 3) return;
     let active = true;
     void api<{ code: string }>("/api/auth/email/development-code")
@@ -160,7 +176,7 @@ export function AccessFlow() {
           displayName: name,
           email,
           password,
-          productRole: scenario === "partner" ? "PARTNER" : "PLAYER",
+          productRole: "PLAYER",
           marketCode: country === "azerbaijan" ? "AZ" : "TR",
           preferredLanguage: toDatabaseLanguage(locale),
           idempotencyKey: crypto.randomUUID(),
@@ -252,6 +268,40 @@ export function AccessFlow() {
     }
   }
 
+  async function requestPasswordReset() {
+    setPending(true); setMessage(null);
+    try {
+      const result = await api<{ accepted: true; cooldownSeconds: number }>("/api/auth/password-reset/request", { method: "POST", body: JSON.stringify({ email, language: locale }) });
+      setResetCooldown(result.cooldownSeconds);
+      setResetStage("code");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : t("passwordReset.error"));
+    } finally { setPending(false); }
+  }
+
+  async function verifyPasswordReset() {
+    setPending(true); setMessage(null);
+    try {
+      await api("/api/auth/password-reset/verify", { method: "POST", body: JSON.stringify({ email, code: resetCode }) });
+      setResetStage("password");
+    } catch (error) {
+      const code = error instanceof ApiRequestError ? error.code : undefined;
+      setMessage(code === "EXPIRED_CODE" ? t("passwordReset.expiredCode") : code === "ATTEMPTS_EXHAUSTED" ? t("passwordReset.attemptsExceeded") : t("passwordReset.invalidCode"));
+    } finally { setPending(false); }
+  }
+
+  async function completePasswordReset() {
+    setPending(true); setMessage(null);
+    try {
+      await api("/api/auth/password-reset/complete", { method: "POST", body: JSON.stringify({ password: resetPassword, passwordConfirmation: resetConfirmation }) });
+      setPassword(""); setResetPassword(""); setResetConfirmation(""); setResetStage("success");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : t("passwordReset.error"));
+    } finally { setPending(false); }
+  }
+
+  function openLogin() { setMode("login"); setMessage(null); }
+
   return <main id="main-content" className={styles.page}>
     <div className={styles.background} aria-hidden="true"><div className={styles.grid} /><div className={styles.glow} /><div className={styles.portal} /><div className={styles.vignette} /></div>
     <div className={styles.shell}>
@@ -266,9 +316,11 @@ export function AccessFlow() {
           <AnimatePresence mode="wait" initial={false} custom={direction}>
             <motion.section key={`${mode}-${step}`} ref={panelRef} className={styles.stepPanel} custom={direction} variants={reducedMotion ? undefined : stepVariants} initial={reducedMotion ? false : "enter"} animate="center" exit={reducedMotion ? undefined : "exit"} transition={{ duration: .38, ease: [0.22, 1, .36, 1] }}>
               {mode === "login"
-                ? <AccessLoginStep email={email} password={password} pending={pending} error={message} onEmailChange={setEmail} onPasswordChange={setPassword} onSubmit={login} onBack={() => { setMode("onboarding"); setMessage(null); }} />
+                ? <AccessLoginStep email={email} password={password} pending={pending} error={message} onEmailChange={setEmail} onPasswordChange={setPassword} onSubmit={login} onBack={() => { setMode("onboarding"); setMessage(null); }} onForgotPassword={() => { setResetStage("email"); setResetCode(""); setMode("password-reset"); setMessage(null); }} />
+                : mode === "password-reset"
+                  ? <AccessPasswordResetStep stage={resetStage} email={email} code={resetCode} password={resetPassword} confirmation={resetConfirmation} pending={pending} cooldown={resetCooldown} onEmailChange={setEmail} onCodeChange={setResetCode} onPasswordChange={setResetPassword} onConfirmationChange={setResetConfirmation} onRequest={requestPasswordReset} onVerify={verifyPasswordReset} onComplete={completePasswordReset} onResend={requestPasswordReset} onBack={openLogin} onLogin={openLogin} />
                 : step === 1
-                  ? <AccessOnboardingWelcomeStep scenario={scenario} country={country} pending={pending} onScenarioChange={setScenario} onCountryChange={setCountry} onContinue={async () => go(2)} />
+                  ? <AccessOnboardingWelcomeStep country={country} pending={pending} onCountryChange={setCountry} onContinue={async () => go(2)} />
                   : step === 2
                     ? <AccessRegistrationStep name={name} email={email} password={password} pending={pending} onNameChange={setName} onEmailChange={setEmail} onPasswordChange={setPassword} onSubmit={register} onLogin={() => setMode("login")} />
                     : step === 3

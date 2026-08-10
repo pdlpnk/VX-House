@@ -2,7 +2,7 @@ import "server-only";
 
 import { cache } from "react";
 
-import { SessionCookieManager, SessionTokenManager, VerificationCodeHasher } from "@/lib/auth";
+import { PasswordResetCookieManager, SessionCookieManager, SessionTokenManager, VerificationCodeHasher } from "@/lib/auth";
 import { getServerConfig } from "@/lib/config";
 import { getDatabase } from "@/lib/db";
 import { PrismaAuthRepository } from "@/lib/repositories";
@@ -10,6 +10,7 @@ import {
   AuthenticationService,
   DevelopmentEmailProvider,
   IdentityOnboardingService,
+  PasswordResetService,
   ResendEmailProvider,
   UnavailableEmailProvider,
 } from "@/lib/services";
@@ -60,7 +61,21 @@ function buildIdentitySystem() {
     },
     getAnalyticsSystem().service,
   );
-  return Object.freeze({ authentication, onboarding, cookies, emailProvider, config, database });
+  const passwordResetCookies = new PasswordResetCookieManager(authenticationConfig.secureCookies);
+  const passwordReset = new PasswordResetService(
+    database,
+    new VerificationCodeHasher(verificationConfig.secret.reveal()),
+    tokens,
+    passwordResetCookies,
+    emailProvider,
+    {
+      ttlSeconds: verificationConfig.ttlSeconds,
+      resetProofTtlSeconds: verificationConfig.ttlSeconds,
+      resendCooldownSeconds: verificationConfig.resendCooldownSeconds,
+      maxAttempts: verificationConfig.maxAttempts,
+    },
+  );
+  return Object.freeze({ authentication, onboarding, passwordReset, cookies, passwordResetCookies, emailProvider, config, database });
 }
 
 const getRequestIdentitySystem = cache(buildIdentitySystem);

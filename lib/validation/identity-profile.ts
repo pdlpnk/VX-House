@@ -21,14 +21,22 @@ export interface RegistrationInput {
   readonly preferredLanguage: LanguageCode;
 }
 
+export function preparePublicRegistrationInput(value: unknown): Record<string, unknown> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new ApplicationError("VALIDATION", "Данные для создания доступа обязательны");
+  }
+  const record = value as Record<string, unknown>;
+  if ("productRole" in record && record.productRole !== "PLAYER") {
+    throw new ApplicationError("FORBIDDEN", "Публичная регистрация партнёров временно недоступна");
+  }
+  return { ...record, productRole: "PLAYER" };
+}
+
 export function validateCreateProfileInput(value: unknown): CreateProfileInput {
   if (!value || typeof value !== "object") {
     throw new ApplicationError("VALIDATION", "Параметры профиля обязательны");
   }
   const record = value as Record<string, unknown>;
-  if (forbiddenInfrastructureFields.some((key) => key in record)) {
-    throw new ApplicationError("FORBIDDEN", "Инфраструктурные роли нельзя назначить через регистрацию");
-  }
   if (forbiddenInfrastructureFields.some((key) => key in record)) {
     throw new ApplicationError("FORBIDDEN", "Инфраструктурные роли нельзя назначить через профиль");
   }

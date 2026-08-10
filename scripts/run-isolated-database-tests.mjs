@@ -47,6 +47,7 @@ try {
     "tests/database-invariants.integration.test.mts",
     "tests/identity-profile-consent.integration.test.mts",
     "tests/functional-identity-onboarding.integration.test.mts",
+    "tests/password-reset.integration.test.mts",
     "tests/functional-analytics.integration.test.mts",
     "tests/registration-stabilization.integration.test.mts",
     "tests/functional-opportunities-tasks.integration.test.mts",

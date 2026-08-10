@@ -11,8 +11,11 @@ export interface VerificationEmail {
   readonly language: Locale;
 }
 
+export type PasswordResetEmail = VerificationEmail;
+
 export interface EmailProvider {
   sendVerificationCode(message: VerificationEmail): Promise<void>;
+  sendPasswordResetCode?(message: PasswordResetEmail): Promise<void>;
 }
 
 const RESEND_EMAILS_URL = "https://api.resend.com/emails";
@@ -46,6 +49,21 @@ export function verificationEmailContent(code: string, expiresAt: Date, language
   return { subject, html, text };
 }
 
+export function passwordResetEmailContent(code: string, expiresAt: Date, language: Locale) {
+  const expires = new Intl.DateTimeFormat(intlLocales[language], {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: "UTC",
+  }).format(expiresAt);
+  const subject = translate(language, "passwordResetEmail.subject");
+  const heading = translate(language, "passwordResetEmail.heading");
+  const instruction = translate(language, "passwordResetEmail.instruction");
+  const expiration = translate(language, "passwordResetEmail.expiration", { expires });
+  const text = translate(language, "passwordResetEmail.text", { code });
+  const html = `<!doctype html><html lang="${language}"><body style="margin:0;background:#090707;color:#f7f4f4;font-family:Arial,sans-serif"><div style="max-width:560px;margin:0 auto;padding:48px 24px"><p style="color:#ef3340;font-weight:700;letter-spacing:.08em">VX HOUSE</p><h1 style="font-size:28px">${heading}</h1><p style="color:#c8bebe;line-height:1.6">${instruction}</p><p style="font-size:36px;font-weight:700;letter-spacing:.18em;margin:32px 0">${code}</p><p style="color:#8f8585;font-size:14px">${expiration}</p></div></body></html>`;
+  return { subject, html, text };
+}
+
 export class ResendEmailProvider implements EmailProvider {
   private readonly request: typeof fetch;
 
@@ -54,14 +72,24 @@ export class ResendEmailProvider implements EmailProvider {
   }
 
   async sendVerificationCode(message: VerificationEmail) {
+    return this.send(message, "verification");
+  }
+
+  async sendPasswordResetCode(message: PasswordResetEmail) {
+    return this.send(message, "password-reset");
+  }
+
+  private async send(message: VerificationEmail, purpose: "verification" | "password-reset") {
     try {
-      const content = verificationEmailContent(message.code, message.expiresAt, message.language);
+      const content = purpose === "verification"
+        ? verificationEmailContent(message.code, message.expiresAt, message.language)
+        : passwordResetEmailContent(message.code, message.expiresAt, message.language);
       const response = await this.request(RESEND_EMAILS_URL, {
         method: "POST",
         headers: {
           authorization: `Bearer ${this.options.apiKey}`,
           "content-type": "application/json",
-          "idempotency-key": `vxhouse-verification/${message.idempotencyKey}`,
+          "idempotency-key": `vxhouse-${purpose}/${message.idempotencyKey}`,
         },
         body: JSON.stringify({
           from: this.options.from,
@@ -82,15 +110,28 @@ export class ResendEmailProvider implements EmailProvider {
 
 const developmentCodes = globalThis as typeof globalThis & {
   vxHouseDevelopmentCodes?: Map<string, Readonly<{ code: string; expiresAt: Date }>>;
+  vxHouseDevelopmentPasswordResetCodes?: Map<string, Readonly<{ code: string; expiresAt: Date }>>;
 };
 
 export class DevelopmentEmailProvider implements EmailProvider {
   private readonly codes = (developmentCodes.vxHouseDevelopmentCodes ??= new Map());
+  private readonly passwordResetCodes = (developmentCodes.vxHouseDevelopmentPasswordResetCodes ??= new Map());
 
   constructor(private readonly environment: "development" | "test") {}
 
   async sendVerificationCode(message: VerificationEmail) {
     this.codes.set(message.userId, { code: message.code, expiresAt: message.expiresAt });
+  }
+
+  async sendPasswordResetCode(message: PasswordResetEmail) {
+    this.passwordResetCodes.set(message.userId, { code: message.code, expiresAt: message.expiresAt });
+  }
+
+  readPasswordResetCode(userId: string) {
+    if (this.environment !== "development") return null;
+    const value = this.passwordResetCodes.get(userId);
+    if (!value || value.expiresAt.getTime() <= Date.now()) return null;
+    return value.code;
   }
 
   readCode(userId: string) {
@@ -102,11 +143,17 @@ export class DevelopmentEmailProvider implements EmailProvider {
 
   clear(userId: string) {
     this.codes.delete(userId);
+    this.passwordResetCodes.delete(userId);
   }
 }
 
 export class UnavailableEmailProvider implements EmailProvider {
   async sendVerificationCode(message: VerificationEmail): Promise<never> {
+    void message;
+    throw new EmailDeliveryError();
+  }
+
+  async sendPasswordResetCode(message: PasswordResetEmail): Promise<never> {
     void message;
     throw new EmailDeliveryError();
   }

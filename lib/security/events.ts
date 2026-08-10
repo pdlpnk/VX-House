@@ -12,6 +12,10 @@ export const SECURITY_EVENT_TYPES = Object.freeze({
   emailVerificationSucceeded: "identity.email_verification.succeeded",
   emailVerificationFailed: "identity.email_verification.failed",
   onboardingCompleted: "identity.onboarding.completed",
+  passwordResetRequested: "authentication.password_reset.requested",
+  passwordResetVerificationFailed: "authentication.password_reset.verification_failed",
+  passwordResetVerified: "authentication.password_reset.verified",
+  passwordResetCompleted: "authentication.password_reset.completed",
 } as const);
 
 export type SecurityEventType = (typeof SECURITY_EVENT_TYPES)[keyof typeof SECURITY_EVENT_TYPES];
@@ -44,6 +48,12 @@ interface SecurityEventMetadataMap {
     productRole: "PLAYER" | "PARTNER";
     outcome: "completed" | "partner_approval_pending";
   }>;
+  "authentication.password_reset.requested": Readonly<{ method: "email_code" }>;
+  "authentication.password_reset.verification_failed": Readonly<{
+    reason: "invalid" | "expired" | "attempts_exhausted";
+  }>;
+  "authentication.password_reset.verified": Readonly<{ method: "email_code" }>;
+  "authentication.password_reset.completed": Readonly<{ sessionsRevoked: number }>;
 }
 
 type SecurityEventFor<TType extends SecurityEventType> = Readonly<{

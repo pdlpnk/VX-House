@@ -1,5 +1,6 @@
 import { errorResponse, deriveNetworkIdentifier, getIdentitySystem, json, limitRequest, normalizedIdentifier, readJsonBody, requireTrustedOrigin } from "@/lib/server/identity-delivery";
 import { getAnalyticsSystem, scheduleAnalyticsDelivery } from "@/lib/server/analytics";
+import { preparePublicRegistrationInput } from "@/lib/validation";
 
 export async function POST(request: Request) {
   try {
@@ -11,7 +12,7 @@ export async function POST(request: Request) {
     await limitRequest({ namespace: "registration.network", key: network, limit: 10, windowSeconds: 3600 });
     await limitRequest({ namespace: "registration.identifier", key: email || "invalid", limit: 5, windowSeconds: 3600 });
     const result = await getIdentitySystem().onboarding.register({
-      command: body,
+      command: preparePublicRegistrationInput(body),
       idempotencyKey: String(body.idempotencyKey ?? request.headers.get("idempotency-key") ?? ""),
       correlationId,
       analyticsAnonymousId: getAnalyticsSystem().cookies.read(request),

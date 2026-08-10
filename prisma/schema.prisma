@@ -275,6 +275,7 @@ model User {
   idempotencyRecords          IdempotencyRecord[]
   onboardingProgress          OnboardingProgress?
   emailVerificationChallenges EmailVerificationChallenge[]
+  passwordResetChallenges     PasswordResetChallenge[]
   accountStatusHistory        UserAccountStatusHistory[]   @relation("AccountStatusUser")
   accountStatusChanges        UserAccountStatusHistory[]   @relation("AccountStatusActor")
   partnerApprovalChanges      PartnerApprovalHistory[]     @relation("PartnerApprovalActor")
@@ -310,6 +311,26 @@ model EmailVerificationChallenge {
   maxAttempts       Int
   expiresAt         DateTime
   resendAvailableAt DateTime
+  consumedAt        DateTime?
+  revokedAt         DateTime?
+  createdAt         DateTime  @default(now())
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([expiresAt])
+}
+
+model PasswordResetChallenge {
+  id                String    @id @default(uuid()) @db.Uuid
+  userId            String    @db.Uuid
+  codeHash          String    @db.Char(64)
+  attemptCount      Int       @default(0)
+  maxAttempts       Int
+  expiresAt         DateTime
+  resendAvailableAt DateTime
+  verifiedAt        DateTime?
+  resetTokenHash    String?   @unique @db.VarChar(128)
+  resetExpiresAt    DateTime?
   consumedAt        DateTime?
   revokedAt         DateTime?
   createdAt         DateTime  @default(now())

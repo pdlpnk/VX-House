@@ -8,6 +8,7 @@ import {
   UnavailableEmailProvider,
 } from "../lib/services/email-provider.ts";
 import { EnvironmentValidationError, validateEnvironment } from "../lib/validation/index.ts";
+import { preparePublicRegistrationInput } from "../lib/validation/identity-profile.ts";
 
 const publicOrigin = "https://vxhouse.online";
 
@@ -99,6 +100,41 @@ test("Resend получает минимальный запрос и ключ и
   assert.deepEqual(body.to, ["user@example.com"]);
   assert.equal(body.subject, "Код подтверждения VX House");
   assert.match(String(body.text), /123456/);
+});
+
+test("публичная регистрация всегда создаёт игрока и отклоняет PARTNER payload", () => {
+  assert.equal(preparePublicRegistrationInput({ email: "player@example.com" }).productRole, "PLAYER");
+  assert.equal(preparePublicRegistrationInput({ email: "player@example.com", productRole: "PLAYER" }).productRole, "PLAYER");
+  assert.throws(
+    () => preparePublicRegistrationInput({ email: "partner@example.com", productRole: "PARTNER" }),
+    (error: unknown) => error instanceof Error && "code" in error && error.code === "FORBIDDEN",
+  );
+});
+
+test("Resend отправляет reset-код отдельным назначением без утечки в ответ", async () => {
+  let captured: RequestInit | undefined;
+  const provider = new ResendEmailProvider({
+    apiKey: "re_reset_key_that_must_never_be_logged",
+    from: "VX House <noreply@vxhouse.online>",
+    timeoutMs: 2_000,
+    fetchImplementation: (async (_input: URL | RequestInfo, init?: RequestInit) => {
+      captured = init;
+      return new Response(JSON.stringify({ id: "reset-email-id" }), { status: 200 });
+    }) as typeof fetch,
+  });
+  await provider.sendPasswordResetCode({
+    idempotencyKey: "reset-challenge-123",
+    userId: "user-123",
+    email: "user@example.com",
+    code: "246810",
+    expiresAt: new Date("2026-08-10T12:10:00.000Z"),
+    language: "en",
+  });
+  const headers = new Headers(captured?.headers);
+  assert.equal(headers.get("idempotency-key"), "vxhouse-password-reset/reset-challenge-123");
+  const body = JSON.parse(String(captured?.body)) as Record<string, unknown>;
+  assert.match(String(body.text), /246810/);
+  assert.match(String(body.subject), /password/i);
 });
 
 test("ошибка Resend и disabled provider имеют безопасное стабильное сообщение", async () => {

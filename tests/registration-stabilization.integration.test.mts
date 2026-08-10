@@ -128,8 +128,6 @@ for (const account of [
   { role: "PLAYER", market: "TR", locale: "RU", expectedRoute: "/dashboard" },
   { role: "PLAYER", market: "AZ", locale: "AZ", expectedRoute: "/dashboard" },
   { role: "PLAYER", market: "TR", locale: "TR", expectedRoute: "/dashboard" },
-  { role: "PARTNER", market: "AZ", locale: "RU", expectedRoute: "/partner" },
-  { role: "PARTNER", market: "TR", locale: "TR", expectedRoute: "/partner" },
 ] as const) {
   test(`полный HTTP-сценарий регистрации и повторного входа: ${account.role}/${account.market}/${account.locale}`, async () => {
     const email = `${account.role.toLowerCase()}-${randomUUID()}@registration.invalid`;
@@ -234,6 +232,25 @@ for (const account of [
   });
 }
 
+test("публичный API отклоняет прямую попытку регистрации PARTNER", async () => {
+  const before = await database.user.count();
+  const response = await send("/api/auth/register", {
+    method: "POST",
+    body: JSON.stringify({
+      displayName: "Недоступный партнёр",
+      email: `partner-${randomUUID()}@registration.invalid`,
+      password,
+      productRole: "PARTNER",
+      marketCode: "TR",
+      preferredLanguage: "RU",
+      idempotencyKey: randomUUID(),
+    }),
+  });
+  assert.equal(response.status, 403);
+  assert.equal((await json<{ error: string }>(response)).error, "FORBIDDEN");
+  assert.equal(await database.user.count(), before);
+});
+
 test("невалидная регистрация не оставляет частичных записей и возвращает обработанную ошибку", async () => {
   const before = await database.user.count();
   const response = await send(
@@ -244,7 +261,7 @@ test("невалидная регистрация не оставляет час
         displayName: "А",
         email: "not-an-email",
         password: "short",
-        productRole: "ADMIN",
+        productRole: "PLAYER",
         marketCode: "US",
         preferredLanguage: "EN",
         idempotencyKey: randomUUID(),

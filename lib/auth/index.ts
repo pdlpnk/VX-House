@@ -7,6 +7,7 @@ export * from "./workspace-access";
 export * from "./guards";
 export * from "./middleware";
 export * from "./password";
+export * from "./password-reset-cookie";
 export * from "./request-origin";
 export * from "./ownership";
 export * from "./session-cookie";

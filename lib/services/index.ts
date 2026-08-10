@@ -9,6 +9,7 @@ export * from "./brute-force-protection-service";
 export * from "./protected-data-service";
 export * from "./identity-profile-consent-service";
 export * from "./email-provider";
+export * from "./password-reset-service";
 export * from "./identity-onboarding-service";
 export * from "./opportunity-task-service";
 export * from "./economy-reward-service";
