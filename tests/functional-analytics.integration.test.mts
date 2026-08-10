@@ -88,7 +88,6 @@ test("Keitaro outbox доставляет один раз, 5xx уходит в r
   const originalFetch = globalThis.fetch;
   try {
     let requests = 0;
-    globalThis.fetch = async () => { requests += 1; return new Response("ok", { status: 200 }); };
     const service = new AnalyticsService(database, { enabled: true, postbackUrl: "https://tracker.example/secret/postback", requestTimeoutMs: 500, maxRetries: 5 });
     await service.captureClientEvent({ command: command("registration_started", { metadata: { role: "PLAYER" }, attribution: { subid: "registration-only" } }) });
     assert.equal(await database.conversionDelivery.count(), 0);
@@ -102,19 +101,21 @@ test("Keitaro outbox доставляет один раз, 5xx уходит в r
     };
 
     await confirmAttributedUser(service, "tracked-1");
-    assert.equal((await service.deliverPending()).delivered, 1);
-    assert.equal((await service.deliverPending()).delivered, 0);
-    assert.equal(requests, 1);
-    assert.equal(await database.conversionDelivery.count({ where: { status: "DELIVERED" } }), 1);
-
-    globalThis.fetch = async () => new Response("unavailable", { status: 503 });
     await confirmAttributedUser(service, "tracked-2");
-    await service.deliverPending();
-    assert.equal(await database.conversionDelivery.count({ where: { status: "RETRY" } }), 1);
-
     const off = disabled();
     await confirmAttributedUser(off, "tracked-off");
     assert.equal(await database.conversionDelivery.count(), 2);
+
+    globalThis.fetch = async (input) => {
+      requests += 1;
+      const subid = new URL(String(input)).searchParams.get("subid");
+      return new Response(subid === "tracked-2" ? "unavailable" : "ok", { status: subid === "tracked-2" ? 503 : 200 });
+    };
+    assert.equal((await service.deliverPending()).delivered, 1);
+    assert.equal((await service.deliverPending()).delivered, 0);
+    assert.equal(requests, 2);
+    assert.equal(await database.conversionDelivery.count({ where: { status: "DELIVERED" } }), 1);
+    assert.equal(await database.conversionDelivery.count({ where: { status: "RETRY" } }), 1);
   } finally { globalThis.fetch = originalFetch; }
 });
 
