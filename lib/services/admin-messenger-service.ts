@@ -2,7 +2,7 @@ import "server-only";
 
 import { randomUUID } from "node:crypto";
 
-import { ADMIN_MESSENGER_ROLES, isAdminMessengerRole, type AdminMessengerDetail, type AdminMessengerList, type AdminMessengerNote } from "@/lib/admin-messenger";
+import { ADMIN_MESSENGER_ROLES, isAdminMessengerRole, type AdminMessengerDetail, type AdminMessengerList, type AdminMessengerNote, type AdminMessengerScope } from "@/lib/admin-messenger";
 import type { AuthenticatedPrincipal } from "@/lib/auth";
 import { ApplicationError, createTransactionalEventServices, PrismaTransactionRunner } from "@/lib/application";
 import type { AesGcmDataProtector, EncryptedPayload } from "@/lib/data-protection";
@@ -47,7 +47,7 @@ export class AdminMessengerService {
     this.transactions = new PrismaTransactionRunner(database);
   }
 
-  async list(actor: AuthenticatedPrincipal, search = ""): Promise<AdminMessengerList> {
+  async list(actor: AuthenticatedPrincipal, search = "", scope: AdminMessengerScope = "active"): Promise<AdminMessengerList> {
     requireAdmin(actor);
     const query = search.trim();
     const searchFilters: Prisma.UserProfileWhereInput[] = query ? [
@@ -58,6 +58,7 @@ export class AdminMessengerService {
     const profiles = await this.database.userProfile.findMany({
       where: {
         productRole: { in: [...ADMIN_MESSENGER_ROLES] },
+        contactVerificationStatus: "VERIFIED",
         user: { disabledAt: null },
         ...(query ? { OR: searchFilters } : {}),
       },
@@ -76,6 +77,10 @@ export class AdminMessengerService {
           _count: { select: { internalNotes: true } },
         },
       });
+      const hasInboundUserMessage = await this.database.supportMessage.count({
+        where: { conversationId: conversation.id, authorType: "USER" },
+      });
+      if (scope === "active" && hasInboundUserMessage === 0) continue;
       const readAt = adminReadAt(conversation.context, actor.userId);
       const unreadCount = await this.database.supportMessage.count({
         where: {
@@ -120,7 +125,10 @@ export class AdminMessengerService {
     if (!record || !isAdminMessengerRole(record.user.profile?.productRole ?? "")) {
       throw new ApplicationError("NOT_FOUND", "Диалог участника не найден");
     }
-    const listItem = (await this.list(actor, record.user.email)).items.find((item) => item.conversationId === conversationId);
+    if (record.user.profile?.contactVerificationStatus !== "VERIFIED") {
+      throw new ApplicationError("NOT_FOUND", "Диалог участника не найден");
+    }
+    const listItem = (await this.list(actor, record.user.email, "archive")).items.find((item) => item.conversationId === conversationId);
     if (!listItem) throw new ApplicationError("NOT_FOUND", "Диалог участника не найден");
     const [rank, points, task, action] = await Promise.all([
       this.database.userRank.findFirst({ where: { userId: record.userId }, include: { rankDefinition: true }, orderBy: { assignedAt: "desc" } }),

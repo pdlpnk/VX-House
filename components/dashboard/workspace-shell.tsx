@@ -18,9 +18,10 @@ import type { NotificationView, SupportConversationView } from "@/lib/support";
 import type { GlobalSearchResult } from "@/lib/platform-operations";
 import type { EconomySnapshotView } from "@/lib/economy";
 import { formatLocalTime, fromDatabaseLanguage } from "@/lib/i18n";
+import type { MessageKey } from "@/lib/i18n";
 
 export type WorkspaceNavigationItem = {
-  label: string;
+  labelKey: MessageKey;
   href: string;
   icon: LucideIcon;
   action?: "logout";
@@ -28,17 +29,16 @@ export type WorkspaceNavigationItem = {
 
 type WorkspaceShellConfig = {
   kind: "player" | "partner" | "admin";
-  label: string;
-  ariaContext: string;
+  labelKey: MessageKey;
   rootHref: string;
   profileHref: string;
-  profileRole: string;
+  profileRoleKey: MessageKey;
   navigation: readonly WorkspaceNavigationItem[];
-  pageTitles: Record<string, string>;
-  pageTitlePrefixes?: Record<string, string>;
+  pageTitles: Record<string, MessageKey>;
+  pageTitlePrefixes?: Record<string, MessageKey>;
   storageKey: string;
   defaultPreferences: DashboardPreferences;
-  notificationText: string;
+  notificationTextKey: MessageKey;
 };
 
 const tierLabels = { EXPLORER: "Bronze", NAVIGATOR: "Silver", ATLAS: "Gold", PRIME: "Platinum", SIGNATURE: "Diamond" } as const;
@@ -58,8 +58,8 @@ function WorkspaceNavigation({
 }) {
   const pathname = usePathname();
   const { profile, shouldReduceMotion } = useDashboard();
-  const { t } = useI18n();
-  const displayName = profile?.user.displayName ?? config.profileRole;
+  const { locale, t } = useI18n();
+  const displayName = profile?.user.displayName ?? t(config.profileRoleKey);
   const [messengerUnread, setMessengerUnread] = useState(0);
   const hasNavigationLogout = config.navigation.some((item) => item.action === "logout");
 
@@ -90,25 +90,25 @@ function WorkspaceNavigation({
   return (
     <div className={styles.navigationInner}>
       <div>
-        <Link href={config.rootHref} className={styles.dashboardLogo} onClick={onNavigate} aria-label={`VX House — главная ${config.ariaContext}`}>
+        <Link href={config.rootHref} className={styles.dashboardLogo} onClick={onNavigate} aria-label={`VX House — ${t("page.home")}`}>
           <span aria-hidden="true"><Image src="/vx-house-logo.jpg" alt="" width={232} height={232} priority unoptimized /></span>
         </Link>
-        {mobile ? <span className={styles.mobileMenuLabel}>{config.label}</span> : null}
-        <nav className={styles.dashboardNav} aria-label={`Навигация ${config.ariaContext}`}>
-          {config.navigation.map(({ label, href, icon: Icon, action }) => {
+        {mobile ? <span className={styles.mobileMenuLabel}>{t(config.labelKey)}</span> : null}
+        <nav className={styles.dashboardNav} aria-label={t("workspace.menu", { area: t(config.labelKey) })}>
+          {config.navigation.map(({ labelKey, href, icon: Icon, action }) => {
             const active = !action && (pathname === href || (href !== config.rootHref && pathname.startsWith(`${href}/`)));
             if (action === "logout") {
               return (
-                <button key={label} type="button" className={styles.navLink} onClick={() => void logout()}>
+                <button key={labelKey} type="button" className={styles.navLink} onClick={() => void logout()}>
                   <Icon aria-hidden="true" />
-                  <span>{label === "Выйти" ? t("nav.logout") : label}</span>
+                  <span>{t(labelKey)}</span>
                 </button>
               );
             }
             return (
               <Link key={href} href={href} className={styles.navLink} data-active={active || undefined} aria-current={active ? "page" : undefined} onClick={onNavigate}>
                 <Icon aria-hidden="true" />
-                <span>{label}</span>
+                <span>{t(labelKey)}</span>
                 {href.endsWith("/support") && playerMessengerUnread ? <em className={styles.navUnreadBadge} aria-label={t("workspace.unread", { count: playerMessengerUnread })}>{playerMessengerUnread}</em> : null}
                 {href === "/admin/messenger" && messengerUnread ? <em className={styles.navUnreadBadge} aria-label={t("workspace.unread", { count: messengerUnread })}>{messengerUnread}</em> : null}
                 {active ? (
@@ -132,13 +132,13 @@ function WorkspaceNavigation({
         {(profile || config.kind === "admin") && !hasNavigationLogout ? <button type="button" className={styles.publicLink} onClick={() => void logout()}><LogOut aria-hidden="true" />{t("nav.logout")}<ChevronRight aria-hidden="true" /></button> : null}
         {config.kind !== "admin" ? config.kind === "player" ? (
           <div className={styles.sidebarProfile}>
-            <span>{displayName.charAt(0).toLocaleUpperCase("ru") || "Д"}</span>
-            <div><strong>{displayName}</strong><small>{config.profileRole}</small></div>
+            <span>{displayName.charAt(0).toLocaleUpperCase(locale) || t("workspace.member").charAt(0)}</span>
+            <div><strong>{displayName}</strong><small>{t(config.profileRoleKey)}</small></div>
           </div>
         ) : (
           <Link href={config.profileHref} className={styles.sidebarProfile} onClick={onNavigate}>
-            <span>{displayName.charAt(0).toLocaleUpperCase("ru") || "Д"}</span>
-            <div><strong>{displayName}</strong><small>{config.profileRole}</small></div>
+            <span>{displayName.charAt(0).toLocaleUpperCase(locale) || t("workspace.member").charAt(0)}</span>
+            <div><strong>{displayName}</strong><small>{t(config.profileRoleKey)}</small></div>
           </Link>
         ) : null}
       </div>
@@ -150,7 +150,7 @@ function WorkspaceShellContent({ children, config, initialNotifications, persona
   const pathname = usePathname();
   const { profile, shouldReduceMotion } = useDashboard();
   const { locale, setLocale, t } = useI18n();
-  const displayName = profile?.user.displayName ?? config.profileRole;
+  const displayName = profile?.user.displayName ?? t(config.profileRoleKey);
   const [menuOpen, setMenuOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notifications, setNotifications] = useState(initialNotifications);
@@ -167,9 +167,10 @@ function WorkspaceShellContent({ children, config, initialNotifications, persona
   const rankRef = useRef<HTMLDivElement>(null);
   const menuId = `${config.kind}-mobile-menu`;
   const notificationsId = `${config.kind}-notifications`;
-  const pageTitle = config.pageTitles[pathname]
+  const pageTitleKey = config.pageTitles[pathname]
     ?? Object.entries(config.pageTitlePrefixes ?? {}).find(([prefix]) => pathname.startsWith(prefix))?.[1]
-    ?? "VX House";
+    ?? null;
+  const pageTitle = pageTitleKey ? t(pageTitleKey) : "VX House";
   const unreadCount = notifications.filter((item) => item.status !== "READ").length;
   const supportHref = config.kind === "partner" ? "/partner/support" : "/dashboard/support";
   const messengerIsFullPage = pathname === supportHref;
@@ -270,7 +271,7 @@ function WorkspaceShellContent({ children, config, initialNotifications, persona
               className={styles.mobileSidebar}
               role="dialog"
               aria-modal="true"
-              aria-label={`Меню ${config.ariaContext}`}
+              aria-label={t("workspace.menu", { area: t(config.labelKey) })}
               initial={shouldReduceMotion ? false : { x: "-100%" }}
               animate={{ x: 0 }}
               exit={shouldReduceMotion ? undefined : { x: "-100%" }}
@@ -286,8 +287,8 @@ function WorkspaceShellContent({ children, config, initialNotifications, persona
       <div className={styles.dashboardMainColumn}>
         <header className={styles.topbar}>
           <div className={styles.topbarTitle}>
-            <button ref={menuButtonRef} type="button" className={styles.menuButton} onClick={() => setMenuOpen(true)} aria-expanded={menuOpen} aria-controls={menuId} aria-label="Открыть меню"><Menu aria-hidden="true" /></button>
-            <div><span>{config.label}</span><strong>{pageTitle}</strong></div>
+            <button ref={menuButtonRef} type="button" className={styles.menuButton} onClick={() => setMenuOpen(true)} aria-expanded={menuOpen} aria-controls={menuId} aria-label={t("workspace.openMenu")}><Menu aria-hidden="true" /></button>
+            <div><span>{t(config.labelKey)}</span><strong>{pageTitle}</strong></div>
           </div>
 
           <div className={styles.topbarActions}>
@@ -295,19 +296,19 @@ function WorkspaceShellContent({ children, config, initialNotifications, persona
             {config.kind === "player" && economy ? <>
               <Link href="/dashboard/economy" className={styles.pointsCompact} aria-label={`${economy.points.confirmedBalance} VX Points`}>
                 <Coins aria-hidden="true" /><span><small>VX Points</small><strong>{economy.points.confirmedBalance}</strong></span>
-                <em role="tooltip">Ваши бонусные баллы VX.<br />Используются для получения преимуществ.</em>
+                <em role="tooltip">{t("workspace.pointsTooltip")}</em>
               </Link>
               <div className={styles.rankCompactWrap} ref={rankRef}>
                 <button type="button" className={styles.rankCompact} aria-expanded={rankOpen} onClick={() => { setRankOpen((open) => !open); setSearchOpen(false); setNotificationsOpen(false); }}><Medal aria-hidden="true" />{rankLabel}</button>
-                {rankOpen ? <div className={styles.rankCompactPanel} role="region" aria-label="Текущий уровень"><small>Текущий уровень</small><strong>{rankLabel}</strong><div><span>До уровня {nextRankLabel}</span><b>{rankProgress}%</b></div><div className={styles.compactProgress}><i style={{ width: `${rankProgress}%` }} /></div><p>{criteriaCount ? `Выполнено условий: ${completedCriteria} из ${criteriaCount}` : `До следующего уровня осталось ${Math.max(0, 1000 - (economy.points.confirmedBalance ?? 0))} VX Points`}</p><Link href="/dashboard/economy" onClick={() => setRankOpen(false)}>Подробнее о уровнях <ChevronRight aria-hidden="true" /></Link></div> : null}
+                {rankOpen ? <div className={styles.rankCompactPanel} role="region" aria-label={t("workspace.currentLevel")}><small>{t("workspace.currentLevel")}</small><strong>{rankLabel}</strong><div><span>{t("workspace.toLevel", { level: nextRankLabel })}</span><b>{rankProgress}%</b></div><div className={styles.compactProgress}><i style={{ width: `${rankProgress}%` }} /></div><p>{criteriaCount ? t("workspace.criteriaCompleted", { completed: completedCriteria, total: criteriaCount }) : t("workspace.pointsRemaining", { points: Math.max(0, 1000 - (economy.points.confirmedBalance ?? 0)) })}</p><Link href="/dashboard/economy" onClick={() => setRankOpen(false)}>{t("workspace.rankDetails")} <ChevronRight aria-hidden="true" /></Link></div> : null}
               </div>
             </> : null}
             {config.kind !== "admin" ? <div className={styles.globalSearch} ref={searchRef} data-open={searchOpen || undefined}>
-              <button type="button" aria-label="Открыть глобальный поиск" aria-expanded={searchOpen} onClick={() => { setSearchOpen((open) => !open); setNotificationsOpen(false); setRankOpen(false); }}><Search aria-hidden="true" /></button>
-              {searchOpen ? <div className={styles.globalSearchPanel}><label><Search aria-hidden="true" /><span className="sr-only">Поиск по VX House</span><input autoFocus value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="Возможности, задания, прогнозы…" /></label>{searchTerm.trim().length < 2 ? <p>Введите минимум два символа.</p> : searchResults.length ? <div>{searchResults.map((item) => <Link key={`${item.type}:${item.id}`} href={item.href} onClick={() => setSearchOpen(false)}><small>{item.type}</small><strong>{item.title}</strong><span>{item.description}</span></Link>)}</div> : <p>Ничего не найдено.</p>}</div> : null}
+              <button type="button" aria-label={t("workspace.openSearch")} aria-expanded={searchOpen} onClick={() => { setSearchOpen((open) => !open); setNotificationsOpen(false); setRankOpen(false); }}><Search aria-hidden="true" /></button>
+              {searchOpen ? <div className={styles.globalSearchPanel}><label><Search aria-hidden="true" /><span className="sr-only">{t("workspace.searchLabel")}</span><input autoFocus value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder={t("workspace.searchPlaceholder")} /></label>{searchTerm.trim().length < 2 ? <p>{t("workspace.searchMinimum")}</p> : searchResults.length ? <div>{searchResults.map((item) => <Link key={`${item.type}:${item.id}`} href={item.href} onClick={() => setSearchOpen(false)}><small>{item.type}</small><strong>{item.title}</strong><span>{item.description}</span></Link>)}</div> : <p>{t("workspace.searchEmpty")}</p>}</div> : null}
             </div> : null}
             <div className={styles.notificationsWrap} ref={notificationsRef}>
-              <button type="button" className={styles.notificationButton} aria-label={unreadCount ? `Непрочитанных уведомлений: ${unreadCount}` : "Новых уведомлений нет"} aria-expanded={notificationsOpen} aria-controls={notificationsId} onClick={() => { setNotificationsOpen((open) => !open); setSearchOpen(false); setRankOpen(false); }}><Bell aria-hidden="true" />{unreadCount ? <i aria-hidden="true">{unreadCount}</i> : null}</button>
+              <button type="button" className={styles.notificationButton} aria-label={unreadCount ? t("workspace.unreadNotifications", { count: unreadCount }) : t("workspace.noNotifications")} aria-expanded={notificationsOpen} aria-controls={notificationsId} onClick={() => { setNotificationsOpen((open) => !open); setSearchOpen(false); setRankOpen(false); }}><Bell aria-hidden="true" />{unreadCount ? <i aria-hidden="true">{unreadCount}</i> : null}</button>
               <AnimatePresence>
                 {notificationsOpen ? (
                   <motion.div
@@ -320,15 +321,15 @@ function WorkspaceShellContent({ children, config, initialNotifications, persona
                     aria-label={t("workspace.notifications")}
                   >
                     <div className={styles.notificationsHeader}><strong>{t("workspace.notifications")}</strong><span>{unreadCount ? t("workspace.unread", { count: unreadCount }) : ""}</span></div>
-                    {notifications.length ? <div className={styles.notificationsList}>{notifications.map((item) => <button type="button" key={item.id} data-unread={item.status !== "READ" || undefined} onClick={() => readNotification(item.id)}><span>{item.category}</span><strong>{item.title}</strong><p>{item.body}</p><small>{formatLocalTime(locale, item.createdAt)}</small></button>)}</div> : <div className={styles.notificationsEmpty}><Bell aria-hidden="true" /><strong>{t("workspace.notifications")}</strong><p>{config.notificationText}</p></div>}
+                    {notifications.length ? <div className={styles.notificationsList}>{notifications.map((item) => <button type="button" key={item.id} data-unread={item.status !== "READ" || undefined} onClick={() => readNotification(item.id)}><span>{item.category}</span><strong>{item.title}</strong><p>{item.body}</p><small>{formatLocalTime(locale, item.createdAt)}</small></button>)}</div> : <div className={styles.notificationsEmpty}><Bell aria-hidden="true" /><strong>{t("workspace.notifications")}</strong><p>{t(config.notificationTextKey)}</p></div>}
                   </motion.div>
                 ) : null}
               </AnimatePresence>
             </div>
 
-            <Link href={config.profileHref} className={styles.topbarProfile} aria-label={`Открыть профиль: ${config.profileRole.toLocaleLowerCase("ru")}`}>
-              <span>{displayName.charAt(0).toLocaleUpperCase("ru") || "Д"}</span>
-              <div><strong>{displayName}</strong><small>{config.profileRole}</small></div>
+            <Link href={config.profileHref} className={styles.topbarProfile} aria-label={t("workspace.openProfile", { role: t(config.profileRoleKey) })}>
+              <span>{displayName.charAt(0).toLocaleUpperCase(locale) || t("workspace.member").charAt(0)}</span>
+              <div><strong>{displayName}</strong><small>{t(config.profileRoleKey)}</small></div>
             </Link>
           </div>
         </header>
@@ -359,12 +360,12 @@ function WorkspaceShellContent({ children, config, initialNotifications, persona
 
         <nav
           className={styles.mobileBottomNav}
-          aria-label={`Быстрая навигация ${config.ariaContext}`}
+          aria-label={t("workspace.quickNavigation", { area: t(config.labelKey) })}
           style={{ "--mobile-nav-columns": config.navigation.length } as CSSProperties}
         >
-          {config.navigation.map(({ label, href, icon: Icon }) => {
+          {config.navigation.map(({ labelKey, href, icon: Icon }) => {
             const active = pathname === href || (href !== config.rootHref && pathname.startsWith(`${href}/`));
-            return <Link key={href} href={href} data-active={active || undefined} aria-current={active ? "page" : undefined}><Icon aria-hidden="true" /><span>{label}</span></Link>;
+            return <Link key={href} href={href} data-active={active || undefined} aria-current={active ? "page" : undefined}><Icon aria-hidden="true" /><span>{t(labelKey)}</span></Link>;
           })}
         </nav>
       </div>

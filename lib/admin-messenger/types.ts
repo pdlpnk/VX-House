@@ -2,6 +2,7 @@ import type { SupportConversationView } from "@/lib/support";
 
 export const ADMIN_MESSENGER_ROLES = ["PLAYER", "PARTNER"] as const;
 export type AdminMessengerRole = (typeof ADMIN_MESSENGER_ROLES)[number];
+export type AdminMessengerScope = "active" | "archive";
 
 export function isAdminMessengerRole(value: string): value is AdminMessengerRole {
   return ADMIN_MESSENGER_ROLES.some((role) => role === value);

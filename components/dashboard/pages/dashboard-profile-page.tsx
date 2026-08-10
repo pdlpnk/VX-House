@@ -5,29 +5,25 @@ import { AtSign, CalendarDays, Globe2, ShieldCheck, UserRound } from "lucide-rea
 import styles from "@/app/dashboard/dashboard.module.css";
 import { useDashboard } from "@/components/dashboard/dashboard-provider";
 import { DashboardCard, DashboardHeading, DashboardPage, StatusPill } from "@/components/dashboard/dashboard-ui";
-
-const accountStatusLabels: Record<string, string> = {
-  PENDING: "Почта подтверждена",
-  ACTIVE: "Профиль активен",
-  SUSPENDED: "Доступ приостановлен",
-  CLOSED: "Профиль закрыт",
-};
+import { useI18n } from "@/components/i18n/i18n-provider";
 
 export function DashboardProfilePage() {
   const { profile } = useDashboard();
+  const { locale, t } = useI18n();
   if (!profile) return null;
+  const accountStatusLabels: Record<string, string> = { PENDING: t("profile.emailVerified"), ACTIVE: t("dashboard.profileActive"), SUSPENDED: t("profile.suspended"), CLOSED: t("profile.closed") };
   return <DashboardPage>
-    <DashboardHeading eyebrow="Кабинет игрока" title="Профиль" description="Подтверждённые данные вашего профиля VX House." action={<StatusPill tone="success">Профиль активен</StatusPill>} />
+    <DashboardHeading eyebrow={t("profile.playerArea")} title={t("profile.title")} description={t("profile.description")} action={<StatusPill tone="success">{t("dashboard.profileActive")}</StatusPill>} />
     <div className={styles.profilePageGrid}>
-      <DashboardCard icon={UserRound} label="Личные данные" title={profile.user.displayName ?? "Пользователь VX House"}>
+      <DashboardCard icon={UserRound} label={t("profile.personalData")} title={profile.user.displayName ?? t("profile.userFallback")}>
         <dl className={styles.profileFacts}>
-          <div><dt><AtSign aria-hidden="true" /> Электронная почта</dt><dd>{profile.user.email}</dd></div>
-          <div><dt><Globe2 aria-hidden="true" /> Страна</dt><dd>{profile.market.name}</dd></div>
-          <div><dt><Globe2 aria-hidden="true" /> Язык</dt><dd>{profile.preferredLanguage}</dd></div>
-          <div><dt><CalendarDays aria-hidden="true" /> Профиль создан</dt><dd>{new Intl.DateTimeFormat("ru-RU", { timeZone: "UTC" }).format(new Date(profile.createdAt))}</dd></div>
+          <div><dt><AtSign aria-hidden="true" /> {t("profile.email")}</dt><dd>{profile.user.email}</dd></div>
+          <div><dt><Globe2 aria-hidden="true" /> {t("profile.country")}</dt><dd>{profile.market.name}</dd></div>
+          <div><dt><Globe2 aria-hidden="true" /> {t("profile.language")}</dt><dd>{profile.preferredLanguage}</dd></div>
+          <div><dt><CalendarDays aria-hidden="true" /> {t("profile.created")}</dt><dd>{new Intl.DateTimeFormat(locale, { timeZone: "UTC" }).format(new Date(profile.createdAt))}</dd></div>
         </dl>
       </DashboardCard>
-      <div className={styles.profileAside}><DashboardCard icon={ShieldCheck} label="Состояние" title="Контакт подтверждён" action={<StatusPill tone="success">{accountStatusLabels[profile.accountStatus] ?? "Статус обновляется"}</StatusPill>}><p className={styles.cardLead}>Электронная почта подтверждена. Доступные возможности отображаются в вашем кабинете.</p></DashboardCard></div>
+      <div className={styles.profileAside}><DashboardCard icon={ShieldCheck} label={t("profile.state")} title={t("profile.contactVerified")} action={<StatusPill tone="success">{accountStatusLabels[profile.accountStatus] ?? t("profile.statusUpdating")}</StatusPill>}><p className={styles.cardLead}>{t("profile.verifiedDescription")}</p></DashboardCard></div>
     </div>
   </DashboardPage>;
 }

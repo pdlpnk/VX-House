@@ -57,20 +57,29 @@ test("невалидное решение откатывает транзакц�
 test("поддержка назначает оператора, пишет ответ и внутреннюю заметку append-only", async () => { const conversation = await database.supportConversation.create({ data: { userId: playerId, category: "task", subject: "Нужна помощь", context: {}, status: "CREATED" } }); await database.supportMessage.create({ data: { conversationId: conversation.id, authorType: "USER", authorId: playerId, bodyProtected: await encrypted("Первое сообщение", "support-message", conversation.id) } }); await service.execute(admin, "support", conversation.id, { action: "SUPPORT_ASSIGN", operatorId: admin.userId, reason: "Назначение по очереди" }); await service.execute(admin, "support", conversation.id, { action: "SUPPORT_REPLY", body: "Ответ оператора" }); await service.execute(admin, "support", conversation.id, { action: "SUPPORT_NOTE", body: "Внутренняя заметка" }); const stored = await database.supportConversation.findUniqueOrThrow({ where: { id: conversation.id }, include: { messages: true, internalNotes: true, statusHistory: true } }); assert.equal(stored.assignedToId, admin.userId); assert.equal(stored.messages.length, 2); assert.equal(stored.internalNotes.length, 1); assert.equal(stored.status, "WAITING_USER"); await assert.rejects(database.supportInternalNote.update({ where: { id: stored.internalNotes[0]!.id }, data: { bodyProtected: {} } })); });
 
 test("Admin Messenger синхронизирует постоянный диалог, unread и append-only заметки", async () => {
+  const unverified = await database.user.create({ data: { email: "unverified-admin@test.invalid", displayName: "Неподтверждённый", profile: { create: { productRole: "PLAYER", marketId, preferredLanguage: "RU", contactVerificationStatus: "UNVERIFIED", accountStatus: "PENDING", playerProfile: { create: { participationStatus: "PENDING" } } } } } });
   const initial = await messenger.list(admin);
-  assert.equal(initial.items.length, 2);
-  assert.deepEqual(new Set(initial.items.map((item) => item.role)), new Set(["PLAYER", "PARTNER"]));
-  const partnerConversation = initial.items.find((item) => item.userId === partnerId);
+  assert.equal(initial.items.length, 0, "подтверждённые пользователи без входящих сообщений не активируют Messenger");
+  const archive = await messenger.list(admin, "", "archive");
+  assert.equal(archive.items.length, 2);
+  assert.equal(archive.items.some((item) => item.userId === unverified.id), false, "неподтверждённого пользователя нет даже в архиве");
+  assert.deepEqual(new Set(archive.items.map((item) => item.role)), new Set(["PLAYER", "PARTNER"]));
+  const partnerConversation = archive.items.find((item) => item.userId === partnerId);
   assert.equal(partnerConversation?.role, "PARTNER");
   assert.equal((await messenger.detail(admin, partnerConversation!.conversationId)).player.userId, partnerId);
-  const conversationId = initial.items.find((item) => item.userId === playerId)!.conversationId;
+  const conversationId = archive.items.find((item) => item.userId === playerId)!.conversationId;
+  assert.equal((await messenger.list(admin)).items.length, 0, "системные onboarding-сообщения не активируют диалог");
   const userMessage = await database.supportMessage.create({ data: { conversationId, authorType: "USER", authorId: playerId, bodyProtected: await encrypted("Сообщение игрока", "support-message", conversationId) } });
   await database.supportConversation.update({ where: { id: conversationId }, data: { updatedAt: userMessage.createdAt } });
-  assert.equal((await messenger.list(admin)).items[0]!.unreadCount, 1);
+  const active = await messenger.list(admin);
+  assert.equal(active.items.length, 1);
+  assert.equal(active.items[0]!.userId, playerId);
+  assert.equal(active.items[0]!.unreadCount, 1);
   await messenger.markRead(admin, conversationId);
   assert.equal((await messenger.list(admin)).items[0]!.unreadCount, 0);
   const replied = await messenger.sendMessage(admin, conversationId, "Сообщение персонального менеджера");
   assert.equal(replied.conversation.messages.at(-1)?.authorType, "OPERATOR");
+  assert.equal((await messenger.list(admin)).items[0]?.userId, playerId, "ответ администратора не убирает активный диалог");
   const created = await messenger.note(admin, conversationId, { action: "create", body: "Игрок предпочитает вечернюю связь" });
   assert.equal(created.notes.length, 1);
   const edited = await messenger.note(admin, conversationId, { action: "edit", logicalId: created.notes[0]!.logicalId, body: "Связаться с игроком после 18:00" });
@@ -81,7 +90,7 @@ test("Admin Messenger синхронизирует постоянный диал
 });
 
 test("Admin Messenger сохраняет и возвращает защищённое вложение", async () => {
-  const conversationId = (await messenger.list(admin)).items.find((item) => item.userId === playerId)!.conversationId;
+  const conversationId = (await messenger.list(admin, "", "archive")).items.find((item) => item.userId === playerId)!.conversationId;
   const detail = await messenger.sendMessage(admin, conversationId, "Документ для игрока");
   const messageId = detail.conversation.messages.findLast((item) => item.authorType === "OPERATOR")!.id;
   const file = new File([new TextEncoder().encode("%PDF-1.4 test")], "условия.pdf", { type: "application/pdf" });

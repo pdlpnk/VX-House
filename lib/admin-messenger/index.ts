@@ -5,4 +5,5 @@ export type {
   AdminMessengerNote,
   AdminMessengerPlayer,
   AdminMessengerRole,
+  AdminMessengerScope,
 } from "./types";

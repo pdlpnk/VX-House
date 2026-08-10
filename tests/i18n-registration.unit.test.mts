@@ -139,3 +139,25 @@ test("ручная смена сохраняется без навигации �
   assert.doesNotMatch(provider, /location\.(?:assign|replace|href)|history\.(?:pushState|replaceState)/u);
   assert.equal(resolveLocalePriority({ savedValue: "tr", browserLanguages: ["en-US"] }).locale, "tr");
 });
+
+test("Dashboard и Admin Messenger используют единый словарь во всех направлениях переключения", async () => {
+  assert.equal(translate("tr", "page.home"), "Ana sayfa");
+  assert.equal(translate("en", "dashboard.nextStep"), "Next step");
+  assert.equal(translate("az", "settings.interface"), "İnterfeys tənzimləmələri");
+  assert.equal(translate("ru", "adminMessenger.archive"), "Архив");
+  assert.notEqual(translate("tr", "dashboard.description"), translate("ru", "dashboard.description"));
+
+  const [shell, home, settings, profile, adminMessenger] = await Promise.all([
+    readFile(new URL("../components/dashboard/workspace-shell.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../components/dashboard/pages/dashboard-home.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../components/dashboard/pages/dashboard-settings-page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../components/dashboard/pages/dashboard-profile-page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../components/admin/admin-messenger-workspace.tsx", import.meta.url), "utf8"),
+  ]);
+  for (const source of [shell, home, settings, profile, adminMessenger]) assert.match(source, /useI18n/u);
+  assert.doesNotMatch(home, /Здравствуйте|Главная|Следующий шаг|Активные задания/u);
+  assert.doesNotMatch(settings, /Параметры интерфейса|Уменьшенное движение|Сбросить локальные/u);
+  assert.doesNotMatch(profile, /Подтверждённые данные|Электронная почта|Контакт подтверждён/u);
+  assert.match(adminMessenger, /adminMessenger\.archive/u);
+  assert.match(shell, /t\(config\.labelKey\)/u);
+});

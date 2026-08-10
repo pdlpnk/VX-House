@@ -6,6 +6,7 @@ import styles from "@/app/dashboard/dashboard.module.css";
 import { useDashboard } from "@/components/dashboard/dashboard-provider";
 import { DashboardCard, DashboardHeading, DashboardPage } from "@/components/dashboard/dashboard-ui";
 import { Button } from "@/components/ui/button";
+import { useI18n } from "@/components/i18n/i18n-provider";
 
 function SettingSwitch({ checked, onChange, label, description }: { checked: boolean; onChange: (checked: boolean) => void; label: string; description: string }) {
   return (
@@ -19,41 +20,42 @@ function SettingSwitch({ checked, onChange, label, description }: { checked: boo
 
 export function DashboardSettingsPage() {
   const { preferences, updatePreferences, resetPreferences } = useDashboard();
+  const { t } = useI18n();
 
   return (
     <DashboardPage>
       <DashboardHeading
-        eyebrow="Параметры интерфейса"
-        title="Настройки"
-        description="Настройте интерфейс VX House под себя."
+        eyebrow={t("settings.interface")}
+        title={t("page.settings")}
+        description={t("settings.description")}
       />
 
       <div className={styles.settingsLayout}>
-        <DashboardCard icon={Settings} label="Доступность" title="Движение интерфейса">
+        <DashboardCard icon={Settings} label={t("settings.accessibility")} title={t("settings.motion")}>
           <div className={styles.settingsSwitches}>
             <SettingSwitch
               checked={preferences.reducedMotion}
               onChange={(reducedMotion) => updatePreferences({ reducedMotion })}
-              label="Уменьшенное движение"
-              description="Отключает перемещения и каскадные анимации. Системная настройка устройства также учитывается автоматически."
+              label={t("settings.reducedMotion")}
+              description={t("settings.reducedMotionDescription")}
             />
           </div>
         </DashboardCard>
 
-        <DashboardCard icon={Database} label="Локальные данные" title="Настройки этого устройства">
+        <DashboardCard icon={Database} label={t("settings.localData")} title={t("settings.device")}>
           <div className={styles.localDataCard}>
             <ShieldCheck aria-hidden="true" />
-            <div><strong>Настройка действует на этом устройстве</strong><p>Данные профиля, VX Points и награды останутся без изменений.</p></div>
+            <div><strong>{t("settings.deviceOnly")}</strong><p>{t("settings.dataSafe")}</p></div>
           </div>
-          <Button type="button" variant="outline" onClick={resetPreferences}><RotateCcw aria-hidden="true" /> Сбросить локальные настройки</Button>
+          <Button type="button" variant="outline" onClick={resetPreferences}><RotateCcw aria-hidden="true" /> {t("settings.reset")}</Button>
         </DashboardCard>
 
-        <DashboardCard icon={UserRound} label="Ваше пространство" title="Кабинет игрока">
+        <DashboardCard icon={UserRound} label={t("settings.space")} title={t("settings.playerArea")}>
           <dl className={styles.settingsSummary}>
-            <div><dt>Пространство</dt><dd>Кабинет игрока</dd></div>
-            <div><dt>Прогресс</dt><dd>Синхронизирован</dd></div>
-            <div><dt>Движение</dt><dd>{preferences.reducedMotion ? "Уменьшено" : "Системное"}</dd></div>
-            <div><dt>Состояние</dt><dd>Актуально</dd></div>
+            <div><dt>{t("settings.space")}</dt><dd>{t("settings.playerArea")}</dd></div>
+            <div><dt>{t("settings.progress")}</dt><dd>{t("settings.synced")}</dd></div>
+            <div><dt>{t("settings.motionLabel")}</dt><dd>{preferences.reducedMotion ? t("settings.reduced") : t("settings.system")}</dd></div>
+            <div><dt>{t("settings.state")}</dt><dd>{t("settings.current")}</dd></div>
           </dl>
         </DashboardCard>
       </div>
