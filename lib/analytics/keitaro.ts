@@ -11,8 +11,7 @@ export interface KeitaroConfig {
 }
 
 export function keitaroStatus(eventName: AnalyticsEventName, dashboardStatus?: string) {
-  if (eventName === "registration_started") return "lead";
-  if (eventName === "email_confirmed") return "sale";
+  if (eventName === "email_confirmed") return "lead";
   if (eventName === "dashboard_opened") return dashboardStatus ?? null;
   return null;
 }
@@ -28,4 +27,3 @@ export function buildKeitaroPostbackUrl(baseUrl: string, input: { subid: string;
   url.searchParams.set("tid", input.transactionId);
   return url;
 }
-

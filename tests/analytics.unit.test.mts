@@ -28,8 +28,8 @@ test("Keitaro URL кодирует subid/status и использует стаб
   assert.equal(url.searchParams.get("subid"), "a+b/c?");
   assert.equal(url.searchParams.get("status"), "sale ready");
   assert.match(url.toString(), /subid=a%2Bb%2Fc%3F/u);
-  assert.equal(keitaroStatus("registration_started"), "lead");
-  assert.equal(keitaroStatus("email_confirmed"), "sale");
+  assert.equal(keitaroStatus("registration_started"), null);
+  assert.equal(keitaroStatus("email_confirmed"), "lead");
   assert.equal(keitaroStatus("dashboard_opened"), null);
   assert.equal(keitaroStatus("dashboard_opened", "activated"), "activated");
 });
