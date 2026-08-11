@@ -68,6 +68,8 @@ test("неверные попытки ограничены, истёкший к�
 });
 
 test("одноразовый proof меняет hash, отзывает сессии и не используется повторно", async () => {
+  const otherUser = await database.user.create({ data: { email: "other-user@example.com", displayName: "Other User", passwordHash: await hashPassword("other-password") } });
+  await database.session.create({ data: { userId: otherUser.id, tokenHash: `other-session-${randomUUID()}`, expiresAt: new Date(Date.now() + 60_000), absoluteExpiresAt: new Date(Date.now() + 120_000) } });
   await service.request({ email: "reset@example.com" });
   const verified = await service.verify({ email: "reset@example.com", code: mail.messages[0]!.code });
   assert.equal(verified.ok, true);
@@ -82,6 +84,7 @@ test("одноразовый proof меняет hash, отзывает сесс�
   assert.equal(await verifyPassword("new-password", user.passwordHash), true);
   assert.equal(await verifyPassword("old-password", user.passwordHash), false);
   assert.equal(await database.session.count({ where: { userId: user.id, revokedAt: null } }), 0);
+  assert.equal(await database.session.count({ where: { userId: otherUser.id, revokedAt: null } }), 1);
   await assert.rejects(service.complete({ token, password: "another-password", passwordConfirmation: "another-password" }));
   assert.deepEqual(await service.verify({ email: "reset@example.com", code: mail.messages[0]!.code }), { ok: false, code: "INVALID_CODE" });
 });

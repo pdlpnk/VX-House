@@ -115,6 +115,23 @@ test("неподтверждённый аккаунт старше 12 часов
   assert.equal(await database.user.count({ where: { id: result.userId } }), 0);
 });
 
+test("очистка не блокирует auth, если у pending-аккаунта уже есть Messenger-диалог", async () => {
+  const result = await service.register({
+    command: { displayName: "Pending with conversation", email: `${randomUUID()}@test.invalid`, password: "correct horse battery staple", productRole: "PLAYER", marketCode: "TR", preferredLanguage: "EN" },
+    idempotencyKey: `register-${randomUUID()}`,
+  });
+  await database.user.update({ where: { id: result.userId }, data: { createdAt: new Date(Date.now() - 13 * 60 * 60 * 1000) } });
+  const category = await database.supportCategory.create({
+    data: { key: `personal-${randomUUID()}`, title: "Personal manager", description: "Permanent conversation", roles: ["PLAYER"], isActive: true },
+  });
+  await database.supportConversation.create({
+    data: { userId: result.userId, category: category.key, subject: "VX House Manager", context: { personalConversation: true } },
+  });
+
+  assert.equal(await service.purgeExpiredUnverifiedAccounts(), 0);
+  assert.equal(await database.user.count({ where: { id: result.userId } }), 1);
+});
+
 test("дубликат email и неизвестные поля отклоняются без частичной записи", async () => {
   const email = `${randomUUID()}@test.invalid`; await register("PLAYER", email);
   await assert.rejects(register("PARTNER", email), (error: unknown) => error instanceof ApplicationError && error.code === "CONFLICT");
