@@ -140,6 +140,8 @@
 .activityTimeline footer svg { width: 0.75rem; }
 .topbarProfile { gap: 0.62rem; min-width: 10.5rem; border: 1px solid transparent; border-radius: 0.85rem; padding: 0.35rem 0.55rem; transition: border-color 180ms ease, background 180ms ease; }
 .topbarProfile:hover { border-color: var(--dash-border); background: oklch(1 0 0 / 3%); }
+.topbarProfile[data-static] { cursor: default; }
+.topbarProfile[data-static]:hover { border-color: transparent; background: transparent; }
 
 .menuButton, .notificationButton, .mobileClose { display: grid; width: 2.75rem; aspect-ratio: 1; place-items: center; border: 1px solid var(--dash-border); border-radius: 0.75rem; background: oklch(1 0 0 / 3%); color: oklch(0.72 0.01 25); transition: color 180ms ease, border-color 180ms ease, background 180ms ease; }
 .menuButton:hover, .notificationButton:hover, .mobileClose:hover { border-color: oklch(0.7 0.15 25 / 24%); background: oklch(1 0 0 / 5%); color: var(--foreground); }
@@ -1085,6 +1087,9 @@
   .mobileBottomNav a { display: grid; min-height: 3.25rem; place-items: center; align-content: center; gap: 0.15rem; border-radius: 0.65rem; color: oklch(0.54 0.01 25); font-size: 0.5rem; transition: color 180ms ease, background 180ms ease; }
   .mobileBottomNav a svg { width: 1rem; }
   .mobileBottomNav a[data-active] { background: oklch(0.58 0.2 25 / 9%); color: oklch(0.84 0.09 25); }
+  .dashboardRoot:has(textarea:focus) .mobileBottomNav, .dashboardRoot:has(input:focus) .mobileBottomNav { display: none; }
+  .dashboardRoot:has(textarea:focus) .dashboardMain, .dashboardRoot:has(input:focus) .dashboardMain { padding-bottom: .75rem; }
+  .adminUserSearch input, .adminCommandForm input, .adminCommandForm textarea, .adminCommandForm select { font-size: 16px; }
   .dashboardMain { padding-bottom: 6.5rem; }
   .playerHero { grid-template-columns: 1fr; }
   .preparedSections { grid-template-columns: 1fr; }

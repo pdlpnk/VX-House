@@ -1,7 +1,8 @@
 "use client";
 
 import { Check, Pencil, Plus, Tag, Trash2, X } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { createPortal } from "react-dom";
 
 import { useI18n } from "@/components/i18n/i18n-provider";
 import type { AdminTagAssignmentView, AdminTagView } from "@/lib/admin-tags";
@@ -25,7 +26,44 @@ export function AdminTagManager({ userId, assigned, tags, onAssignedChange, onTa
   const [editingName, setEditingName] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
+  const [mobile, setMobile] = useState(false);
+  const [position, setPosition] = useState({ top: 0, left: 0 });
+  const managerRef = useRef<HTMLDivElement>(null);
+  const popoverRef = useRef<HTMLDivElement>(null);
   const selected = new Set(assigned.map((tag) => tag.id));
+
+  useEffect(() => {
+    if (!open) return;
+    const query = window.matchMedia("(max-width: 720px)");
+    const updatePosition = () => {
+      const isMobile = query.matches;
+      setMobile(isMobile);
+      if (isMobile) return;
+      const anchor = managerRef.current?.getBoundingClientRect();
+      if (!anchor) return;
+      const width = Math.min(360, window.innerWidth - 24);
+      const left = Math.min(Math.max(12, anchor.right - width), window.innerWidth - width - 12);
+      const preferredTop = anchor.bottom + 10;
+      const estimatedHeight = Math.min(480, window.innerHeight - 24);
+      setPosition({ top: Math.min(preferredTop, Math.max(12, window.innerHeight - estimatedHeight - 12)), left });
+    };
+    const closeOnEscape = (event: KeyboardEvent) => { if (event.key === "Escape") setOpen(false); };
+    const closeOutside = (event: PointerEvent) => {
+      const target = event.target as Node;
+      if (!managerRef.current?.contains(target) && !popoverRef.current?.contains(target)) setOpen(false);
+    };
+    updatePosition();
+    window.addEventListener("resize", updatePosition);
+    window.visualViewport?.addEventListener("resize", updatePosition);
+    document.addEventListener("keydown", closeOnEscape);
+    document.addEventListener("pointerdown", closeOutside);
+    return () => {
+      window.removeEventListener("resize", updatePosition);
+      window.visualViewport?.removeEventListener("resize", updatePosition);
+      document.removeEventListener("keydown", closeOnEscape);
+      document.removeEventListener("pointerdown", closeOutside);
+    };
+  }, [open]);
 
   async function refreshTags() {
     const response = await fetch("/api/admin/tags", { cache: "no-store" });
@@ -74,9 +112,17 @@ export function AdminTagManager({ userId, assigned, tags, onAssignedChange, onTa
     setPending(false);
   }
 
-  return <div className={styles.manager}>
-    <button type="button" className={styles.manageButton} onClick={() => setOpen((value) => !value)} aria-expanded={open}><Tag aria-hidden="true" />{t("adminTags.manage")}</button>
-    {open ? <div className={styles.popover} role="dialog" aria-label={t("adminTags.manage")}>
+  const dialog = open ? <>
+    {mobile ? <button type="button" className={styles.backdrop} onClick={() => setOpen(false)} aria-label={t("common.close")} /> : null}
+    <div
+      ref={popoverRef}
+      className={styles.popover}
+      data-mobile={mobile || undefined}
+      role="dialog"
+      aria-modal={mobile || undefined}
+      aria-label={t("adminTags.manage")}
+      style={mobile ? undefined : ({ top: position.top, left: position.left } as CSSProperties)}
+    >
       <header><strong>{t("adminTags.title")}</strong><button type="button" onClick={() => setOpen(false)} aria-label={t("common.close")}><X aria-hidden="true" /></button></header>
       <div className={styles.create}><input value={name} maxLength={60} placeholder={t("adminTags.namePlaceholder")} onChange={(event) => setName(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); void create(); } }} /><button type="button" disabled={!name.trim() || pending} onClick={() => void create()} aria-label={t("adminTags.create")}><Plus aria-hidden="true" /></button></div>
       <div className={styles.tagList}>{tags.length ? tags.map((tag) => <div key={tag.id}>
@@ -84,6 +130,11 @@ export function AdminTagManager({ userId, assigned, tags, onAssignedChange, onTa
         <button type="button" onClick={() => { setEditingId(tag.id); setEditingName(tag.name); }} aria-label={t("adminTags.rename")}><Pencil aria-hidden="true" /></button><button type="button" onClick={() => void remove(tag)} aria-label={t("adminTags.delete")}><Trash2 aria-hidden="true" /></button>
       </div>) : <p>{t("adminTags.empty")}</p>}</div>
       {error ? <p className={styles.error} role="alert">{error}</p> : null}
-    </div> : null}
+    </div>
+  </> : null;
+
+  return <div ref={managerRef} className={styles.manager}>
+    <button type="button" className={styles.manageButton} onClick={() => setOpen((value) => !value)} aria-expanded={open}><Tag aria-hidden="true" />{t("adminTags.manage")}</button>
+    {dialog && typeof document !== "undefined" ? createPortal(dialog, document.body) : null}
   </div>;
 }

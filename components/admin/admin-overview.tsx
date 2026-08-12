@@ -1,4 +1,4 @@
-import { ArrowRight, BookOpenText, DatabaseZap, MessageCircle, ShieldCheck, UsersRound } from "lucide-react";
+import { ArrowRight, DatabaseZap, MessageCircle, ShieldCheck, UsersRound } from "lucide-react";
 import Link from "next/link";
 
 import styles from "@/app/dashboard/dashboard.module.css";
@@ -11,7 +11,6 @@ export function AdminOverview({ stats, funnel }: { stats: AdminDashboardView; fu
   const coreSections = [
     { href: "/admin/users", label: "Участники", description: "Профили и состояние игроков и партнёров.", purpose: "Открыть список участников", icon: UsersRound },
     { href: "/admin/messenger", label: "Messenger", description: "Постоянные личные диалоги с участниками.", purpose: "Открыть переписку", icon: MessageCircle },
-    { href: "/admin/content", label: "CMS", description: "Управление опубликованными материалами.", purpose: "Открыть контент", icon: BookOpenText },
   ];
   const primary = [
     { label: "Пользователи", value: stats.users, icon: DatabaseZap },
@@ -22,7 +21,7 @@ export function AdminOverview({ stats, funnel }: { stats: AdminDashboardView; fu
       <DashboardHeading
         eyebrow="Управляющая часть"
         title="Рабочее пространство VX House"
-        description="Участники, персональные диалоги и контент текущего MVP в одном защищённом интерфейсе."
+        description="Участники и персональные диалоги текущего MVP в одном защищённом интерфейсе."
         action={<StatusPill tone="success">Серверные данные</StatusPill>}
       />
 

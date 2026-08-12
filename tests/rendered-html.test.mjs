@@ -260,7 +260,7 @@ test("player progress UI keeps server data and hides internal Trust Score", asyn
   assert.match(overview, /economy\.accrualHistory/);
   assert.match(history, /history\.title/i);
   assert.doesNotMatch(`${overview}${history}`, /Trust Score|серверная хронология|Серверные данные/i);
-  assert.match(playerShell, /\/dashboard\/economy/);
+  assert.doesNotMatch(playerShell, /\/dashboard\/(?:economy|rewards|tasks|opportunities)/);
   assert.match(partnerShell, /\/partner\/economy/);
   assert.match(styles, /economyMetricGrid/);
   assert.match(styles, /prefers-reduced-motion/);
@@ -316,7 +316,7 @@ test("VX Rewards uses server lifecycle, ownership and claim", async () => {
   assert.match(history, /rewardUi\.fullHistory/i);
   assert.match(catalog, /rewardUi\.currentData/);
   assert.match(detail, /rewardUi\.current/i);
-  assert.match(playerShell, /\/dashboard\/rewards/);
+  assert.doesNotMatch(playerShell, /\/dashboard\/rewards/);
   assert.match(partnerShell, /\/partner\/rewards/);
   assert.match(styles, /rewardLifecycleTabs/);
   assert.match(styles, /prefers-reduced-motion/);
@@ -444,6 +444,31 @@ test("administrative workspace uses server-backed contracts", async () => {
   assert.match(styles, /prefers-reduced-motion/);
   assert.doesNotMatch(`${data}${overview}${section}${detail}${editor}${service}`, /localStorage|sessionStorage|WebSocket|EventSource/i);
   assert.doesNotMatch(`${data}${overview}${section}${detail}${editor}`, /₽|₺|₼|\$\d|успешно начислено|выплачено/i);
+});
+
+test("admin MVP navigation and messenger mobile controls stay intentionally compact", async () => {
+  const [shell, workspace, tags, messengerStyles, dashboardStyles, profileRoute, sectionRoute] = await Promise.all([
+    readFile(new URL("../components/admin/admin-shell.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../components/dashboard/workspace-shell.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../components/admin/admin-tag-controls.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../components/admin/admin-messenger-workspace.module.css", import.meta.url), "utf8"),
+    readFile(new URL("../app/dashboard/dashboard.module.css", import.meta.url), "utf8"),
+    readFile(new URL("../app/admin/profile/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/admin/[section]/page.tsx", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(shell, /\/admin\/users/);
+  assert.match(shell, /\/admin\/messenger/);
+  assert.doesNotMatch(shell, /\/admin\/(?:content|profile)/);
+  assert.match(workspace, /data-static/);
+  assert.match(tags, /createPortal/);
+  assert.match(tags, /visualViewport/);
+  assert.match(tags, /Escape/);
+  assert.match(messengerStyles, /font-size:\s*16px/);
+  assert.match(messengerStyles, /100dvh/);
+  assert.match(dashboardStyles, /repeat\(var\(--mobile-nav-columns/);
+  assert.match(profileRoute, /redirect\("\/admin"\)/);
+  assert.match(sectionRoute, /section === "content" \|\| section === "cms"/);
 });
 
 test("manager panel enforces Module 5 operational safeguards", async () => {

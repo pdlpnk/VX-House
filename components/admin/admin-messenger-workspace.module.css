@@ -116,13 +116,16 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 }
 @media (max-width: 720px) {
   .workspace, .workspace[data-panel-open] { height: calc(100dvh - var(--dashboard-topbar) - 5.3rem); min-height: 30rem; grid-template-columns: 1fr; border-radius: .8rem; }
+  .workspace:has(.composer textarea:focus) { height: calc(100dvh - var(--dashboard-topbar) - .75rem); min-height: 0; }
   .conversation { display: none; }
   .workspace[data-mobile-chat] .chatList { display: none; }
   .workspace[data-mobile-chat] .conversation { display: grid; }
   .mobileBack { display: grid; }
   .message { max-width: 91%; }.message[data-author="system"] { max-width: 96%; }
   .messages { padding-inline: .7rem; }
-  .composer { padding: .58rem; padding-bottom: max(.58rem, env(safe-area-inset-bottom)); }
+  .search input, .composer textarea, .notes textarea { font-size: 16px; }
+  .composer { position: sticky; bottom: 0; padding: .58rem; padding-right: max(.58rem, env(safe-area-inset-right)); padding-bottom: max(.58rem, env(safe-area-inset-bottom)); padding-left: max(.58rem, env(safe-area-inset-left)); }
+  .composer textarea { min-width: 0; }
   .panelWrap { top: 0; width: 100%; }
 }
 @media (prefers-reduced-motion: reduce) { .workspace, .chatItem { transition: none; }.spinner, .loading svg { animation: none; } }

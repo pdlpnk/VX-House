@@ -348,11 +348,14 @@
     grid-template-columns: 1fr;
     border-radius: 0.9rem;
   }
+  .full:has(.composer textarea:focus) { height: calc(100dvh - var(--dashboard-topbar) - .75rem); }
   .dialogList { display: none; }
   .full .header { padding-inline: 0.75rem; }
   .full .messages { padding: 1rem 0.75rem 1.25rem; }
   .full .messageRow { max-width: 92%; }
-  .full .composer { padding: 0.65rem; padding-bottom: max(0.65rem, env(safe-area-inset-bottom)); }
+  .composer { position: sticky; bottom: 0; padding-right: max(.65rem, env(safe-area-inset-right)); padding-left: max(.65rem, env(safe-area-inset-left)); }
+  .composer textarea, .full .composer textarea { min-width: 0; font-size: 16px; }
+  .full .composer { padding: 0.65rem; padding-right: max(.65rem, env(safe-area-inset-right)); padding-bottom: max(0.65rem, env(safe-area-inset-bottom)); padding-left: max(.65rem, env(safe-area-inset-left)); }
 }
 
 @media (prefers-reduced-motion: reduce) {

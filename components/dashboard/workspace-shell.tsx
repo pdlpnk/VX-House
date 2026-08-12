@@ -30,7 +30,7 @@ type WorkspaceShellConfig = {
   kind: "player" | "partner" | "admin";
   labelKey: MessageKey;
   rootHref: string;
-  profileHref: string;
+  profileHref?: string;
   profileRoleKey: MessageKey;
   navigation: readonly WorkspaceNavigationItem[];
   pageTitles: Record<string, MessageKey>;
@@ -133,7 +133,7 @@ function WorkspaceNavigation({
             <div><strong>{displayName}</strong><small>{t(config.profileRoleKey)}</small></div>
           </div>
         ) : (
-          <Link href={config.profileHref} className={styles.sidebarProfile} onClick={onNavigate}>
+          <Link href={config.profileHref ?? config.rootHref} className={styles.sidebarProfile} onClick={onNavigate}>
             <span>{displayName.charAt(0).toLocaleUpperCase(locale) || t("workspace.member").charAt(0)}</span>
             <div><strong>{displayName}</strong><small>{t(config.profileRoleKey)}</small></div>
           </Link>
@@ -305,10 +305,17 @@ function WorkspaceShellContent({ children, config, initialNotifications, persona
               </AnimatePresence>
             </div>
 
-            <Link href={config.profileHref} className={styles.topbarProfile} aria-label={t("workspace.openProfile", { role: t(config.profileRoleKey) })}>
-              <span>{displayName.charAt(0).toLocaleUpperCase(locale) || t("workspace.member").charAt(0)}</span>
-              <div><strong>{displayName}</strong><small>{t(config.profileRoleKey)}</small></div>
-            </Link>
+            {config.kind === "admin" ? (
+              <div className={styles.topbarProfile} data-static>
+                <span>{displayName.charAt(0).toLocaleUpperCase(locale) || t("workspace.member").charAt(0)}</span>
+                <div><strong>{t(config.profileRoleKey)}</strong></div>
+              </div>
+            ) : (
+              <Link href={config.profileHref ?? config.rootHref} className={styles.topbarProfile} aria-label={t("workspace.openProfile", { role: t(config.profileRoleKey) })}>
+                <span>{displayName.charAt(0).toLocaleUpperCase(locale) || t("workspace.member").charAt(0)}</span>
+                <div><strong>{displayName}</strong><small>{t(config.profileRoleKey)}</small></div>
+              </Link>
+            )}
           </div>
         </header>
 
