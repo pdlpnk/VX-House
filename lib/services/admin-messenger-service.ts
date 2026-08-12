@@ -48,7 +48,7 @@ export class AdminMessengerService {
     this.transactions = new PrismaTransactionRunner(database);
   }
 
-  async list(actor: AuthenticatedPrincipal, search = "", scope: AdminMessengerScope = "active"): Promise<AdminMessengerList> {
+  async list(actor: AuthenticatedPrincipal, search = "", scope: AdminMessengerScope = "active", tagId?: string): Promise<AdminMessengerList> {
     requireAdmin(actor);
     const query = search.trim();
     const searchFilters: Prisma.UserProfileWhereInput[] = query ? [
@@ -61,9 +61,10 @@ export class AdminMessengerService {
         productRole: { in: [...ADMIN_MESSENGER_ROLES] },
         contactVerificationStatus: "VERIFIED",
         user: { disabledAt: null },
+        ...(tagId ? { user: { disabledAt: null, adminTagAssignments: { some: { tagId } } } } : {}),
         ...(query ? { OR: searchFilters } : {}),
       },
-      include: { user: true, market: true },
+      include: { user: { include: { adminTagAssignments: { include: { tag: true }, orderBy: { tag: { name: "asc" } } } } }, market: true },
       orderBy: { createdAt: "desc" },
       take: 100,
     });
@@ -81,7 +82,9 @@ export class AdminMessengerService {
       const hasInboundUserMessage = await this.database.supportMessage.count({
         where: { conversationId: conversation.id, authorType: "USER" },
       });
-      if (scope === "active" && hasInboundUserMessage === 0) continue;
+      const archived = hasInboundUserMessage === 0 || conversation.status === "CLOSED";
+      if (scope === "active" && archived) continue;
+      if (scope === "archive" && !archived) continue;
       const readAt = adminReadAt(conversation.context, actor.userId);
       const unreadCount = await this.database.supportMessage.count({
         where: {
@@ -113,11 +116,17 @@ export class AdminMessengerService {
         lastMessageAt: last?.createdAt.toISOString() ?? null,
         unreadCount,
         hasNotes: conversation._count.internalNotes > 0,
+        tags: profile.user.adminTagAssignments.map(({ tag }) => ({ id: tag.id, name: tag.name })),
       });
     }
 
     items.sort((a, b) => (b.lastMessageAt ?? "").localeCompare(a.lastMessageAt ?? ""));
-    return { items, unreadCount: items.reduce((sum, item) => sum + item.unreadCount, 0) };
+    const tags = await this.database.adminTag.findMany({ include: { _count: { select: { assignments: true } } }, orderBy: [{ name: "asc" }, { id: "asc" }] });
+    return {
+      items,
+      unreadCount: items.reduce((sum, item) => sum + item.unreadCount, 0),
+      tags: tags.map((tag) => ({ id: tag.id, name: tag.name, createdAt: tag.createdAt.toISOString(), updatedAt: tag.updatedAt.toISOString(), userCount: tag._count.assignments })),
+    };
   }
 
   async detail(actor: AuthenticatedPrincipal, conversationId: string): Promise<AdminMessengerDetail> {
@@ -129,21 +138,12 @@ export class AdminMessengerService {
     if (record.user.profile?.contactVerificationStatus !== "VERIFIED") {
       throw new ApplicationError("NOT_FOUND", "Диалог участника не найден");
     }
-    const listItem = (await this.list(actor, record.user.email, "archive")).items.find((item) => item.conversationId === conversationId);
+    const activeItem = (await this.list(actor, record.user.email, "active")).items.find((item) => item.conversationId === conversationId);
+    const listItem = activeItem ?? (await this.list(actor, record.user.email, "archive")).items.find((item) => item.conversationId === conversationId);
     if (!listItem) throw new ApplicationError("NOT_FOUND", "Диалог участника не найден");
-    const [rank, points, task, action] = await Promise.all([
-      this.database.userRank.findFirst({ where: { userId: record.userId }, include: { rankDefinition: true }, orderBy: { assignedAt: "desc" } }),
-      this.database.vXPointsLedgerEntry.aggregate({ where: { userId: record.userId, status: "CONFIRMED" }, _sum: { delta: true } }),
-      this.database.userTask.findFirst({ where: { userId: record.userId, status: { notIn: ["CONFIRMED", "REJECTED", "CANCELLED", "EXPIRED"] } }, include: { taskVersion: true }, orderBy: { updatedAt: "desc" } }),
-      this.database.auditEvent.findFirst({ where: { actorId: record.userId }, orderBy: { occurredAt: "desc" } }),
-    ]);
     return {
       player: {
         ...listItem,
-        rank: rank?.rankDefinition.code ?? "Explorer",
-        points: points._sum.delta ?? 0,
-        currentTask: task?.taskVersion.title ?? "Нет активного задания",
-        lastAction: action ? action.action : "Профиль создан",
         profileHref: `/admin/users/${record.userId}`,
       },
       conversation: await this.conversationView(record),
@@ -244,7 +244,7 @@ export class AdminMessengerService {
       where: { id: conversationId },
       include: {
         categoryDefinition: true,
-        user: { include: { profile: { include: { market: true } } } },
+        user: { include: { profile: { include: { market: true } }, adminTagAssignments: { include: { tag: true } } } },
         messages: { include: { author: true, attachments: { orderBy: { createdAt: "asc" } } }, orderBy: { createdAt: "asc" } },
         internalNotes: { include: { author: true }, orderBy: { createdAt: "asc" } },
         statusHistory: { orderBy: { occurredAt: "asc" } },

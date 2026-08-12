@@ -31,7 +31,7 @@ export function decodeSystemMessage(value: string): SystemMessageEnvelope | null
 }
 
 export function renderSystemMessage(locale: Locale, key: SystemMessageKey, params: TranslationValues = {}) {
-  return translate(locale, key, params);
+  return translate(locale, key === "system.onboardingPlayer" ? "system.managerReady" : key, params);
 }
 
 export function systemNotificationParts(locale: Locale, key: SystemMessageKey, params: TranslationValues = {}) {

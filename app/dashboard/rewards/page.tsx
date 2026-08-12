@@ -1,7 +1,2 @@
-import { RewardCatalog } from "@/components/rewards/reward-catalog";
-import { getEconomyRewardService, requireProductWorkspaceContext } from "@/lib/server";
-
-export default async function RewardsPage() {
-  const { principal } = await requireProductWorkspaceContext("PLAYER", "/dashboard/rewards");
-  return <RewardCatalog items={await getEconomyRewardService().listRewards(principal)} basePath="/dashboard/rewards" historyHref="/dashboard/rewards/history" />;
-}
+import { redirect } from "next/navigation";
+export default function HiddenPlayerRewards() { redirect("/dashboard"); }

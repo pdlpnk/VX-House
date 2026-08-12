@@ -7,6 +7,8 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 
 import { useI18n } from "@/components/i18n/i18n-provider";
+import { AdminTagManager, TagChips, TagFilters } from "@/components/admin/admin-tag-controls";
+import type { AdminTagAssignmentView, AdminTagView } from "@/lib/admin-tags";
 import type { AdminMessengerDetail, AdminMessengerList, AdminMessengerNote, AdminMessengerPlayer, AdminMessengerScope } from "@/lib/admin-messenger";
 import { formatLocalDateTime, formatLocalTime } from "@/lib/i18n";
 import type { SupportMessageView } from "@/lib/support";
@@ -28,6 +30,7 @@ function ChatListItem({ item, active, onClick }: { item: AdminMessengerPlayer; a
       <span className={styles.chatCopy}>
         <span><strong>{item.name}</strong><time dateTime={item.lastMessageAt ?? undefined}>{item.lastMessageAt ? formatLocalTime(locale, item.lastMessageAt) : ""}</time></span>
         <span><small>{item.lastMessage}</small>{item.hasNotes ? <NotebookPen aria-label={t("adminMessenger.hasNote")} /> : null}</span>
+        <TagChips tags={item.tags} />
       </span>
       {item.unreadCount ? <b aria-label={t("adminMessenger.unread", { count: item.unreadCount })}>{item.unreadCount}</b> : null}
     </button>
@@ -161,7 +164,7 @@ function AdminComposer({ detail, onUpdate }: { detail: AdminMessengerDetail; onU
   );
 }
 
-function PlayerPanel({ detail, onUpdate, onClose }: { detail: AdminMessengerDetail; onUpdate: (value: AdminMessengerDetail) => void; onClose: () => void }) {
+function PlayerPanel({ detail, tags, onUpdate, onTagsChange, onClose }: { detail: AdminMessengerDetail; tags: AdminTagView[]; onUpdate: (value: AdminMessengerDetail) => void; onTagsChange: (value: AdminTagView[]) => void; onClose: () => void }) {
   const { locale, t } = useI18n();
   const [draft, setDraft] = useState("");
   const [editing, setEditing] = useState<AdminMessengerNote | null>(null);
@@ -181,12 +184,10 @@ function PlayerPanel({ detail, onUpdate, onClose }: { detail: AdminMessengerDeta
   return (
     <aside className={styles.playerPanel} aria-label={t("adminMessenger.memberInfo")}>
       <header><div><small>{detail.player.role === "PARTNER" ? t("adminMessenger.partnerProfile") : t("adminMessenger.playerProfile")}</small><strong>{detail.player.name}</strong></div><button type="button" onClick={onClose} aria-label={t("adminMessenger.infoClose")}><X aria-hidden="true" /></button></header>
-      <div className={styles.profileBlock}><span className={styles.profileAvatar} data-status={detail.player.online ? "online" : "offline"} aria-label={`${detail.player.name}: ${detail.player.online ? t("adminMessenger.online") : t("adminMessenger.offline")}`}>{detail.player.initials}</span><strong>{detail.player.name}</strong><small>{detail.player.email}</small><Link href={detail.player.profileHref}>{t("adminMessenger.fullProfile")}</Link></div>
+      <div className={styles.profileBlock}><span className={styles.profileAvatar} data-status={detail.player.online ? "online" : "offline"} aria-label={`${detail.player.name}: ${detail.player.online ? t("adminMessenger.online") : t("adminMessenger.offline")}`}>{detail.player.initials}</span><strong>{detail.player.name}</strong><small>{detail.player.email}</small><TagChips tags={detail.player.tags} /><AdminTagManager userId={detail.player.userId} assigned={detail.player.tags} tags={tags} onAssignedChange={(next) => onUpdate({ ...detail, player: { ...detail.player, tags: next } })} onTagsChange={onTagsChange} /><Link href={detail.player.profileHref}>{t("adminMessenger.fullProfile")}</Link></div>
       <dl className={styles.profileFacts}>
         <div><dt>{t("adminMessenger.role")}</dt><dd>{detail.player.role === "PARTNER" ? t("adminMessenger.partnerRole") : t("adminMessenger.playerRole")}</dd></div><div><dt>{t("adminMessenger.market")}</dt><dd>{detail.player.market}</dd></div>
-        <div><dt>{t("adminMessenger.registered")}</dt><dd>{formatLocalDateTime(locale, detail.player.registeredAt)}</dd></div><div><dt>{t("adminMessenger.level")}</dt><dd>{detail.player.rank}</dd></div>
-        <div><dt>VX Points</dt><dd>{detail.player.points}</dd></div><div><dt>{t("adminMessenger.currentTask")}</dt><dd>{detail.player.currentTask}</dd></div>
-        <div><dt>{t("adminMessenger.lastAction")}</dt><dd>{detail.player.lastAction}</dd></div>
+        <div><dt>{t("adminMessenger.registered")}</dt><dd>{formatLocalDateTime(locale, detail.player.registeredAt)}</dd></div>
       </dl>
       <section className={styles.notes}>
         <header><div><small>{t("adminMessenger.adminOnly")}</small><h2>{t("adminMessenger.notes")}</h2></div><NotebookPen aria-hidden="true" /></header>
@@ -208,22 +209,23 @@ export function AdminMessengerWorkspace({ initialList, initialDetail }: { initia
   const [panelOpen, setPanelOpen] = useState(false);
   const [mobileChat, setMobileChat] = useState(false);
   const [scope, setScope] = useState<AdminMessengerScope>("active");
+  const [tagId, setTagId] = useState("");
   const pollingRef = useRef(false);
   const selectedId = detail?.conversation.id;
 
   const visible = useMemo(() => list.items, [list.items]);
 
-  const loadList = useCallback(async (query = search, nextScope = scope) => {
-    const response = await fetch(`/api/admin/messenger?q=${encodeURIComponent(query)}&scope=${nextScope}`, { cache: "no-store" });
+  const loadList = useCallback(async (query = search, nextScope = scope, nextTag = tagId) => {
+    const response = await fetch(`/api/admin/messenger?q=${encodeURIComponent(query)}&scope=${nextScope}&tag=${encodeURIComponent(nextTag)}`, { cache: "no-store" });
     if (response.ok) setList(await response.json() as AdminMessengerList);
-  }, [scope, search]);
+  }, [scope, search, tagId]);
 
   function changeScope(nextScope: AdminMessengerScope) {
     setScope(nextScope);
     setDetail(null);
     setMobileChat(false);
     setPanelOpen(false);
-    void loadList(search, nextScope);
+    void loadList(search, nextScope, tagId);
   }
 
   async function openChat(item: AdminMessengerPlayer) {
@@ -238,9 +240,33 @@ export function AdminMessengerWorkspace({ initialList, initialDetail }: { initia
   }
 
   useEffect(() => {
+    const saved = window.localStorage.getItem("vx-house:admin-messenger-tag");
+    if (saved) queueMicrotask(() => setTagId(saved));
+  }, []);
+
+  useEffect(() => {
     const timer = window.setTimeout(() => void loadList(search), 220);
     return () => window.clearTimeout(timer);
   }, [loadList, search]);
+
+  function selectTag(next: string) {
+    setTagId(next);
+    window.localStorage.setItem("vx-house:admin-messenger-tag", next);
+    setDetail(null); setMobileChat(false); setPanelOpen(false);
+    void loadList(search, scope, next);
+  }
+
+  function updateAssigned(next: AdminTagAssignmentView[]) {
+    if (!detail) return;
+    setDetail({ ...detail, player: { ...detail.player, tags: next } });
+    setList((current) => ({ ...current, items: current.items.map((item) => item.userId === detail.player.userId ? { ...item, tags: next } : item) }));
+  }
+
+  function updateAvailableTags(next: AdminTagView[]) {
+    setList((current) => ({ ...current, tags: next }));
+    if (tagId && !next.some((tag) => tag.id === tagId)) selectTag("");
+    else void loadList();
+  }
 
   useEffect(() => {
     if (!selectedId) return;
@@ -272,6 +298,7 @@ export function AdminMessengerWorkspace({ initialList, initialDetail }: { initia
           <button type="button" role="tab" aria-selected={scope === "active"} data-active={scope === "active" || undefined} onClick={() => changeScope("active")}>{t("adminMessenger.active")}</button>
           <button type="button" role="tab" aria-selected={scope === "archive"} data-active={scope === "archive" || undefined} onClick={() => changeScope("archive")}>{t("adminMessenger.archive")}</button>
         </div>
+        <div className={styles.tagFilters}><TagFilters tags={list.tags} selected={tagId} onSelect={selectTag} /></div>
         <label className={styles.search}><Search aria-hidden="true" /><span className="sr-only">{t("adminMessenger.search")}</span><input value={search} placeholder={t("adminMessenger.searchPlaceholder")} onChange={(event) => setSearch(event.target.value)} /></label>
         <div className={styles.chatItems}>{visible.length ? visible.map((item) => <ChatListItem key={item.conversationId} item={item} active={selectedId === item.conversationId} onClick={() => openChat(item)} />) : <div className={styles.emptyList}><MessageCircle aria-hidden="true" /><strong>{scope === "active" ? t("adminMessenger.noActive") : t("adminMessenger.noArchive")}</strong><p>{scope === "active" ? t("adminMessenger.noActiveDescription") : t("adminMessenger.noArchiveDescription")}</p></div>}</div>
       </aside>
@@ -281,7 +308,8 @@ export function AdminMessengerWorkspace({ initialList, initialDetail }: { initia
           <header className={styles.conversationHeader}>
             <button type="button" className={styles.mobileBack} onClick={() => setMobileChat(false)} aria-label={t("adminMessenger.back")}><ArrowLeft aria-hidden="true" /></button>
             <span className={styles.avatar} data-status={detail.player.online ? "online" : "offline"} aria-label={`${detail.player.name}: ${detail.player.online ? t("adminMessenger.online") : t("adminMessenger.offline")}`}>{detail.player.initials}</span>
-            <div><strong>{detail.player.name}</strong><small>{detail.player.online ? t("adminMessenger.online") : t("adminMessenger.offline")}</small></div>
+            <div className={styles.conversationIdentity}><strong>{detail.player.name}</strong><small>{detail.player.online ? t("adminMessenger.online") : t("adminMessenger.offline")}</small><TagChips tags={detail.player.tags} /></div>
+            <AdminTagManager userId={detail.player.userId} assigned={detail.player.tags} tags={list.tags} onAssignedChange={updateAssigned} onTagsChange={updateAvailableTags} />
             <button type="button" className={styles.infoButton} data-active={panelOpen || undefined} onClick={() => setPanelOpen((open) => !open)} aria-label={panelOpen ? t("adminMessenger.infoClose") : t("adminMessenger.infoOpen")} aria-expanded={panelOpen}><Info aria-hidden="true" /></button>
           </header>
           <Messages detail={detail} pending={false} />
@@ -290,7 +318,7 @@ export function AdminMessengerWorkspace({ initialList, initialDetail }: { initia
       </main>
 
       <AnimatePresence>
-        {detail && panelOpen ? <motion.div className={styles.panelWrap} data-open initial={reduced ? false : { opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} exit={reduced ? undefined : { opacity: 0, x: 12 }} transition={transition}><PlayerPanel detail={detail} onUpdate={setDetail} onClose={() => setPanelOpen(false)} /></motion.div> : null}
+        {detail && panelOpen ? <motion.div className={styles.panelWrap} data-open initial={reduced ? false : { opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} exit={reduced ? undefined : { opacity: 0, x: 12 }} transition={transition}><PlayerPanel detail={detail} tags={list.tags} onUpdate={(next) => { setDetail(next); setList((current) => ({ ...current, items: current.items.map((item) => item.userId === next.player.userId ? { ...item, tags: next.player.tags } : item) })); }} onTagsChange={updateAvailableTags} onClose={() => setPanelOpen(false)} /></motion.div> : null}
       </AnimatePresence>
       {panelOpen ? <button type="button" className={styles.panelOverlay} onClick={() => setPanelOpen(false)} aria-label={t("adminMessenger.infoClose")} /> : null}
       <button type="button" className="sr-only"><MoreHorizontal aria-hidden="true" />{t("adminMessenger.moreActions")}</button>

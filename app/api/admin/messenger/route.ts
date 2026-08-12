@@ -6,7 +6,7 @@ export async function GET(request: Request) {
     const principal = await requireAdminRequestPrincipal(request);
     const params = new URL(request.url).searchParams;
     const scope: AdminMessengerScope = params.get("scope") === "archive" ? "archive" : "active";
-    return json(await getAdminMessengerService().list(principal, params.get("q") ?? "", scope));
+    return json(await getAdminMessengerService().list(principal, params.get("q") ?? "", scope, params.get("tag") ?? undefined));
   } catch (error) {
     return errorResponse(error);
   }

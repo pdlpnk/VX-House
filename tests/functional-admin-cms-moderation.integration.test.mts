@@ -8,13 +8,14 @@ import type { AuthenticatedPrincipal } from "../lib/auth/index.ts";
 import { AesGcmDataProtector } from "../lib/data-protection/index.ts";
 import type { PrismaClient } from "../lib/db/generated/client.ts";
 import { PrismaClient as NodePrismaClient } from "../lib/db/generated-node/client.ts";
-import { AdminApplicationService, AdminMessengerService } from "../lib/services/index.ts";
+import { AdminApplicationService, AdminMessengerService, AdminTagService } from "../lib/services/index.ts";
 
 const connectionString = process.env.TEST_DATABASE_URL; if (!connectionString) throw new Error("TEST_DATABASE_URL обязателен");
 const database = new NodePrismaClient({ adapter: new PrismaPg({ connectionString }) }) as unknown as PrismaClient;
 const protector = new AesGcmDataProtector("test-key", Buffer.alloc(32, 11).toString("base64url"));
 const service = new AdminApplicationService(database, protector);
 const messenger = new AdminMessengerService(database, protector);
+const tags = new AdminTagService(database);
 const permissions = ["admin.dashboard.read", "users.read", "users.write", "users.role.write", "users.partner.approve", "content.read", "content.write", "content.publish", "moderation.read", "moderation.write", "support.admin", "support.write", "appeals.write", "economy.admin", "economy.write", "notifications.write", "audit.read"];
 let admin: AuthenticatedPrincipal; let playerId: string; let partnerId: string; let marketId: string;
 
@@ -22,7 +23,7 @@ async function createProductUser(email: string, role: "PLAYER" | "PARTNER") { co
 
 describe("Functional Integration Module 5", { concurrency: false }, () => {
 beforeEach(async () => {
-  await database.$executeRawUnsafe('TRUNCATE TABLE "AuditEvent", "User", "Market", "SupportCategory", "RewardType" CASCADE');
+  await database.$executeRawUnsafe('TRUNCATE TABLE "AuditEvent", "AdminTag", "User", "Market", "SupportCategory", "RewardType" CASCADE');
   const market = await database.market.create({ data: { code: "TR", name: "Турция", defaultLanguage: "TR", isActive: true } }); marketId = market.id;
   const role = await database.role.findUniqueOrThrow({ where: { key: "admin" } });
   const adminUser = await database.user.create({ data: { email: "admin@test.invalid", displayName: "Тестовый администратор", roles: { connect: { id: role.id } } } });
@@ -44,6 +45,23 @@ test("список участников показывает игроков и �
   const participants = await service.list(admin, "users");
   assert.deepEqual(new Set(participants.items.map((item) => item.eyebrow)), new Set(["Игрок", "Партнёр"]));
   assert.ok(participants.items.some((item) => item.id === partnerId && item.status === "PENDING"));
+});
+
+test("единые admin tags поддерживают CRUD, несколько назначений и серверную фильтрацию", async () => {
+  const first = await tags.create(admin, { name: "HOT" });
+  const second = await tags.create(admin, { name: "TR" });
+  await tags.assign(admin, playerId, first.id);
+  await tags.assign(admin, playerId, second.id);
+  assert.deepEqual((await service.list(admin, "users", { tagId: first.id })).items.map((item) => item.id), [playerId]);
+  assert.deepEqual(new Set((await messenger.list(admin, "", "archive", second.id)).items.map((item) => item.userId)), new Set([playerId]));
+  const renamed = await tags.rename(admin, first.id, { name: "VIP" });
+  assert.equal(renamed.name, "VIP");
+  assert.deepEqual(new Set((await service.list(admin, "users")).items.find((item) => item.id === playerId)?.tags?.map((tag) => tag.name)), new Set(["TR", "VIP"]));
+  await tags.unassign(admin, playerId, second.id);
+  assert.equal((await messenger.list(admin, "", "archive", second.id)).items.length, 0);
+  await tags.remove(admin, first.id);
+  assert.equal((await tags.list(admin)).length, 1);
+  await assert.rejects(tags.list({ ...admin, roleKeys: ["player"], permissionKeys: [] }), (error: unknown) => error instanceof ApplicationError && error.code === "FORBIDDEN");
 });
 
 test("Opportunity, Instruction, Task и Reward получают обязательные версии", async () => { const inputs = [
@@ -75,6 +93,7 @@ test("Admin Messenger синхронизирует постоянный диал
   assert.equal(active.items.length, 1);
   assert.equal(active.items[0]!.userId, playerId);
   assert.equal(active.items[0]!.unreadCount, 1);
+  assert.equal((await messenger.list(admin, "", "archive")).items.some((item) => item.userId === playerId), false, "активированный чат больше не находится в архиве");
   await messenger.markRead(admin, conversationId);
   assert.equal((await messenger.list(admin)).items[0]!.unreadCount, 0);
   const replied = await messenger.sendMessage(admin, conversationId, "Сообщение персонального менеджера");

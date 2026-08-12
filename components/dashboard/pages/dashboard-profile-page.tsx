@@ -23,7 +23,7 @@ export function DashboardProfilePage() {
           <div><dt><CalendarDays aria-hidden="true" /> {t("profile.created")}</dt><dd>{new Intl.DateTimeFormat(locale, { timeZone: "UTC" }).format(new Date(profile.createdAt))}</dd></div>
         </dl>
       </DashboardCard>
-      <div className={styles.profileAside}><DashboardCard icon={ShieldCheck} label={t("profile.state")} title={t("profile.contactVerified")} action={<StatusPill tone="success">{accountStatusLabels[profile.accountStatus] ?? t("profile.statusUpdating")}</StatusPill>}><p className={styles.cardLead}>{t("profile.verifiedDescription")}</p></DashboardCard></div>
+      <div className={styles.profileAside}><DashboardCard icon={ShieldCheck} label={t("profile.state")} title={t("profile.contactVerified")} action={<StatusPill tone="success">{accountStatusLabels[profile.accountStatus] ?? t("profile.statusUpdating")}</StatusPill>}><p className={styles.cardLead}>{t("profile.managerReady")}</p></DashboardCard></div>
     </div>
   </DashboardPage>;
 }

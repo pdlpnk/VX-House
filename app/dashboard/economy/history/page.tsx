@@ -1,7 +1,2 @@
-import { EconomyHistory } from "@/components/economy/economy-history";
-import { getEconomyRewardService, requireProductWorkspaceContext } from "@/lib/server";
-
-export default async function EconomyHistoryPage() {
-  const { principal } = await requireProductWorkspaceContext("PLAYER", "/dashboard/economy/history");
-  return <EconomyHistory history={await getEconomyRewardService().getHistory(principal)} />;
-}
+import { redirect } from "next/navigation";
+export default function HiddenPlayerEconomyHistory() { redirect("/dashboard"); }

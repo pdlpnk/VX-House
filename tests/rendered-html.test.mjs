@@ -110,14 +110,12 @@ test("dashboard keeps player-only server-backed contracts", async () => {
   assert.match(workspaceShell, /workspace\.notifications/);
   assert.match(workspaceShell, /WorkspaceShell/);
   assert.match(shell, /href: "\/dashboard\/support"/);
-  assert.match(home, /dashboard\.nextStep/);
+  assert.match(home, /dashboard\.personalManager/);
+  assert.match(home, /dashboard\.contactManager/);
   assert.doesNotMatch(home, /Trust Score/);
-  assert.match(home, /VX Points/);
-  assert.match(home, /dashboard\.quickAccess/);
-  assert.match(home, /summary\.activeTasks/);
+  assert.doesNotMatch(home, /VX Points|dashboard\.quickAccess|summary\.activeTasks|dashboard\.firstTask/);
   assert.doesNotMatch(home, /ForecastCatalog|PromocodeCatalog/);
-  assert.match(opportunities, /OpportunityCatalog/);
-  assert.doesNotMatch(opportunities, /partnerOpportunities|Прайм/);
+  assert.match(opportunities, /redirect\("\/dashboard"\)/);
   assert.match(settings, /settings\.reducedMotion/);
   assert.doesNotMatch(settings, /Партнёр|notificationsEnabled/);
   assert.match(styles, /prefers-reduced-motion/);
@@ -463,7 +461,8 @@ test("manager panel enforces Module 5 operational safeguards", async () => {
     assert.match(`${data}${shell}`, new RegExp(area, "i"));
   }
   for (const requirement of ["Инструкци", "Апелляци", "VX Points", "Trust Score"]) assert.match(`${data}${service}`, new RegExp(requirement, "i"));
-  assert.match(overview, /Операционная статистика/);
+  assert.match(overview, /Рабочее пространство VX House/);
+  assert.doesNotMatch(overview, /Активные задания|VX Points|Rewards в процессе|Результаты на проверке/);
   assert.match(section, /Сохранённые представления/);
   assert.match(section, /Массовые изменения/);
   assert.match(section, /adminPagination/);
@@ -497,7 +496,7 @@ test("connects final MVP platform operations without product demo sources", asyn
   assert.match(repository, /ForecastAccessRule|accessRules/); assert.match(repository, /promocodeActivationHistory/);
   for (const route of [forecastRoute, promocodeRoute, activationRoute, searchRoute]) assert.match(route, /requireRequestPrincipal/);
   assert.match(activationRoute, /requireTrustedOrigin/); assert.match(activationRoute, /limitRequest/);
-  assert.match(playerPage, /listForecasts/); assert.match(playerPage, /listPromocodes/); assert.match(partnerPage, /workspaceSummary/);
+  assert.doesNotMatch(playerPage, /listForecasts|listPromocodes|workspaceSummary/); assert.match(partnerPage, /workspaceSummary/);
   assert.match(partnerForecasts, /ForecastCatalog/); assert.match(partnerMaterials, /PromocodeCatalog/); assert.match(workspaceShell, /\/api\/search/);
   assert.doesNotMatch(accessFlow, /localStorage|sessionStorage/);
   assert.doesNotMatch(dashboardData, /displayName|productRole|email/);

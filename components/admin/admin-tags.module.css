@@ -1,0 +1,23 @@
+.chips { display: flex; min-width: 0; flex-wrap: wrap; gap: .28rem; }
+.chips > span, .chips > b { max-width: 8rem; overflow: hidden; border: 1px solid oklch(.66 .14 25 / 22%); border-radius: 99px; padding: .2rem .42rem; background: oklch(.55 .17 25 / 9%); color: oklch(.78 .07 25); font-size: .48rem; font-weight: 650; line-height: 1; text-overflow: ellipsis; white-space: nowrap; }
+.chips > b { border-color: oklch(1 0 0 / 8%); background: oklch(1 0 0 / 4%); color: oklch(.62 .01 25); }
+.filters { display: flex; gap: .35rem; max-width: 100%; overflow-x: auto; padding: .1rem .05rem .5rem; scrollbar-width: none; }
+.filters::-webkit-scrollbar { display: none; }
+.filters button { display: inline-flex; min-height: 2rem; flex: none; align-items: center; gap: .38rem; border: 1px solid oklch(1 0 0 / 7%); border-radius: 99px; padding: 0 .66rem; background: oklch(1 0 0 / 2%); color: oklch(.59 .01 25); font-size: .53rem; cursor: pointer; }
+.filters button[data-active] { border-color: oklch(.66 .18 25 / 30%); background: oklch(.56 .18 25 / 13%); color: oklch(.88 .03 25); }
+.filters small { display: grid; min-width: 1rem; height: 1rem; place-items: center; border-radius: 50%; background: oklch(1 0 0 / 6%); font-size: .42rem; }
+.manager { position: relative; }
+.manageButton { display: inline-flex; min-height: 2rem; align-items: center; gap: .38rem; border: 1px solid oklch(1 0 0 / 8%); border-radius: .58rem; padding: 0 .62rem; background: oklch(1 0 0 / 3%); color: oklch(.72 .02 25); font-size: .52rem; cursor: pointer; }
+.manageButton svg { width: .72rem; }
+.popover { position: absolute; z-index: 20; top: calc(100% + .4rem); right: 0; width: min(20rem, calc(100vw - 2rem)); border: 1px solid oklch(1 0 0 / 9%); border-radius: .9rem; padding: .7rem; background: oklch(.14 .012 25); box-shadow: 0 18px 60px #000a; }
+.popover header { display: flex; align-items: center; justify-content: space-between; padding: .1rem .1rem .6rem; }
+.popover header strong { font-size: .65rem; }.popover header button, .tagList > div > button, .create button { display: grid; width: 1.8rem; height: 1.8rem; place-items: center; border: 0; border-radius: .5rem; background: transparent; color: oklch(.58 .01 25); cursor: pointer; }.popover svg { width: .72rem; }
+.create { display: grid; grid-template-columns: 1fr auto; gap: .35rem; }.create input, .tagList input { min-width: 0; min-height: 2rem; border: 1px solid oklch(1 0 0 / 8%); border-radius: .55rem; padding: 0 .55rem; outline: 0; background: oklch(0 0 0 / 18%); color: white; font: inherit; font-size: .54rem; }.create button { background: oklch(.57 .2 25); color: white; }.create button:disabled { opacity: .35; }
+.tagList { display: grid; max-height: 15rem; gap: .18rem; overflow-y: auto; margin-top: .55rem; }.tagList > div { display: grid; grid-template-columns: minmax(0,1fr) auto auto; align-items: center; gap: .12rem; border-radius: .55rem; padding: .16rem; }.tagList > div:hover { background: oklch(1 0 0 / 2.5%); }.tagList > p { padding: 1.2rem; color: oklch(.52 .01 25); font-size: .54rem; text-align: center; }
+.tagToggle { display: grid; min-width: 0; min-height: 2rem; grid-template-columns: 1.1rem minmax(0,1fr) auto; align-items: center; gap: .35rem; border: 0; background: transparent; color: oklch(.7 .01 25); text-align: left; cursor: pointer; }.tagToggle > span { display: grid; width: 1rem; height: 1rem; place-items: center; border: 1px solid oklch(1 0 0 / 10%); border-radius: .3rem; }.tagToggle[data-selected] > span { border-color: oklch(.67 .19 25); background: oklch(.57 .2 25); color: white; }.tagToggle svg { width: .6rem; }.tagToggle strong { overflow: hidden; font-size: .55rem; text-overflow: ellipsis; white-space: nowrap; }.tagToggle small { color: oklch(.47 .01 25); font-size: .47rem; }
+.error { margin-top: .45rem; color: oklch(.75 .14 25); font-size: .5rem; }
+@media (max-width: 720px) {
+  .manageButton { width: 2.25rem; justify-content: center; padding: 0; font-size: 0; }
+  .manageButton svg { width: .8rem; }
+  .popover { position: fixed; top: auto; right: .75rem; bottom: max(5.5rem, calc(env(safe-area-inset-bottom) + 4.5rem)); left: .75rem; width: auto; }
+}

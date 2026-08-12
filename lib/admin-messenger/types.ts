@@ -1,4 +1,5 @@
 import type { SupportConversationView } from "@/lib/support";
+import type { AdminTagAssignmentView, AdminTagView } from "@/lib/admin-tags";
 
 export const ADMIN_MESSENGER_ROLES = ["PLAYER", "PARTNER"] as const;
 export type AdminMessengerRole = (typeof ADMIN_MESSENGER_ROLES)[number];
@@ -22,6 +23,7 @@ export type AdminMessengerPlayer = {
   lastMessageAt: string | null;
   unreadCount: number;
   hasNotes: boolean;
+  tags: AdminTagAssignmentView[];
 };
 
 export type AdminMessengerNote = {
@@ -36,10 +38,6 @@ export type AdminMessengerNote = {
 
 export type AdminMessengerDetail = {
   player: AdminMessengerPlayer & {
-    rank: string;
-    points: number;
-    currentTask: string;
-    lastAction: string;
     profileHref: string;
   };
   conversation: SupportConversationView;
@@ -49,4 +47,5 @@ export type AdminMessengerDetail = {
 export type AdminMessengerList = {
   items: AdminMessengerPlayer[];
   unreadCount: number;
+  tags: AdminTagView[];
 };

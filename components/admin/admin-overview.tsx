@@ -16,21 +16,13 @@ export function AdminOverview({ stats, funnel }: { stats: AdminDashboardView; fu
   const primary = [
     { label: "Пользователи", value: stats.users, icon: DatabaseZap },
     { label: "Новые регистрации", value: stats.registrationsToday, icon: ShieldCheck },
-    { label: "Активные задания", value: stats.activeTasks, icon: DatabaseZap },
-    { label: "Открытые обращения", value: stats.openSupport, icon: ShieldCheck },
-  ];
-  const operations = [
-    { label: "Результаты на проверке", state: stats.pendingReviews, nextStep: "Открыть очередь проверки" },
-    { label: "Апелляции", state: stats.pendingAppeals, nextStep: "Проверить допустимые решения" },
-    { label: "Rewards в процессе", state: stats.rewardsInProgress, nextStep: "Проверить текущие статусы" },
-    { label: "Записи VX Points", state: stats.pointsEntries, nextStep: "Открыть append-only историю" },
   ];
   return (
     <DashboardPage>
       <DashboardHeading
         eyebrow="Управляющая часть"
-        title="Операционный контур VX House"
-        description="Единый защищённый контур управления пользователями, контентом, модерацией, поддержкой и экономикой."
+        title="Рабочее пространство VX House"
+        description="Участники, персональные диалоги и контент текущего MVP в одном защищённом интерфейсе."
         action={<StatusPill tone="success">Серверные данные</StatusPill>}
       />
 
@@ -46,11 +38,6 @@ export function AdminOverview({ stats, funnel }: { stats: AdminDashboardView; fu
           </DashboardGridItem>
         ))}
       </DashboardGrid>
-
-      <section className={styles.adminOperationsSummary} aria-labelledby="admin-operations-title">
-        <header><div><span>Операционная статистика</span><h2 id="admin-operations-title">Текущая рабочая очередь</h2><p>Показатели отражают реальные записи и не рассчитываются на клиенте.</p></div><StatusPill tone="success">Обновлено</StatusPill></header>
-        <div>{operations.map((area) => <article key={area.label}><small>{area.label}</small><strong>{area.state}</strong><p>{area.nextStep}</p></article>)}</div>
-      </section>
 
       <section className={styles.adminOperationsSummary} aria-labelledby="admin-funnel-title">
         <header><div><span>First-party аналитика · 30 дней</span><h2 id="admin-funnel-title">Воронка получения доступа</h2><p>Тестовые и smoke-аккаунты исключены. Проценты рассчитываются сервером.</p></div><StatusPill tone="success">Внутренние события</StatusPill></header>
@@ -98,7 +85,7 @@ export function AdminOverview({ stats, funnel }: { stats: AdminDashboardView; fu
 
       <section className={styles.adminSafetyPanel} aria-labelledby="admin-safety-title">
         <span><ShieldCheck aria-hidden="true" /></span>
-        <div><small>Безопасная граница</small><h2 id="admin-safety-title">Критические действия контролирует сервер</h2><p>Публикация, модерация, поддержка и корректировки требуют отдельных разрешений, причины и неизменяемой записи аудита.</p></div>
+        <div><small>Безопасная граница</small><h2 id="admin-safety-title">Административные действия контролирует сервер</h2><p>Доступ к участникам, Messenger и управлению тегами проверяется серверными разрешениями и фиксируется в аудите.</p></div>
         <DatabaseZap aria-hidden="true" />
       </section>
     </DashboardPage>

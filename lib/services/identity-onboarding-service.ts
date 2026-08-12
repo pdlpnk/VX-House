@@ -556,7 +556,7 @@ export class IdentityOnboardingService {
         idempotencyKey: `onboarding-completed:${input.principal.userId}`,
         actorId: input.principal.userId,
         occurredAt,
-        systemMessage: { key: profile.productRole === "PLAYER" ? "system.onboardingPlayer" : "system.onboardingPartner" },
+        systemMessage: { key: profile.productRole === "PLAYER" ? "system.managerReady" : "system.onboardingPartner" },
       });
       const events = createTransactionalEventServices(database, occurredAt);
       await events.security.record({

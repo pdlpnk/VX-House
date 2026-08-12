@@ -285,8 +285,30 @@ model User {
   promocodeActivations        PromocodeActivation[]
   analyticsSessions           AnalyticsSession[]
   analyticsEvents             AnalyticsEvent[]
+  adminTagAssignments         AdminTagAssignment[]
 
   @@index([createdAt])
+}
+
+model AdminTag {
+  id          String               @id @default(uuid()) @db.Uuid
+  name        String               @unique @db.VarChar(60)
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+  assignments AdminTagAssignment[]
+
+  @@index([name])
+}
+
+model AdminTagAssignment {
+  userId     String   @db.Uuid
+  tagId      String   @db.Uuid
+  assignedAt DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tag        AdminTag @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([userId, tagId])
+  @@index([tagId, assignedAt])
 }
 
 model OnboardingProgress {

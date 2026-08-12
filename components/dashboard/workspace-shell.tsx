@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { Bell, ChevronRight, Coins, Grid2X2, LogOut, Medal, Menu, Search, ShieldCheck, X, type LucideIcon } from "lucide-react";
+import { Bell, ChevronRight, Grid2X2, LogOut, Menu, Search, ShieldCheck, X, type LucideIcon } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -16,7 +16,6 @@ import type { DashboardPreferences } from "@/lib/dashboard-data";
 import type { SafeProfileDTO } from "@/lib/repositories";
 import type { NotificationView, SupportConversationView } from "@/lib/support";
 import type { GlobalSearchResult } from "@/lib/platform-operations";
-import type { EconomySnapshotView } from "@/lib/economy";
 import { formatLocalTime, fromDatabaseLanguage } from "@/lib/i18n";
 import type { MessageKey } from "@/lib/i18n";
 
@@ -40,8 +39,6 @@ type WorkspaceShellConfig = {
   defaultPreferences: DashboardPreferences;
   notificationTextKey: MessageKey;
 };
-
-const tierLabels = { EXPLORER: "Bronze", NAVIGATOR: "Silver", ATLAS: "Gold", PRIME: "Platinum", SIGNATURE: "Diamond" } as const;
 
 function WorkspaceNavigation({
   config,
@@ -146,7 +143,7 @@ function WorkspaceNavigation({
   );
 }
 
-function WorkspaceShellContent({ children, config, initialNotifications, personalConversation, economy, canAdmin }: { children: React.ReactNode; config: WorkspaceShellConfig; initialNotifications: NotificationView[]; personalConversation?: SupportConversationView; economy?: EconomySnapshotView; canAdmin: boolean }) {
+function WorkspaceShellContent({ children, config, initialNotifications, personalConversation, canAdmin }: { children: React.ReactNode; config: WorkspaceShellConfig; initialNotifications: NotificationView[]; personalConversation?: SupportConversationView; canAdmin: boolean }) {
   const pathname = usePathname();
   const { profile, shouldReduceMotion } = useDashboard();
   const { locale, setLocale, t } = useI18n();
@@ -156,7 +153,6 @@ function WorkspaceShellContent({ children, config, initialNotifications, persona
   const [notifications, setNotifications] = useState(initialNotifications);
   const [unreadMessages, setUnreadMessages] = useState(personalConversation?.unreadCount ?? 0);
   const [searchOpen, setSearchOpen] = useState(false);
-  const [rankOpen, setRankOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [searchResults, setSearchResults] = useState<GlobalSearchResult[]>([]);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
@@ -164,7 +160,6 @@ function WorkspaceShellContent({ children, config, initialNotifications, persona
   const mainRef = useRef<HTMLElement>(null);
   const searchRef = useRef<HTMLDivElement>(null);
   const notificationsRef = useRef<HTMLDivElement>(null);
-  const rankRef = useRef<HTMLDivElement>(null);
   const menuId = `${config.kind}-mobile-menu`;
   const notificationsId = `${config.kind}-notifications`;
   const pageTitleKey = config.pageTitles[pathname]
@@ -174,11 +169,6 @@ function WorkspaceShellContent({ children, config, initialNotifications, persona
   const unreadCount = notifications.filter((item) => item.status !== "READ").length;
   const supportHref = config.kind === "partner" ? "/partner/support" : "/dashboard/support";
   const messengerIsFullPage = pathname === supportHref;
-  const rankLabel = economy?.rank.current ? tierLabels[economy.rank.current.code] : "Bronze";
-  const nextRankLabel = economy?.rank.next ? tierLabels[economy.rank.next.code] : "Silver";
-  const completedCriteria = economy?.rank.next?.criteria.filter((item) => item.completed).length ?? 0;
-  const criteriaCount = economy?.rank.next?.criteria.length ?? 0;
-  const rankProgress = criteriaCount ? Math.round(completedCriteria / criteriaCount * 100) : Math.min(100, Math.round((economy?.points.confirmedBalance ?? 0) / 10));
 
   useEffect(() => {
     if (profile?.preferredLanguage) setLocale(fromDatabaseLanguage(profile.preferredLanguage));
@@ -224,7 +214,6 @@ function WorkspaceShellContent({ children, config, initialNotifications, persona
       if (event.key !== "Escape") return;
       if (searchOpen) setSearchOpen(false);
       if (notificationsOpen) setNotificationsOpen(false);
-      if (rankOpen) setRankOpen(false);
       if (menuOpen) {
         setMenuOpen(false);
         menuButtonRef.current?.focus();
@@ -232,18 +221,17 @@ function WorkspaceShellContent({ children, config, initialNotifications, persona
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [menuOpen, notificationsOpen, rankOpen, searchOpen]);
+  }, [menuOpen, notificationsOpen, searchOpen]);
 
   useEffect(() => {
     function onPointerDown(event: PointerEvent) {
       const target = event.target as Node;
       if (searchOpen && !searchRef.current?.contains(target)) setSearchOpen(false);
       if (notificationsOpen && !notificationsRef.current?.contains(target)) setNotificationsOpen(false);
-      if (rankOpen && !rankRef.current?.contains(target)) setRankOpen(false);
     }
     document.addEventListener("pointerdown", onPointerDown);
     return () => document.removeEventListener("pointerdown", onPointerDown);
-  }, [notificationsOpen, rankOpen, searchOpen]);
+  }, [notificationsOpen, searchOpen]);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -293,22 +281,12 @@ function WorkspaceShellContent({ children, config, initialNotifications, persona
 
           <div className={styles.topbarActions}>
             <LanguageSwitcher syncProfile={config.kind !== "admin" && Boolean(profile)} />
-            {config.kind === "player" && economy ? <>
-              <Link href="/dashboard/economy" className={styles.pointsCompact} aria-label={`${economy.points.confirmedBalance} VX Points`}>
-                <Coins aria-hidden="true" /><span><small>VX Points</small><strong>{economy.points.confirmedBalance}</strong></span>
-                <em role="tooltip">{t("workspace.pointsTooltip")}</em>
-              </Link>
-              <div className={styles.rankCompactWrap} ref={rankRef}>
-                <button type="button" className={styles.rankCompact} aria-expanded={rankOpen} onClick={() => { setRankOpen((open) => !open); setSearchOpen(false); setNotificationsOpen(false); }}><Medal aria-hidden="true" />{rankLabel}</button>
-                {rankOpen ? <div className={styles.rankCompactPanel} role="region" aria-label={t("workspace.currentLevel")}><small>{t("workspace.currentLevel")}</small><strong>{rankLabel}</strong><div><span>{t("workspace.toLevel", { level: nextRankLabel })}</span><b>{rankProgress}%</b></div><div className={styles.compactProgress}><i style={{ width: `${rankProgress}%` }} /></div><p>{criteriaCount ? t("workspace.criteriaCompleted", { completed: completedCriteria, total: criteriaCount }) : t("workspace.pointsRemaining", { points: Math.max(0, 1000 - (economy.points.confirmedBalance ?? 0)) })}</p><Link href="/dashboard/economy" onClick={() => setRankOpen(false)}>{t("workspace.rankDetails")} <ChevronRight aria-hidden="true" /></Link></div> : null}
-              </div>
-            </> : null}
-            {config.kind !== "admin" ? <div className={styles.globalSearch} ref={searchRef} data-open={searchOpen || undefined}>
-              <button type="button" aria-label={t("workspace.openSearch")} aria-expanded={searchOpen} onClick={() => { setSearchOpen((open) => !open); setNotificationsOpen(false); setRankOpen(false); }}><Search aria-hidden="true" /></button>
+            {config.kind === "partner" ? <div className={styles.globalSearch} ref={searchRef} data-open={searchOpen || undefined}>
+              <button type="button" aria-label={t("workspace.openSearch")} aria-expanded={searchOpen} onClick={() => { setSearchOpen((open) => !open); setNotificationsOpen(false); }}><Search aria-hidden="true" /></button>
               {searchOpen ? <div className={styles.globalSearchPanel}><label><Search aria-hidden="true" /><span className="sr-only">{t("workspace.searchLabel")}</span><input autoFocus value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder={t("workspace.searchPlaceholder")} /></label>{searchTerm.trim().length < 2 ? <p>{t("workspace.searchMinimum")}</p> : searchResults.length ? <div>{searchResults.map((item) => <Link key={`${item.type}:${item.id}`} href={item.href} onClick={() => setSearchOpen(false)}><small>{item.type}</small><strong>{item.title}</strong><span>{item.description}</span></Link>)}</div> : <p>{t("workspace.searchEmpty")}</p>}</div> : null}
             </div> : null}
             <div className={styles.notificationsWrap} ref={notificationsRef}>
-              <button type="button" className={styles.notificationButton} aria-label={unreadCount ? t("workspace.unreadNotifications", { count: unreadCount }) : t("workspace.noNotifications")} aria-expanded={notificationsOpen} aria-controls={notificationsId} onClick={() => { setNotificationsOpen((open) => !open); setSearchOpen(false); setRankOpen(false); }}><Bell aria-hidden="true" />{unreadCount ? <i aria-hidden="true">{unreadCount}</i> : null}</button>
+              <button type="button" className={styles.notificationButton} aria-label={unreadCount ? t("workspace.unreadNotifications", { count: unreadCount }) : t("workspace.noNotifications")} aria-expanded={notificationsOpen} aria-controls={notificationsId} onClick={() => { setNotificationsOpen((open) => !open); setSearchOpen(false); }}><Bell aria-hidden="true" />{unreadCount ? <i aria-hidden="true">{unreadCount}</i> : null}</button>
               <AnimatePresence>
                 {notificationsOpen ? (
                   <motion.div
@@ -373,10 +351,10 @@ function WorkspaceShellContent({ children, config, initialNotifications, persona
   );
 }
 
-export function WorkspaceShell({ children, config, profile, notifications = [], personalConversation, economy, canAdmin = false }: { children: React.ReactNode; config: WorkspaceShellConfig; profile?: SafeProfileDTO; notifications?: NotificationView[]; personalConversation?: SupportConversationView; economy?: EconomySnapshotView; canAdmin?: boolean }) {
+export function WorkspaceShell({ children, config, profile, notifications = [], personalConversation, canAdmin = false }: { children: React.ReactNode; config: WorkspaceShellConfig; profile?: SafeProfileDTO; notifications?: NotificationView[]; personalConversation?: SupportConversationView; canAdmin?: boolean }) {
   return (
     <DashboardProvider storageKey={config.storageKey} defaultPreferences={config.defaultPreferences} profile={profile}>
-      <WorkspaceShellContent config={config} initialNotifications={notifications} personalConversation={personalConversation} economy={economy} canAdmin={canAdmin}>{children}</WorkspaceShellContent>
+      <WorkspaceShellContent config={config} initialNotifications={notifications} personalConversation={personalConversation} canAdmin={canAdmin}>{children}</WorkspaceShellContent>
     </DashboardProvider>
   );
 }

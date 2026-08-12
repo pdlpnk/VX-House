@@ -45,7 +45,7 @@ export function DashboardSettingsPage() {
         <DashboardCard icon={Database} label={t("settings.localData")} title={t("settings.device")}>
           <div className={styles.localDataCard}>
             <ShieldCheck aria-hidden="true" />
-            <div><strong>{t("settings.deviceOnly")}</strong><p>{t("settings.dataSafe")}</p></div>
+            <div><strong>{t("settings.deviceOnly")}</strong><p>{t("settings.profileSafe")}</p></div>
           </div>
           <Button type="button" variant="outline" onClick={resetPreferences}><RotateCcw aria-hidden="true" /> {t("settings.reset")}</Button>
         </DashboardCard>
@@ -53,7 +53,6 @@ export function DashboardSettingsPage() {
         <DashboardCard icon={UserRound} label={t("settings.space")} title={t("settings.playerArea")}>
           <dl className={styles.settingsSummary}>
             <div><dt>{t("settings.space")}</dt><dd>{t("settings.playerArea")}</dd></div>
-            <div><dt>{t("settings.progress")}</dt><dd>{t("settings.synced")}</dd></div>
             <div><dt>{t("settings.motionLabel")}</dt><dd>{preferences.reducedMotion ? t("settings.reduced") : t("settings.system")}</dd></div>
             <div><dt>{t("settings.state")}</dt><dd>{t("settings.current")}</dd></div>
           </dl>

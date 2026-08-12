@@ -12,6 +12,7 @@ export type AdminRecordView = Readonly<{
   fields: readonly AdminFieldView[];
   occurredAt?: string;
   editable?: boolean;
+  tags?: readonly Readonly<{ id: string; name: string }>[];
 }>;
 
 export type AdminSectionView = Readonly<{
@@ -39,6 +40,7 @@ export type AdminListQuery = Readonly<{
   market?: "TR" | "AZ";
   cursor?: string;
   take?: number;
+  tagId?: string;
 }>;
 
 export type ContentKind = "OPPORTUNITY" | "INSTRUCTION" | "TASK" | "REWARD" | "FORECAST" | "PROMOCODE";

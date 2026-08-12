@@ -181,6 +181,10 @@ test("Dashboard и Admin Messenger используют единый слова�
   assert.equal(translate("en", "dashboard.nextStep"), "Next step");
   assert.equal(translate("az", "settings.interface"), "İnterfeys tənzimləmələri");
   assert.equal(translate("ru", "adminMessenger.archive"), "Архив");
+  assert.equal(translate("tr", "dashboard.contactManager"), "Yöneticiyle iletişime geç");
+  assert.equal(translate("az", "dashboard.personalManager"), "Şəxsi meneceriniz");
+  assert.equal(translate("en", "adminTags.all"), "All");
+  assert.equal(translate("ru", "adminTags.manage"), "Управление тегами");
   assert.notEqual(translate("tr", "dashboard.description"), translate("ru", "dashboard.description"));
 
   const [shell, home, settings, profile, adminMessenger] = await Promise.all([
