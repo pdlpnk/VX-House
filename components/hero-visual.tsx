@@ -1,15 +1,21 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Check, Gift, Headphones, History, ListChecks, Sparkles } from "lucide-react";
+import { Check, CircleUserRound, Headphones, History, MessageCircle, Settings, Sparkles } from "lucide-react";
 
+import { useI18n } from "@/components/i18n/i18n-provider";
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
+import { publicContent } from "@/lib/i18n/public-content";
+
+const itemIcons = [CircleUserRound, Headphones, MessageCircle, History, Settings] as const;
 
 export function HeroVisual() {
   const prefersReducedMotion = useReducedMotion();
+  const { locale } = useI18n();
+  const content = publicContent[locale].heroVisual;
 
   return (
-    <div className="hero-visual" role="img" aria-label="Возможности личного кабинета VX House">
+    <div className="hero-visual" role="img" aria-label={content.aria}>
       <div className="ecosystem-halo" />
       <div className="ecosystem-orbit ecosystem-orbit--outer" />
       <div className="ecosystem-orbit ecosystem-orbit--inner" />
@@ -35,18 +41,17 @@ export function HeroVisual() {
         <div className="account-panel__header">
           <div className="account-panel__avatar"><Sparkles /></div>
           <div>
-            <p>Что доступно в VX House</p>
-            <span><Check /> Правила и сроки видны заранее</span>
+            <p>{content.title}</p>
+            <span><Check /> {content.subtitle}</span>
           </div>
           <div className="account-panel__status">18+</div>
         </div>
 
         <div className="account-panel__value-list">
-          <div><span><Sparkles /></span><p>Персональные предложения</p><Check /></div>
-          <div><span><ListChecks /></span><p>Задания и инструкции</p><Check /></div>
-          <div><span><Gift /></span><p>Кешбэк и вознаграждения</p><Check /></div>
-          <div><span><Headphones /></span><p>Поддержка</p><Check /></div>
-          <div><span><History /></span><p>История начислений</p><Check /></div>
+          {content.items.map((item, index) => {
+            const Icon = itemIcons[index] ?? CircleUserRound;
+            return <div key={item}><span><Icon /></span><p>{item}</p><Check /></div>;
+          })}
         </div>
       </motion.div>
 
@@ -60,8 +65,8 @@ export function HeroVisual() {
           y: { duration: 5.8, delay: 0.7, repeat: Infinity, ease: "easeInOut" },
         }}
       >
-        <span className="reward-card__icon"><Gift /></span>
-        <span><small>По условиям предложения</small><strong>Кешбэк и награды</strong></span>
+        <span className="reward-card__icon"><Headphones /></span>
+        <span><small>{content.managerLabel}</small><strong>{content.managerValue}</strong></span>
       </motion.div>
 
       <motion.div
@@ -74,8 +79,8 @@ export function HeroVisual() {
           y: { duration: 6.4, repeat: Infinity, ease: "easeInOut" },
         }}
       >
-        <Headphones />
-        <span><small>Когда нужна помощь</small><strong>Поддержка рядом</strong></span>
+        <History />
+        <span><small>{content.historyLabel}</small><strong>{content.historyValue}</strong></span>
       </motion.div>
     </div>
   );

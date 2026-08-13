@@ -1,12 +1,12 @@
 "use client";
 
-import { BookOpenCheck, Eye, Gift, Headphones, History, ShieldCheck } from "lucide-react";
+import { CircleUserRound, Headphones, History, MessageCircle, Settings, ShieldCheck } from "lucide-react";
 
 import { useI18n } from "@/components/i18n/i18n-provider";
 import { PublicSection } from "@/components/sections/public-section";
 import { publicContent } from "@/lib/i18n/public-content";
 
-const icons = [Eye, Gift, BookOpenCheck, Headphones, History, ShieldCheck] as const;
+const icons = [CircleUserRound, MessageCircle, History, Headphones, Settings, ShieldCheck] as const;
 
 export function Benefits() {
   const { locale } = useI18n();
@@ -21,7 +21,7 @@ export function Benefits() {
     >
       <div className="benefits-grid">
         {content.items.map(([title, text], index) => {
-          const Icon = icons[index] ?? Eye;
+          const Icon = icons[index] ?? CircleUserRound;
           return (
           <article className="benefit-card" key={title} data-featured={index === 3 || undefined}>
             <span className="benefit-card__icon"><Icon aria-hidden="true" /></span>

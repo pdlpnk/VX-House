@@ -17,11 +17,11 @@ const structuredData = {
   name: "VX House",
   url: siteUrl,
   description:
-    "Закрытая платформа специальных условий, заданий, программ лояльности и вознаграждений от партнёров.",
-  inLanguage: "ru",
+    "A private VX House account with direct access to a personal manager.",
+  inLanguage: ["en", "ru", "tr", "az"],
   audience: {
     "@type": "Audience",
-    audienceType: "Пользователи от 18 лет и партнёры",
+    audienceType: "Adults and partners",
   },
 };
 

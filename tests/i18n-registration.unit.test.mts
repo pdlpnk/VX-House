@@ -16,6 +16,7 @@ import {
   parseServerTimestamp,
 } from "../lib/i18n/date-time.ts";
 import { translate } from "../lib/i18n/translate.ts";
+import { publicContent } from "../lib/i18n/public-content.ts";
 import { decodeSystemMessage, encodeSystemMessage, renderSystemMessage } from "../lib/i18n/system-messages.ts";
 import { verificationEmailContent } from "../lib/services/email-provider.ts";
 import { validateRegistrationInput } from "../lib/validation/identity-profile.ts";
@@ -67,6 +68,31 @@ test("переводы типизированы, интерполируются 
   assert.match(translate("ru", "email.text", { code: "123456" }), /123456/);
   assert.match(translate("tr", "email.text", { code: "123456" }), /123456/);
   assert.match(translate("az", "email.text", { code: "123456" }), /123456/);
+});
+
+test("публичный лендинг полностью локализован и не содержит legacy-механики", async () => {
+  const cyrillic = /[А-Яа-яЁё]/u;
+  for (const locale of ["en", "tr", "az"] as const) {
+    const visibleCopy = JSON.stringify(publicContent[locale]);
+    assert.doesNotMatch(visibleCopy, cyrillic, `${locale} landing contains Russian copy`);
+    assert.doesNotMatch(visibleCopy, /\b(?:tasks?|rewards?|points?|cashback|rank|progress)\b|görev|ödül|tapşırıq|mükafat/iu);
+    assert.doesNotMatch(translate(locale, "hero.description"), cyrillic);
+  }
+
+  const allLandingCopy = JSON.stringify(publicContent);
+  assert.doesNotMatch(allLandingCopy, /VX Points|Trust Score|Bronze|кешб[эе]к|история начислений|задания и инструкции/iu);
+
+  const [heroVisual, platformPreview, header] = await Promise.all([
+    readFile(new URL("../components/hero-visual.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../components/platform-dashboard.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../components/navigation/site-header.tsx", import.meta.url), "utf8"),
+  ]);
+  for (const source of [heroVisual, platformPreview, header]) {
+    assert.doesNotMatch(source, cyrillic);
+    assert.match(source, /useI18n/u);
+  }
+  assert.match(heroVisual, /publicContent\[locale\]\.heroVisual/u);
+  assert.match(platformPreview, /publicContent\[locale\]\.preview/u);
 });
 
 test("системные сообщения хранят ключ и параметры и рендерятся на текущем языке", () => {

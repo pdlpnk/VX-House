@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { headers } from "next/headers";
 import { cache } from "react";
 import { I18nProvider } from "@/components/i18n/i18n-provider";
+import { LocalizedSkipLink } from "@/components/i18n/localized-skip-link";
 import {
   fromDatabaseLanguage,
   languagesFromAcceptLanguage,
@@ -73,10 +74,10 @@ const openGraphLocales: Readonly<Record<Locale, string>> = {
 };
 
 const metadataKeywords: Readonly<Record<Locale, string[]>> = {
-  en: ["VX House", "special terms", "loyalty programs", "tasks", "rewards"],
-  ru: ["VX House", "специальные условия", "программы лояльности", "задания", "вознаграждения"],
-  tr: ["VX House", "özel koşullar", "sadakat programları", "görevler", "ödüller"],
-  az: ["VX House", "xüsusi şərtlər", "loyallıq proqramları", "tapşırıqlar", "mükafatlar"],
+  en: ["VX House", "personal account", "personal manager", "private messenger"],
+  ru: ["VX House", "личный аккаунт", "персональный менеджер", "приватный мессенджер"],
+  tr: ["VX House", "kişisel hesap", "kişisel yönetici", "özel mesajlaşma"],
+  az: ["VX House", "şəxsi hesab", "şəxsi menecer", "şəxsi messencer"],
 };
 
 function cookieValue(cookieHeader: string | null, name: string) {
@@ -152,9 +153,7 @@ export default async function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} min-h-svh bg-background font-sans text-foreground antialiased`}
       >
         <I18nProvider initialLocale={resolution.locale} initialSource={resolution.source}>
-          <a className="skip-link" href="#main-content">
-            Skip to content
-          </a>
+          <LocalizedSkipLink />
           {children}
         </I18nProvider>
       </body>

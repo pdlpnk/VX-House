@@ -20,7 +20,7 @@ export function ProductModel() {
       className="product-model"
     >
       <div className="role-grid" aria-label={content.aria}>
-        {content.roles.map(({ label, title, description, points }, index) => {
+        {content.roles.map(({ label, title, description, features }, index) => {
           const Icon = icons[index] ?? CircleUserRound;
           return (
           <article className="role-card" key={label}>
@@ -31,8 +31,8 @@ export function ProductModel() {
             <h3>{title}</h3>
             <p>{description}</p>
             <ul>
-              {points.map((point) => (
-                <li key={point}><ShieldCheck aria-hidden="true" />{point}</li>
+              {features.map((feature) => (
+                <li key={feature}><ShieldCheck aria-hidden="true" />{feature}</li>
               ))}
             </ul>
           </article>

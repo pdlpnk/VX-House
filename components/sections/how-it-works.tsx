@@ -1,12 +1,12 @@
 "use client";
 
-import { ArrowRight, CheckCircle2, FileText, SearchCheck, UserPlus } from "lucide-react";
+import { ArrowRight, CircleUserRound, MailCheck, MessageCircle, UserPlus } from "lucide-react";
 
 import { useI18n } from "@/components/i18n/i18n-provider";
 import { PublicSection } from "@/components/sections/public-section";
 import { publicContent } from "@/lib/i18n/public-content";
 
-const icons = [UserPlus, FileText, SearchCheck, CheckCircle2] as const;
+const icons = [CircleUserRound, UserPlus, MailCheck, MessageCircle] as const;
 
 export function HowItWorks() {
   const { locale } = useI18n();

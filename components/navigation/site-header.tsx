@@ -33,7 +33,7 @@ export function SiteHeader() {
         <a
           href="#top"
           className="site-header__brand group inline-flex items-center gap-2.5 rounded-md"
-          aria-label="VX House — home"
+          aria-label={t("access.logo")}
         >
           <span className="brand-logo" aria-hidden="true">
             <Image
