@@ -132,6 +132,25 @@ test("очистка не блокирует auth, если у pending-акка�
   assert.equal(await database.user.count({ where: { id: result.userId } }), 1);
 });
 
+test("очистка не пытается удалить pending-аккаунт с append-only аналитикой", async () => {
+  const result = await service.register({
+    command: { displayName: "Pending with analytics", email: `${randomUUID()}@test.invalid`, password: "correct horse battery staple", productRole: "PLAYER", marketCode: "TR", preferredLanguage: "EN" },
+    idempotencyKey: `register-${randomUUID()}`,
+  });
+  await database.user.update({ where: { id: result.userId }, data: { createdAt: new Date(Date.now() - 13 * 60 * 60 * 1000) } });
+  await database.analyticsEvent.create({
+    data: {
+      eventName: "REGISTRATION_STARTED",
+      userId: result.userId,
+      metadata: {},
+      idempotencyKey: `expired-registration-${result.userId}`,
+    },
+  });
+
+  assert.equal(await service.purgeExpiredUnverifiedAccounts(), 0);
+  assert.equal(await database.user.count({ where: { id: result.userId } }), 1);
+});
+
 test("дубликат email и неизвестные поля отклоняются без частичной записи", async () => {
   const email = `${randomUUID()}@test.invalid`; await register("PLAYER", email);
   await assert.rejects(register("PARTNER", email), (error: unknown) => error instanceof ApplicationError && error.code === "CONFLICT");

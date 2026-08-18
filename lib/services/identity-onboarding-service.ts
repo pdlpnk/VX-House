@@ -276,6 +276,7 @@ export class IdentityOnboardingService {
         createdAt: { lt: cutoff },
         onboardingProgress: { status: { in: ["ACCOUNT_CREATED", "CONTACT_PENDING"] } },
         supportConversations: { none: {} },
+        analyticsEvents: { none: {} },
       },
       select: { id: true },
       take: 250,
