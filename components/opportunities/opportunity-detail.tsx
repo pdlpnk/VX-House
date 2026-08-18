@@ -25,7 +25,7 @@ export function OpportunityDetail({ opportunity, basePath, taskBasePath }: { opp
     try {
       const response = await fetch(`/api/opportunities/${opportunity!.id}/accept`, { method: "POST", credentials: "same-origin", headers: { "Idempotency-Key": crypto.randomUUID() } });
       const body = await response.json() as { id?: string; message?: string };
-      if (!response.ok || !body.id) throw new Error(body.message ?? t("task.startError"));
+      if (!response.ok || !body.id) throw new Error(t("task.startError"));
       window.location.assign(`${taskBasePath}/${body.id}`);
     } catch (cause) { setError(cause instanceof Error ? cause.message : t("task.startError")); setPending(false); }
   }

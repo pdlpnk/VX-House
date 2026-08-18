@@ -2,11 +2,10 @@ import { motion } from "framer-motion";
 import { ArrowLeft, ArrowRight, Check, ShieldCheck } from "lucide-react";
 
 import styles from "@/app/access/access.module.css";
-import type { AccessScenario } from "@/components/access/access-scenario-step";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useI18n } from "@/components/i18n/i18n-provider";
-import type { AccessCountry } from "@/lib/access-types";
+import type { AccessCountry, AccessScenario } from "@/lib/access-types";
 import { accessContent } from "@/lib/i18n/access-content";
 
 type AccessConsentStepProps = {

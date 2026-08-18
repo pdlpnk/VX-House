@@ -1,3 +1,5 @@
+"use client";
+
 import { ArrowRight, DatabaseZap, MessageCircle, ShieldCheck, UsersRound } from "lucide-react";
 import Link from "next/link";
 
@@ -6,23 +8,27 @@ import { DashboardGrid, DashboardGridItem, DashboardHeading, DashboardPage, Stat
 import { Card } from "@/components/ui/card";
 import type { AdminDashboardView } from "@/lib/admin";
 import type { FunnelReport } from "@/lib/analytics";
+import { useI18n } from "@/components/i18n/i18n-provider";
+import { workspaceContent } from "@/lib/i18n/workspace-content";
 
 export function AdminOverview({ stats, funnel }: { stats: AdminDashboardView; funnel: FunnelReport }) {
+  const { locale } = useI18n();
+  const copy = workspaceContent[locale].admin.overview;
   const coreSections = [
-    { href: "/admin/users", label: "Участники", description: "Профили и состояние игроков и партнёров.", purpose: "Открыть список участников", icon: UsersRound },
-    { href: "/admin/messenger", label: "Messenger", description: "Постоянные личные диалоги с участниками.", purpose: "Открыть переписку", icon: MessageCircle },
+    { href: "/admin/users", label: copy.members, description: copy.membersHelp, purpose: copy.membersPurpose, icon: UsersRound },
+    { href: "/admin/messenger", label: "Messenger", description: copy.messengerHelp, purpose: copy.messengerPurpose, icon: MessageCircle },
   ];
   const primary = [
-    { label: "Пользователи", value: stats.users, icon: DatabaseZap },
-    { label: "Новые регистрации", value: stats.registrationsToday, icon: ShieldCheck },
+    { label: copy.users, value: stats.users, icon: DatabaseZap },
+    { label: copy.registrations, value: stats.registrationsToday, icon: ShieldCheck },
   ];
   return (
     <DashboardPage>
       <DashboardHeading
-        eyebrow="Управляющая часть"
-        title="Рабочее пространство VX House"
-        description="Участники и персональные диалоги текущего MVP в одном защищённом интерфейсе."
-        action={<StatusPill tone="success">Серверные данные</StatusPill>}
+        eyebrow={copy.eyebrow}
+        title={copy.title}
+        description={copy.description}
+        action={<StatusPill tone="success">{copy.serverData}</StatusPill>}
       />
 
       <DashboardGrid className={styles.adminReadinessGrid}>
@@ -32,38 +38,38 @@ export function AdminOverview({ stats, funnel }: { stats: AdminDashboardView; fu
               <span><Icon aria-hidden="true" /></span>
               <small>{label}</small>
               <strong>{value}</strong>
-              <p>Рассчитано сервером на момент открытия страницы.</p>
+              <p>{copy.calculated}</p>
             </Card>
           </DashboardGridItem>
         ))}
       </DashboardGrid>
 
       <section className={styles.adminOperationsSummary} aria-labelledby="admin-funnel-title">
-        <header><div><span>First-party аналитика · 30 дней</span><h2 id="admin-funnel-title">Воронка получения доступа</h2><p>Тестовые и smoke-аккаунты исключены. Проценты рассчитываются сервером.</p></div><StatusPill tone="success">Внутренние события</StatusPill></header>
+        <header><div><span>{copy.analytics}</span><h2 id="admin-funnel-title">{copy.funnel}</h2><p>{copy.funnelHelp}</p></div><StatusPill tone="success">{copy.internalEvents}</StatusPill></header>
         <div>
           {[
-            ["Уникальные посетители", funnel.landingViewed, null],
-            ["Нажали «Получить доступ»", funnel.accessClicked.count, funnel.accessClicked.rate],
-            ["Начали регистрацию", funnel.registrationStarted.count, funnel.registrationStarted.rate],
-            ["Подтвердили email", funnel.emailConfirmed.count, funnel.emailConfirmed.rate],
-            ["Открыли Dashboard", funnel.dashboardOpened.count, funnel.dashboardOpened.rate],
-          ].map(([label, value, conversion]) => <article key={String(label)}><small>{label}</small><strong>{value}</strong><p>{conversion === null ? "Первый подтверждённый просмотр" : `Конверсия этапа: ${conversion}%`}</p></article>)}
+            [copy.visitors, funnel.landingViewed, null],
+            [copy.accessClicks, funnel.accessClicked.count, funnel.accessClicked.rate],
+            [copy.registrationStarted, funnel.registrationStarted.count, funnel.registrationStarted.rate],
+            [copy.emailConfirmed, funnel.emailConfirmed.count, funnel.emailConfirmed.rate],
+            [copy.dashboardOpened, funnel.dashboardOpened.count, funnel.dashboardOpened.rate],
+          ].map(([label, value, conversion]) => <article key={String(label)}><small>{label}</small><strong>{value}</strong><p>{conversion === null ? copy.firstView : copy.conversion.replace("{value}", String(conversion))}</p></article>)}
         </div>
       </section>
 
       <section className={styles.adminSectionHub} aria-labelledby="admin-sections-title">
         <header>
-          <div><span>Рабочее пространство</span><h2 id="admin-sections-title">Основные области администратора</h2><p>В навигации оставлены только разделы, необходимые для текущего MVP.</p></div>
-          <StatusPill tone="success">RBAC включён</StatusPill>
+          <div><span>{copy.workspace}</span><h2 id="admin-sections-title">{copy.areas}</h2><p>{copy.areasHelp}</p></div>
+          <StatusPill tone="success">{copy.rbac}</StatusPill>
         </header>
         <div className={styles.adminSectionGrid}>
           {coreSections.map(({ href, label, description, purpose, icon: Icon }) => (
             <Link key={href} href={href} className={styles.adminSectionCard}>
-              <div><span><Icon aria-hidden="true" /></span><StatusPill tone="neutral">Открыть</StatusPill></div>
+              <div><span><Icon aria-hidden="true" /></span><StatusPill tone="neutral">{copy.open}</StatusPill></div>
               <h3>{label}</h3>
               <p>{description}</p>
               <small>{purpose}</small>
-              <strong>Открыть раздел <ArrowRight aria-hidden="true" /></strong>
+              <strong>{copy.openSection} <ArrowRight aria-hidden="true" /></strong>
             </Link>
           ))}
         </div>
@@ -71,20 +77,20 @@ export function AdminOverview({ stats, funnel }: { stats: AdminDashboardView; fu
 
       {process.env.NODE_ENV === "development" ? (
         <section className={styles.adminOperationsSummary} aria-labelledby="demo-accounts-title">
-          <header><div><span>Локальная тестовая среда</span><h2 id="demo-accounts-title">Готовые демо-аккаунты</h2><p>Аккаунты создаются автоматически при запуске development-сервера.</p></div><StatusPill tone="neutral">Только локально</StatusPill></header>
+          <header><div><span>{copy.local}</span><h2 id="demo-accounts-title">{copy.demo}</h2><p>{copy.demoHelp}</p></div><StatusPill tone="neutral">{copy.localOnly}</StatusPill></header>
           <div>
             {[
-              ["Администратор", "admin@vxhouse.local"],
-              ["Игрок 1", "player1@vxhouse.local"],
-              ["Игрок 2", "player2@vxhouse.local"],
-            ].map(([role, email]) => <article key={email}><small>{role}</small><strong>{email}</strong><p>Пароль: VXHouse-Demo-2026!</p></article>)}
+              [copy.administrator, "admin@vxhouse.local"],
+              [copy.playerOne, "player1@vxhouse.local"],
+              [copy.playerTwo, "player2@vxhouse.local"],
+            ].map(([role, email]) => <article key={email}><small>{role}</small><strong>{email}</strong><p>{copy.password}: VXHouse-Demo-2026!</p></article>)}
           </div>
         </section>
       ) : null}
 
       <section className={styles.adminSafetyPanel} aria-labelledby="admin-safety-title">
         <span><ShieldCheck aria-hidden="true" /></span>
-        <div><small>Безопасная граница</small><h2 id="admin-safety-title">Административные действия контролирует сервер</h2><p>Доступ к участникам, Messenger и управлению тегами проверяется серверными разрешениями и фиксируется в аудите.</p></div>
+        <div><small>{copy.boundary}</small><h2 id="admin-safety-title">{copy.safety}</h2><p>{copy.safetyHelp}</p></div>
         <DatabaseZap aria-hidden="true" />
       </section>
     </DashboardPage>

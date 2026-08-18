@@ -5,23 +5,28 @@ import { AtSign, CalendarDays, Globe2, ShieldCheck, UserRound } from "lucide-rea
 import styles from "@/app/dashboard/dashboard.module.css";
 import { useDashboard } from "@/components/dashboard/dashboard-provider";
 import { DashboardCard, DashboardHeading, DashboardPage, StatusPill } from "@/components/dashboard/dashboard-ui";
+import { useI18n } from "@/components/i18n/i18n-provider";
+import { intlLocales } from "@/lib/i18n";
+import { workspaceContent } from "@/lib/i18n/workspace-content";
 
 export function PartnerProfilePage() {
   const { profile } = useDashboard();
+  const { locale } = useI18n();
+  const copy = workspaceContent[locale].partner.profile;
   if (!profile) return null;
   const pending = profile.partnerProfile?.status === "PENDING";
   return <DashboardPage>
-    <DashboardHeading eyebrow="Кабинет партнёра" title="Профиль" description="Подтверждённые данные партнёрского профиля VX House." action={<StatusPill tone={pending ? "attention" : "success"}>{pending ? "Ожидает одобрения" : "Одобрен"}</StatusPill>} />
+    <DashboardHeading eyebrow={copy.area} title={copy.title} description={copy.description} action={<StatusPill tone={pending ? "attention" : "success"}>{pending ? copy.pending : copy.approved}</StatusPill>} />
     <div className={styles.profilePageGrid}>
-      <DashboardCard icon={UserRound} label="Личные данные" title={profile.user.displayName ?? "Партнёр VX House"}>
+      <DashboardCard icon={UserRound} label={copy.personal} title={profile.user.displayName ?? copy.fallback}>
         <dl className={styles.profileFacts}>
-          <div><dt><AtSign aria-hidden="true" /> Электронная почта</dt><dd>{profile.user.email}</dd></div>
-          <div><dt><Globe2 aria-hidden="true" /> Рынок</dt><dd>{profile.market.name}</dd></div>
-          <div><dt><Globe2 aria-hidden="true" /> Язык</dt><dd>{profile.preferredLanguage}</dd></div>
-          <div><dt><CalendarDays aria-hidden="true" /> Профиль создан</dt><dd>{new Intl.DateTimeFormat("ru-RU").format(new Date(profile.createdAt))}</dd></div>
+          <div><dt><AtSign aria-hidden="true" /> {copy.email}</dt><dd>{profile.user.email}</dd></div>
+          <div><dt><Globe2 aria-hidden="true" /> {copy.market}</dt><dd>{profile.market.name}</dd></div>
+          <div><dt><Globe2 aria-hidden="true" /> {copy.language}</dt><dd>{profile.preferredLanguage}</dd></div>
+          <div><dt><CalendarDays aria-hidden="true" /> {copy.created}</dt><dd>{new Intl.DateTimeFormat(intlLocales[locale]).format(new Date(profile.createdAt))}</dd></div>
         </dl>
       </DashboardCard>
-      <div className={styles.profileAside}><DashboardCard icon={ShieldCheck} label="Состояние доступа" title={pending ? "Требуется ручное одобрение" : "Партнёрский доступ одобрен"} action={<StatusPill tone={pending ? "attention" : "success"}>{profile.accountStatus}</StatusPill>}><p className={styles.cardLead}>{pending ? "Профиль и контакт подтверждены. Партнёрские функции остаются ограниченными до решения команды VX House." : "Права определяются серверным партнёрским профилем."}</p></DashboardCard></div>
+      <div className={styles.profileAside}><DashboardCard icon={ShieldCheck} label={copy.state} title={pending ? copy.manual : copy.accessApproved} action={<StatusPill tone={pending ? "attention" : "success"}>{profile.accountStatus}</StatusPill>}><p className={styles.cardLead}>{pending ? copy.pendingHelp : copy.approvedHelp}</p></DashboardCard></div>
     </div>
   </DashboardPage>;
 }

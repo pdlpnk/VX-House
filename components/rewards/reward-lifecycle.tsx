@@ -21,8 +21,8 @@ export function RewardLifecycle({ reward }: { reward: RewardView }) {
     setPending(true); setMessage("");
     try {
       const response = await fetch(`/api/rewards/${reward.id}/claim`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ idempotencyKey: `claim-${reward.id}-${crypto.randomUUID()}` }) });
-      const payload = await response.json() as { error?: { message?: string } };
-      if (!response.ok) throw new Error(payload.error?.message ?? t("rewardLife.claimError"));
+      await response.json();
+      if (!response.ok) throw new Error(t("rewardLife.claimError"));
       setMessage(t("rewardLife.claimed")); router.refresh();
     } catch (error) { setMessage(error instanceof Error ? error.message : t("rewardLife.actionError")); }
     finally { setPending(false); }

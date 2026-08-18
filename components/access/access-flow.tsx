@@ -21,7 +21,7 @@ import { LanguageSwitcher } from "@/components/i18n/language-switcher";
 import { useI18n } from "@/components/i18n/i18n-provider";
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import type { AccessCountry, AccessScenario } from "@/lib/access-types";
-import { fromDatabaseLanguage, toDatabaseLanguage } from "@/lib/i18n";
+import { fromDatabaseLanguage, toDatabaseLanguage, type MessageKey } from "@/lib/i18n";
 import { trackAnalyticsEvent } from "@/lib/analytics/client";
 
 const TOTAL_STEPS = 8;
@@ -50,6 +50,33 @@ class ApiRequestError extends Error {
   constructor(message: string, readonly code?: string, readonly details?: Record<string, string>) { super(message); }
 }
 
+const API_ERROR_KEYS: Readonly<Record<string, MessageKey>> = {
+  INVALID_CREDENTIALS: "access.invalidCredentials",
+  INVALID_CODE: "access.invalidCode",
+  EXPIRED_CODE: "access.expiredCode",
+  ATTEMPTS_EXHAUSTED: "access.attemptsExceeded",
+  RATE_LIMITED: "access.rateLimited",
+  VALIDATION: "access.validationFailed",
+  CONFLICT: "access.conflict",
+  IDEMPOTENCY_CONFLICT: "access.conflict",
+  AUTHENTICATION_REQUIRED: "access.authenticationRequired",
+  FORBIDDEN: "access.forbidden",
+  NOT_FOUND: "access.notFound",
+  SERVICE_UNAVAILABLE: "access.serviceUnavailable",
+};
+
+function localizedApiError(
+  error: unknown,
+  t: (key: MessageKey) => string,
+  fallback: MessageKey,
+) {
+  if (error instanceof ApiRequestError && error.code) {
+    const key = API_ERROR_KEYS[error.code];
+    if (key) return t(key);
+  }
+  return t(fallback);
+}
+
 async function api<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, {
     ...init,
@@ -57,7 +84,7 @@ async function api<T>(url: string, init?: RequestInit): Promise<T> {
     headers: { "content-type": "application/json", ...(init?.headers ?? {}) },
   });
   const body = await response.json().catch(() => ({})) as { message?: string; error?: string; details?: Record<string, string> } & T;
-  if (!response.ok) throw new ApiRequestError(body.message ?? "Не удалось выполнить запрос. Повторите попытку.", body.error, body.details);
+  if (!response.ok) throw new ApiRequestError(body.message ?? "Request failed", body.error, body.details);
   return body;
 }
 
@@ -185,7 +212,7 @@ export function AccessFlow() {
       go(3);
       if (!result.deliveryAvailable) setMessage(t("access.emailFailed"));
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : t("access.createFailed"));
+      setMessage(localizedApiError(error, t, "access.createFailed"));
     } finally {
       setPending(false);
     }
@@ -197,7 +224,7 @@ export function AccessFlow() {
       await api("/api/auth/email/verify", { method: "POST", body: JSON.stringify({ code }) });
       applySnapshot(await api<Snapshot>("/api/onboarding"));
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : t("access.verifyFailed"));
+      setMessage(localizedApiError(error, t, "access.verifyFailed"));
     } finally {
       setPending(false);
     }
@@ -215,7 +242,7 @@ export function AccessFlow() {
       const result = await api<{ code: string }>("/api/auth/email/development-code").catch(() => null);
       setDevelopmentCode(result?.code ?? null);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : t("access.resendFailed"));
+      setMessage(localizedApiError(error, t, "access.resendFailed"));
     } finally {
       setPending(false);
     }
@@ -231,7 +258,7 @@ export function AccessFlow() {
       setDestination(result.redirectTo === "/dashboard" ? "/dashboard/opportunities" : "/partner/opportunities");
       go(8);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : t("access.completeFailed"));
+      setMessage(localizedApiError(error, t, "access.completeFailed"));
     } finally {
       setPending(false);
     }
@@ -243,7 +270,7 @@ export function AccessFlow() {
       await api("/api/auth/logout", { method: "POST", body: "{}" });
       window.location.assign("/access");
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : t("access.logoutFailed"));
+      setMessage(localizedApiError(error, t, "access.logoutFailed"));
       setPending(false);
     }
   }
@@ -262,7 +289,7 @@ export function AccessFlow() {
         applySnapshot(await api<Snapshot>("/api/onboarding"));
       }
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : t("access.loginFailed"));
+      setMessage(localizedApiError(error, t, "access.loginFailed"));
     } finally {
       setPending(false);
     }
@@ -275,7 +302,7 @@ export function AccessFlow() {
       setResetCooldown(result.cooldownSeconds);
       setResetStage("code");
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : t("passwordReset.error"));
+      setMessage(localizedApiError(error, t, "passwordReset.error"));
     } finally { setPending(false); }
   }
 
@@ -296,7 +323,7 @@ export function AccessFlow() {
       await api("/api/auth/password-reset/complete", { method: "POST", body: JSON.stringify({ password: resetPassword, passwordConfirmation: resetConfirmation }) });
       setPassword(""); setResetPassword(""); setResetConfirmation(""); setResetStage("success");
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : t("passwordReset.error"));
+      setMessage(localizedApiError(error, t, "passwordReset.error"));
     } finally { setPending(false); }
   }
 

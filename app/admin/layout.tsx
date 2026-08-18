@@ -7,8 +7,8 @@ import { requireAdminWorkspace } from "@/lib/server";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Административная панель",
-  description: "Защищённая административная панель VX House.",
+  title: "Administration",
+  description: "Secure VX House administration workspace.",
   robots: { index: false, follow: false },
 };
 

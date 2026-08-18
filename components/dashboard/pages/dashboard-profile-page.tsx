@@ -6,6 +6,7 @@ import styles from "@/app/dashboard/dashboard.module.css";
 import { useDashboard } from "@/components/dashboard/dashboard-provider";
 import { DashboardCard, DashboardHeading, DashboardPage, StatusPill } from "@/components/dashboard/dashboard-ui";
 import { useI18n } from "@/components/i18n/i18n-provider";
+import { VxIdCopy } from "@/components/ui/vx-id-copy";
 
 export function DashboardProfilePage() {
   const { profile } = useDashboard();
@@ -17,6 +18,7 @@ export function DashboardProfilePage() {
     <div className={styles.profilePageGrid}>
       <DashboardCard icon={UserRound} label={t("profile.personalData")} title={profile.user.displayName ?? t("profile.userFallback")}>
         <dl className={styles.profileFacts}>
+          <div><dt>{t("account.id")}</dt><dd><VxIdCopy vxId={profile.user.vxId} compact /></dd></div>
           <div><dt><AtSign aria-hidden="true" /> {t("profile.email")}</dt><dd>{profile.user.email}</dd></div>
           <div><dt><Globe2 aria-hidden="true" /> {t("profile.country")}</dt><dd>{profile.market.name}</dd></div>
           <div><dt><Globe2 aria-hidden="true" /> {t("profile.language")}</dt><dd>{profile.preferredLanguage}</dd></div>

@@ -33,7 +33,7 @@ export function TaskLifecycle({ initialTask }: { initialTask: UserTaskView }) {
       const body = action === "start" ? undefined : JSON.stringify(action === "complete" ? { idempotencyKey: crypto.randomUUID() } : { payload: { comment, reference }, idempotencyKey: crypto.randomUUID() });
       const response = await fetch(`/api/tasks/${task.id}/${action}`, { method: "POST", credentials: "same-origin", headers: body ? { "Content-Type": "application/json" } : undefined, body });
       const result = await response.json() as UserTaskView & { message?: string };
-      if (!response.ok) throw new Error(result.message ?? t("lifecycle.actionError"));
+      if (!response.ok) throw new Error(t("lifecycle.actionError"));
       setTask(result); setMessage(action === "draft" ? t("lifecycle.draftSaved") : action === "submit" || action === "complete" ? t("lifecycle.sent") : t("lifecycle.started"));
     } catch (cause) { setMessage(cause instanceof Error ? cause.message : t("lifecycle.failed")); }
     finally { setPending(false); }

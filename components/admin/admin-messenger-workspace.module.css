@@ -25,6 +25,7 @@
 .chatCopy > span { display: flex; align-items: center; gap: .4rem; }
 .chatCopy strong { overflow: hidden; flex: 1; font-size: .66rem; font-weight: 620; text-overflow: ellipsis; white-space: nowrap; }
 .chatCopy time { color: oklch(.5 .01 25); font-size: .48rem; }
+.chatCopy .chatVxId { margin-top: .12rem; color: oklch(.62 .055 25); font-size: .49rem; font-weight: 650; letter-spacing: .055em; }
 .chatCopy small { display: block; overflow: hidden; flex: 1; margin-top: .24rem; color: oklch(.57 .01 25); font-size: .54rem; text-overflow: ellipsis; white-space: nowrap; }
 .chatCopy svg { width: .65rem; color: oklch(.64 .1 25); }
 .chatCopy > span:last-child { margin-top: .32rem; }

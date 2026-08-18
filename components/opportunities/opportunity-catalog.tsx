@@ -32,7 +32,7 @@ export function OpportunityCatalog({ role, basePath, initialItems }: { role: "PL
         const params = new URLSearchParams(); if (search.trim()) params.set("search", search.trim()); if (type) params.set("type", type);
         const response = await fetch(`/api/opportunities?${params}`, { credentials: "same-origin", cache: "no-store", signal: controller.signal });
         const body = await response.json() as { items?: OpportunityView[]; message?: string };
-        if (!response.ok) throw new Error(body.message ?? t("opportunity.updateError"));
+        if (!response.ok) throw new Error(t("opportunity.updateError"));
         setItems(body.items ?? []);
       } catch (cause) { if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : t("opportunity.updateError")); }
       finally { if (!controller.signal.aborted) setPending(false); }

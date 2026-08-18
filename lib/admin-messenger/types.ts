@@ -11,6 +11,7 @@ export function isAdminMessengerRole(value: string): value is AdminMessengerRole
 
 export type AdminMessengerPlayer = {
   userId: string;
+  vxId: string;
   conversationId: string;
   name: string;
   email: string;

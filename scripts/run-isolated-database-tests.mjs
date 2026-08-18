@@ -44,6 +44,8 @@ try {
   await run(node, [prisma, "generate"], env);
   const defaultTestFiles = [
     "tests/registration-production.unit.test.mts",
+    "tests/vx-id.unit.test.mts",
+    "tests/vx-id.integration.test.mts",
     "tests/database-invariants.integration.test.mts",
     "tests/identity-profile-consent.integration.test.mts",
     "tests/functional-identity-onboarding.integration.test.mts",

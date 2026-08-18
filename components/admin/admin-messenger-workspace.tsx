@@ -8,6 +8,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } fro
 
 import { useI18n } from "@/components/i18n/i18n-provider";
 import { AdminTagManager, TagChips, TagFilters } from "@/components/admin/admin-tag-controls";
+import { VxIdCopy } from "@/components/ui/vx-id-copy";
 import type { AdminTagAssignmentView, AdminTagView } from "@/lib/admin-tags";
 import type { AdminMessengerDetail, AdminMessengerList, AdminMessengerNote, AdminMessengerPlayer, AdminMessengerScope } from "@/lib/admin-messenger";
 import { formatLocalDateTime, formatLocalTime } from "@/lib/i18n";
@@ -29,6 +30,7 @@ function ChatListItem({ item, active, onClick }: { item: AdminMessengerPlayer; a
       <span className={styles.avatar} data-status={item.online ? "online" : "offline"} aria-label={`${item.name}: ${item.online ? t("adminMessenger.online") : t("adminMessenger.offline")}`}>{item.initials}</span>
       <span className={styles.chatCopy}>
         <span><strong>{item.name}</strong><time dateTime={item.lastMessageAt ?? undefined}>{item.lastMessageAt ? formatLocalTime(locale, item.lastMessageAt) : ""}</time></span>
+        <span className={styles.chatVxId}>{item.vxId}</span>
         <span><small>{item.lastMessage}</small>{item.hasNotes ? <NotebookPen aria-label={t("adminMessenger.hasNote")} /> : null}</span>
         <TagChips tags={item.tags} />
       </span>
@@ -130,14 +132,14 @@ function AdminComposer({ detail, onUpdate }: { detail: AdminMessengerDetail; onU
         body: JSON.stringify({ body: body.trim() || t("messenger.attachment", { name: file?.name ?? "" }) }),
       });
       let updated = await response.json() as AdminMessengerDetail & { message?: string };
-      if (!response.ok) throw new Error(updated.message || t("messenger.sendError"));
+      if (!response.ok) throw new Error(t("messenger.sendError"));
       if (file) {
         const latest = updated.conversation.messages.findLast((message) => message.authorType === "OPERATOR");
         if (!latest) throw new Error(t("messenger.uploadError"));
         const form = new FormData(); form.set("messageId", latest.id); form.set("file", file);
         const upload = await fetch(`/api/admin/messenger/${detail.conversation.id}/attachments`, { method: "POST", body: form });
-        const result = await upload.json() as { message?: string };
-        if (!upload.ok) throw new Error(result.message || t("messenger.uploadError"));
+        await upload.json();
+        if (!upload.ok) throw new Error(t("messenger.uploadError"));
         const refresh = await fetch(`/api/admin/messenger/${detail.conversation.id}`, { cache: "no-store" });
         if (refresh.ok) updated = await refresh.json() as AdminMessengerDetail;
       }
@@ -184,7 +186,7 @@ function PlayerPanel({ detail, tags, onUpdate, onTagsChange, onClose }: { detail
   return (
     <aside className={styles.playerPanel} aria-label={t("adminMessenger.memberInfo")}>
       <header><div><small>{detail.player.role === "PARTNER" ? t("adminMessenger.partnerProfile") : t("adminMessenger.playerProfile")}</small><strong>{detail.player.name}</strong></div><button type="button" onClick={onClose} aria-label={t("adminMessenger.infoClose")}><X aria-hidden="true" /></button></header>
-      <div className={styles.profileBlock}><span className={styles.profileAvatar} data-status={detail.player.online ? "online" : "offline"} aria-label={`${detail.player.name}: ${detail.player.online ? t("adminMessenger.online") : t("adminMessenger.offline")}`}>{detail.player.initials}</span><strong>{detail.player.name}</strong><small>{detail.player.email}</small><TagChips tags={detail.player.tags} /><AdminTagManager userId={detail.player.userId} assigned={detail.player.tags} tags={tags} onAssignedChange={(next) => onUpdate({ ...detail, player: { ...detail.player, tags: next } })} onTagsChange={onTagsChange} /><Link href={detail.player.profileHref}>{t("adminMessenger.fullProfile")}</Link></div>
+      <div className={styles.profileBlock}><span className={styles.profileAvatar} data-status={detail.player.online ? "online" : "offline"} aria-label={`${detail.player.name}: ${detail.player.online ? t("adminMessenger.online") : t("adminMessenger.offline")}`}>{detail.player.initials}</span><strong>{detail.player.name}</strong><small>{detail.player.email}</small><VxIdCopy vxId={detail.player.vxId} compact /><TagChips tags={detail.player.tags} /><AdminTagManager userId={detail.player.userId} assigned={detail.player.tags} tags={tags} onAssignedChange={(next) => onUpdate({ ...detail, player: { ...detail.player, tags: next } })} onTagsChange={onTagsChange} /><Link href={detail.player.profileHref}>{t("adminMessenger.fullProfile")}</Link></div>
       <dl className={styles.profileFacts}>
         <div><dt>{t("adminMessenger.role")}</dt><dd>{detail.player.role === "PARTNER" ? t("adminMessenger.partnerRole") : t("adminMessenger.playerRole")}</dd></div><div><dt>{t("adminMessenger.market")}</dt><dd>{detail.player.market}</dd></div>
         <div><dt>{t("adminMessenger.registered")}</dt><dd>{formatLocalDateTime(locale, detail.player.registeredAt)}</dd></div>
@@ -308,7 +310,7 @@ export function AdminMessengerWorkspace({ initialList, initialDetail }: { initia
           <header className={styles.conversationHeader}>
             <button type="button" className={styles.mobileBack} onClick={() => setMobileChat(false)} aria-label={t("adminMessenger.back")}><ArrowLeft aria-hidden="true" /></button>
             <span className={styles.avatar} data-status={detail.player.online ? "online" : "offline"} aria-label={`${detail.player.name}: ${detail.player.online ? t("adminMessenger.online") : t("adminMessenger.offline")}`}>{detail.player.initials}</span>
-            <div className={styles.conversationIdentity}><strong>{detail.player.name}</strong><small>{detail.player.online ? t("adminMessenger.online") : t("adminMessenger.offline")}</small><TagChips tags={detail.player.tags} /></div>
+            <div className={styles.conversationIdentity}><strong>{detail.player.name}</strong><small>{detail.player.vxId} · {detail.player.online ? t("adminMessenger.online") : t("adminMessenger.offline")}</small><TagChips tags={detail.player.tags} /></div>
             <AdminTagManager userId={detail.player.userId} assigned={detail.player.tags} tags={list.tags} onAssignedChange={updateAssigned} onTagsChange={updateAvailableTags} />
             <button type="button" className={styles.infoButton} data-active={panelOpen || undefined} onClick={() => setPanelOpen((open) => !open)} aria-label={panelOpen ? t("adminMessenger.infoClose") : t("adminMessenger.infoOpen")} aria-expanded={panelOpen}><Info aria-hidden="true" /></button>
           </header>

@@ -9,6 +9,7 @@ import type { AesGcmDataProtector, EncryptedPayload } from "@/lib/data-protectio
 import { Prisma, type PrismaClient } from "@/lib/db";
 import type { SupportConversationView } from "@/lib/support";
 import { databaseLocale, decodeSystemMessage, renderSystemMessage } from "@/lib/i18n";
+import { normalizeVxIdSearch } from "@/lib/vx-id";
 import { ensurePersonalConversationRecord } from "./personal-conversation";
 
 const encoder = new TextEncoder();
@@ -51,9 +52,11 @@ export class AdminMessengerService {
   async list(actor: AuthenticatedPrincipal, search = "", scope: AdminMessengerScope = "active", tagId?: string): Promise<AdminMessengerList> {
     requireAdmin(actor);
     const query = search.trim();
+    const vxId = normalizeVxIdSearch(query);
     const searchFilters: Prisma.UserProfileWhereInput[] = query ? [
       { user: { displayName: { contains: query, mode: "insensitive" } } },
       { user: { email: { contains: query, mode: "insensitive" } } },
+      ...(vxId ? [{ user: { vxId } }] : []),
       ...(/^[0-9a-f-]{8,}$/i.test(query) ? [{ userId: query }] : []),
     ] : [];
     const profiles = await this.database.userProfile.findMany({
@@ -104,6 +107,7 @@ export class AdminMessengerService {
         : "Диалог создан";
       items.push({
         userId: profile.userId,
+        vxId: profile.user.vxId,
         conversationId: conversation.id,
         name: profile.user.displayName || "Участник VX House",
         email: profile.user.email,

@@ -202,7 +202,7 @@ function Composer({
         }),
       });
       let updated = await response.json() as SupportConversationView & { message?: string };
-      if (!response.ok) throw new Error(updated.message ?? t("messenger.sendError"));
+      if (!response.ok) throw new Error(t("messenger.sendError"));
 
       if (file) {
         const latest = updated.messages.findLast((item) => item.authorType === "USER");
@@ -214,8 +214,8 @@ function Composer({
           method: "POST",
           body: attachment,
         });
-        const uploadResult = await upload.json() as { message?: string };
-        if (!upload.ok) throw new Error(uploadResult.message ?? t("messenger.uploadError"));
+        await upload.json();
+        if (!upload.ok) throw new Error(t("messenger.uploadError"));
         const refreshed = await fetch(`/api/support/${conversation.id}`);
         if (refreshed.ok) updated = await refreshed.json() as SupportConversationView;
       }

@@ -8,8 +8,8 @@ import { getSupportNotificationService, requireProductWorkspaceContext } from "@
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Кабинет партнёра",
-  description: "Защищённое рабочее пространство партнёра VX House.",
+  title: "Partner workspace",
+  description: "Secure VX House partner workspace.",
   robots: { index: false, follow: false },
 };
 

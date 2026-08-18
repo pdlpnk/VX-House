@@ -45,6 +45,13 @@ test("список участников показывает игроков и �
   const participants = await service.list(admin, "users");
   assert.deepEqual(new Set(participants.items.map((item) => item.eyebrow)), new Set(["Игрок", "Партнёр"]));
   assert.ok(participants.items.some((item) => item.id === partnerId && item.status === "PENDING"));
+  const player = await database.user.findUniqueOrThrow({ where: { id: playerId }, select: { vxId: true } });
+  const numericVxId = player.vxId.slice(2);
+  for (const query of [player.vxId, player.vxId.toLowerCase(), numericVxId]) {
+    const result = await service.list(admin, "users", { search: query });
+    assert.deepEqual(result.items.map((item) => item.id), [playerId]);
+    assert.equal(result.items[0]?.vxId, player.vxId);
+  }
 });
 
 test("единые admin tags поддерживают CRUD, несколько назначений и серверную фильтрацию", async () => {
@@ -85,6 +92,12 @@ test("Admin Messenger синхронизирует постоянный диал
   const partnerConversation = archive.items.find((item) => item.userId === partnerId);
   assert.equal(partnerConversation?.role, "PARTNER");
   assert.equal((await messenger.detail(admin, partnerConversation!.conversationId)).player.userId, partnerId);
+  const playerVxId = await database.user.findUniqueOrThrow({ where: { id: playerId }, select: { vxId: true } });
+  for (const query of [playerVxId.vxId, playerVxId.vxId.toLowerCase(), playerVxId.vxId.slice(2)]) {
+    const result = await messenger.list(admin, query, "archive");
+    assert.deepEqual(result.items.map((item) => item.userId), [playerId]);
+    assert.equal(result.items[0]?.vxId, playerVxId.vxId);
+  }
   const conversationId = archive.items.find((item) => item.userId === playerId)!.conversationId;
   assert.equal((await messenger.list(admin)).items.length, 0, "системные onboarding-сообщения не активируют диалог");
   const userMessage = await database.supportMessage.create({ data: { conversationId, authorType: "USER", authorId: playerId, bodyProtected: await encrypted("Сообщение игрока", "support-message", conversationId) } });

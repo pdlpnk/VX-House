@@ -5,6 +5,7 @@ import Image from "next/image";
 import { Container } from "@/components/container";
 import { useI18n } from "@/components/i18n/i18n-provider";
 import { publicContent } from "@/lib/i18n/public-content";
+import { PRIVACY_POLICY_URL } from "@/lib/legal-links";
 
 export function SiteFooter() {
   const { locale } = useI18n();
@@ -20,7 +21,9 @@ export function SiteFooter() {
         </div>
         <nav aria-label={content.nav}>
           <a href="#responsibility">{content.terms}</a>
-          <a href="#responsibility">{content.privacy}</a>
+          <a href={PRIVACY_POLICY_URL} target="_blank" rel="noopener noreferrer">
+            {content.privacy}
+          </a>
           <a href="#responsible-use">{content.responsibility}</a>
           <a href="#faq">{content.support}</a>
         </nav>

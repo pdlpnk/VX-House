@@ -4,6 +4,7 @@ export type AdminSectionId = (typeof adminSectionIds)[number];
 export type AdminFieldView = Readonly<{ label: string; value: string; help?: string }>;
 export type AdminRecordView = Readonly<{
   id: string;
+  vxId?: string;
   eyebrow: string;
   title: string;
   description: string;

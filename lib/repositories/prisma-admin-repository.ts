@@ -3,6 +3,7 @@ import "server-only";
 import type { AdminListQuery, AdminSectionId } from "@/lib/admin";
 import { ADMIN_MESSENGER_ROLES } from "@/lib/admin-messenger";
 import type { DatabaseClient } from "@/lib/db";
+import { normalizeVxIdSearch } from "@/lib/vx-id";
 
 const take = (value?: number) => Math.min(Math.max(value ?? 30, 1), 100);
 // A single admin catalog spans heterogeneous Prisma payloads. Every row is
@@ -30,10 +31,11 @@ export class PrismaAdminRepository {
   list(section: AdminSectionId, query: AdminListQuery): Promise<AdminRepositoryRow[]> {
     const limit = take(query.take);
     const search = query.search?.trim();
+    const vxId = search ? normalizeVxIdSearch(search) : null;
     const cursor = query.cursor ? { id: query.cursor } : undefined;
     const paging = { take: limit + 1, ...(cursor ? { cursor, skip: 1 } : {}) };
     switch (section) {
-      case "users": return this.database.user.findMany({ ...paging, where: { disabledAt: null, ...(search ? { OR: [{ email: { contains: search, mode: "insensitive" as const } }, { displayName: { contains: search, mode: "insensitive" as const } }] } : {}), ...(query.tagId ? { adminTagAssignments: { some: { tagId: query.tagId } } } : {}), profile: { productRole: { in: [...ADMIN_MESSENGER_ROLES] }, ...(query.role ? { productRole: query.role as "PLAYER" | "PARTNER" } : {}), ...(query.status ? { accountStatus: query.status as never } : {}), ...(query.market ? { market: { code: query.market } } : {}) } }, include: { profile: { include: { market: true, partnerProfile: true, statusHistory: { orderBy: { occurredAt: "desc" }, take: 10 } } }, roles: true, adminTagAssignments: { include: { tag: true }, orderBy: { tag: { name: "asc" } } } }, orderBy: [{ createdAt: "desc" }, { id: "desc" }] });
+      case "users": return this.database.user.findMany({ ...paging, where: { disabledAt: null, ...(search ? { OR: [{ email: { contains: search, mode: "insensitive" as const } }, { displayName: { contains: search, mode: "insensitive" as const } }, ...(vxId ? [{ vxId }] : [])] } : {}), ...(query.tagId ? { adminTagAssignments: { some: { tagId: query.tagId } } } : {}), profile: { productRole: { in: [...ADMIN_MESSENGER_ROLES] }, ...(query.role ? { productRole: query.role as "PLAYER" | "PARTNER" } : {}), ...(query.status ? { accountStatus: query.status as never } : {}), ...(query.market ? { market: { code: query.market } } : {}) } }, include: { profile: { include: { market: true, partnerProfile: true, statusHistory: { orderBy: { occurredAt: "desc" }, take: 10 } } }, roles: true, adminTagAssignments: { include: { tag: true }, orderBy: { tag: { name: "asc" } } } }, orderBy: [{ createdAt: "desc" }, { id: "desc" }] });
       case "services": return this.database.partnerService.findMany({ ...paging, where: { ...(search ? { name: { contains: search, mode: "insensitive" as const } } : {}), ...(query.status ? { status: query.status as never } : {}) }, include: { markets: { include: { market: true } } }, orderBy: [{ updatedAt: "desc" }, { id: "desc" }] });
       case "opportunities": return this.database.opportunity.findMany({ ...paging, where: { ...(search ? { OR: [{ title: { contains: search, mode: "insensitive" as const } }, { key: { contains: search, mode: "insensitive" as const } }] } : {}), ...(query.status ? { status: query.status as never } : {}), ...(query.role || query.market ? { audiences: { some: { ...(query.role ? { productRole: query.role } : {}), ...(query.market ? { market: { code: query.market } } : {}) } } } : {}) }, include: { audiences: { include: { market: true } }, taskDefinitions: true }, orderBy: [{ updatedAt: "desc" }, { id: "desc" }] });
       case "tasks": return this.database.taskDefinition.findMany({ ...paging, where: search ? { OR: [{ key: { contains: search, mode: "insensitive" as const } }, { versions: { some: { title: { contains: search, mode: "insensitive" as const } } } }] } : {}, include: { versions: { include: { audiences: { include: { market: true } }, instructionVersion: true }, orderBy: { version: "desc" } }, _count: { select: { userTasks: true } } }, orderBy: [{ updatedAt: "desc" }, { id: "desc" }] });

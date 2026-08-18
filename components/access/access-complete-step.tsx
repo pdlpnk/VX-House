@@ -3,11 +3,10 @@ import { Check, Clock3, KeyRound } from "lucide-react";
 import Link from "next/link";
 
 import styles from "@/app/access/access.module.css";
-import type { AccessScenario } from "@/components/access/access-scenario-step";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useI18n } from "@/components/i18n/i18n-provider";
-import type { AccessCountry } from "@/lib/access-types";
+import type { AccessCountry, AccessScenario } from "@/lib/access-types";
 import type { Locale } from "@/lib/i18n";
 import { accessContent } from "@/lib/i18n/access-content";
 import { localeNames } from "@/lib/i18n";

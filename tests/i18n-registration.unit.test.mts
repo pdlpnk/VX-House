@@ -227,3 +227,56 @@ test("Dashboard и Admin Messenger используют единый слова�
   assert.match(adminMessenger, /adminMessenger\.archive/u);
   assert.match(shell, /t\(config\.labelKey\)/u);
 });
+
+test("footer ведёт на опубликованную политику конфиденциальности VX House", async () => {
+  const footer = await readFile(new URL("../components/sections/site-footer.tsx", import.meta.url), "utf8");
+  const legalLinks = await readFile(new URL("../lib/legal-links.ts", import.meta.url), "utf8");
+  assert.match(footer, /PRIVACY_POLICY_URL/u);
+  assert.match(footer, /target="_blank"/u);
+  assert.match(footer, /rel="noopener noreferrer"/u);
+  assert.match(legalLinks, /freeprivacypolicy\.com\/live\/80b6db28-ea40-4396-982d-312948d71b96/u);
+});
+
+test("auth-ошибки локализуются по серверному коду, а не по русскому message", async () => {
+  assert.equal(translate("en", "access.invalidCredentials"), "The email or password is incorrect.");
+  assert.equal(translate("ru", "access.invalidCredentials"), "Неверная электронная почта или пароль.");
+  assert.equal(translate("tr", "access.invalidCredentials"), "E-posta adresi veya parola hatalı.");
+  assert.equal(translate("az", "access.invalidCredentials"), "E-poçt ünvanı və ya parol yanlışdır.");
+
+  const flow = await readFile(new URL("../components/access/access-flow.tsx", import.meta.url), "utf8");
+  assert.match(flow, /INVALID_CREDENTIALS:\s*"access\.invalidCredentials"/u);
+  assert.match(flow, /localizedApiError\(error, t, "access\.loginFailed"\)/u);
+  assert.doesNotMatch(flow, /setMessage\(error instanceof Error \? error\.message/u);
+});
+
+test("публичный, access, player и Messenger UI не содержат русских hardcoded-строк", async () => {
+  const files = [
+    "../components/access/access-flow.tsx",
+    "../components/messenger/personal-messenger.tsx",
+    "../components/sections/hero.tsx",
+    "../components/sections/inside-platform.tsx",
+    "../components/sections/how-it-works.tsx",
+    "../components/sections/site-footer.tsx",
+    "../components/dashboard/workspace-shell.tsx",
+  ];
+
+  for (const file of files) {
+    const source = await readFile(new URL(file, import.meta.url), "utf8");
+    assert.doesNotMatch(source, /[А-Яа-яЁё]/u, `${file} содержит русскую строку вне словаря`);
+  }
+});
+
+test("пользовательские действия не показывают необработанный server message", async () => {
+  const files = [
+    "../components/messenger/personal-messenger.tsx",
+    "../components/opportunities/opportunity-detail.tsx",
+    "../components/opportunities/opportunity-catalog.tsx",
+    "../components/opportunities/task-lifecycle.tsx",
+    "../components/rewards/reward-lifecycle.tsx",
+  ];
+
+  for (const file of files) {
+    const source = await readFile(new URL(file, import.meta.url), "utf8");
+    assert.doesNotMatch(source, /(?:payload|body|result|updated)\.message\s*(?:\?\?|\|\|)/u, `${file} показывает server message напрямую`);
+  }
+});
