@@ -4,7 +4,7 @@
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { ArrowLeft, Download, FileText, Image as ImageIcon, Info, LoaderCircle, MessageCircle, MoreHorizontal, NotebookPen, Paperclip, Pencil, Search, Send, Smile, Trash2, X } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent } from "react";
 
 import { useI18n } from "@/components/i18n/i18n-provider";
 import { AdminTagManager, TagChips, TagFilters } from "@/components/admin/admin-tag-controls";
@@ -57,21 +57,38 @@ function Attachment({ conversationId, attachment }: { conversationId: string; at
 function Messages({ detail, pending }: { detail: AdminMessengerDetail; pending: boolean }) {
   const { locale, t } = useI18n();
   const scrollRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
   const restoredConversation = useRef("");
   const stickToBottom = useRef(true);
-  useEffect(() => {
+
+  const scrollToBottom = useCallback((behavior: ScrollBehavior = "auto") => {
     const list = scrollRef.current;
     if (!list) return;
-    const key = `vx-house:admin-messenger-scroll:${detail.conversation.id}`;
+    list.scrollTo({ top: list.scrollHeight, behavior });
+  }, []);
+
+  useLayoutEffect(() => {
+    const list = scrollRef.current;
+    if (!list) return;
     if (restoredConversation.current !== detail.conversation.id) {
       restoredConversation.current = detail.conversation.id;
-      const saved = Number(window.sessionStorage.getItem(key));
-      list.scrollTop = Number.isFinite(saved) && saved > 0 ? saved : list.scrollHeight;
-      stickToBottom.current = list.scrollHeight - list.scrollTop - list.clientHeight < 80;
+      stickToBottom.current = true;
+      scrollToBottom();
       return;
     }
-    if (stickToBottom.current) list.scrollTo({ top: list.scrollHeight, behavior: "smooth" });
-  }, [detail.conversation.id, detail.conversation.messages.length, pending]);
+    if (stickToBottom.current) scrollToBottom("smooth");
+  }, [detail.conversation.id, detail.conversation.messages.length, pending, scrollToBottom]);
+
+  useEffect(() => {
+    const content = contentRef.current;
+    if (!content || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(() => {
+      if (stickToBottom.current) scrollToBottom();
+    });
+    observer.observe(content);
+    return () => observer.disconnect();
+  }, [detail.conversation.id, scrollToBottom]);
+
   return (
     <div
       ref={scrollRef}
@@ -80,25 +97,26 @@ function Messages({ detail, pending }: { detail: AdminMessengerDetail; pending: 
       onScroll={(event) => {
         const list = event.currentTarget;
         stickToBottom.current = list.scrollHeight - list.scrollTop - list.clientHeight < 80;
-        window.sessionStorage.setItem(`vx-house:admin-messenger-scroll:${detail.conversation.id}`, String(list.scrollTop));
       }}
     >
-      <div className={styles.dayLabel}>{t("adminMessenger.history")}</div>
-      {detail.conversation.messages.length ? detail.conversation.messages.map((message) => {
-        const author = message.authorType === "OPERATOR" ? "admin" : message.authorType === "USER" ? "player" : "system";
-        return (
-          <motion.article key={message.id} className={styles.message} data-author={author} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={transition}>
-            {author !== "admin" ? <span className={styles.messageAvatar}>{author === "system" ? "VX" : detail.player.initials}</span> : null}
-            <div>
-              <small>{message.authorLabel}</small>
-              <p>{message.body}</p>
-              {message.attachments.length ? <div className={styles.messageAttachments}>{message.attachments.map((attachment) => <Attachment key={attachment.id} conversationId={detail.conversation.id} attachment={attachment} />)}</div> : null}
-              <time dateTime={message.createdAt}>{formatLocalTime(locale, message.createdAt)}</time>
-            </div>
-          </motion.article>
-        );
-      }) : <div className={styles.emptyMessages}><MessageCircle aria-hidden="true" /><strong>{t("adminMessenger.emptyHistory")}</strong><p>{t("adminMessenger.emptyHistoryDescription")}</p></div>}
-      {pending ? <div className={styles.sending}><i /><i /><i /></div> : null}
+      <div ref={contentRef} className={styles.messageStream}>
+        <div className={styles.dayLabel}>{t("adminMessenger.history")}</div>
+        {detail.conversation.messages.length ? detail.conversation.messages.map((message) => {
+          const author = message.authorType === "OPERATOR" ? "admin" : message.authorType === "USER" ? "player" : "system";
+          return (
+            <motion.article key={message.id} className={styles.message} data-author={author} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={transition}>
+              {author !== "admin" ? <span className={styles.messageAvatar}>{author === "system" ? "VX" : detail.player.initials}</span> : null}
+              <div>
+                <small>{message.authorLabel}</small>
+                <p>{message.body}</p>
+                {message.attachments.length ? <div className={styles.messageAttachments}>{message.attachments.map((attachment) => <Attachment key={attachment.id} conversationId={detail.conversation.id} attachment={attachment} />)}</div> : null}
+                <time dateTime={message.createdAt}>{formatLocalTime(locale, message.createdAt)}</time>
+              </div>
+            </motion.article>
+          );
+        }) : <div className={styles.emptyMessages}><MessageCircle aria-hidden="true" /><strong>{t("adminMessenger.emptyHistory")}</strong><p>{t("adminMessenger.emptyHistoryDescription")}</p></div>}
+        {pending ? <div className={styles.sending}><i /><i /><i /></div> : null}
+      </div>
     </div>
   );
 }

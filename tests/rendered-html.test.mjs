@@ -447,10 +447,11 @@ test("administrative workspace uses server-backed contracts", async () => {
 });
 
 test("admin MVP navigation and messenger mobile controls stay intentionally compact", async () => {
-  const [shell, workspace, tags, messengerStyles, dashboardStyles, profileRoute, sectionRoute] = await Promise.all([
+  const [shell, workspace, tags, messenger, messengerStyles, dashboardStyles, profileRoute, sectionRoute] = await Promise.all([
     readFile(new URL("../components/admin/admin-shell.tsx", import.meta.url), "utf8"),
     readFile(new URL("../components/dashboard/workspace-shell.tsx", import.meta.url), "utf8"),
     readFile(new URL("../components/admin/admin-tag-controls.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../components/admin/admin-messenger-workspace.tsx", import.meta.url), "utf8"),
     readFile(new URL("../components/admin/admin-messenger-workspace.module.css", import.meta.url), "utf8"),
     readFile(new URL("../app/dashboard/dashboard.module.css", import.meta.url), "utf8"),
     readFile(new URL("../app/admin/profile/page.tsx", import.meta.url), "utf8"),
@@ -466,6 +467,12 @@ test("admin MVP navigation and messenger mobile controls stay intentionally comp
   assert.match(tags, /Escape/);
   assert.match(messengerStyles, /font-size:\s*16px/);
   assert.match(messengerStyles, /100dvh/);
+  assert.match(messengerStyles, /\.conversation\s*\{[^}]*display:\s*flex[^}]*height:\s*100%[^}]*overflow:\s*hidden/s);
+  assert.match(messengerStyles, /\.messages\s*\{[^}]*flex:\s*1 1 auto[^}]*overflow-y:\s*auto/s);
+  assert.match(messengerStyles, /\.messageStream\s*\{[^}]*min-height:\s*100%/s);
+  assert.match(messengerStyles, /\.composer\s*\{[^}]*position:\s*sticky[^}]*bottom:\s*0[^}]*flex:\s*none/s);
+  assert.match(messenger, /ResizeObserver/);
+  assert.match(messenger, /scrollToBottom/);
   assert.match(dashboardStyles, /repeat\(var\(--mobile-nav-columns/);
   assert.match(profileRoute, /redirect\("\/admin"\)/);
   assert.match(sectionRoute, /section === "content" \|\| section === "cms"/);
