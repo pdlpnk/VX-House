@@ -115,6 +115,21 @@ test("неподтверждённый аккаунт старше 12 часов
   assert.equal(await database.user.count({ where: { id: result.userId } }), 0);
 });
 
+test("регистрация нового пользователя не удаляет чужой просроченный pending-аккаунт", async () => {
+  const existing = await service.register({
+    command: { displayName: "Существующий участник", email: `${randomUUID()}@test.invalid`, password: "correct horse battery staple", productRole: "PLAYER", marketCode: "TR", preferredLanguage: "RU" },
+    idempotencyKey: `register-${randomUUID()}`,
+  });
+  await database.user.update({ where: { id: existing.userId }, data: { createdAt: new Date(Date.now() - 13 * 60 * 60 * 1000) } });
+
+  await service.register({
+    command: { displayName: "Новый участник", email: `${randomUUID()}@test.invalid`, password: "correct horse battery staple", productRole: "PLAYER", marketCode: "TR", preferredLanguage: "RU" },
+    idempotencyKey: `register-${randomUUID()}`,
+  });
+
+  assert.equal(await database.user.count({ where: { id: existing.userId } }), 1);
+});
+
 test("очистка не блокирует auth, если у pending-аккаунта уже есть Messenger-диалог", async () => {
   const result = await service.register({
     command: { displayName: "Pending with conversation", email: `${randomUUID()}@test.invalid`, password: "correct horse battery staple", productRole: "PLAYER", marketCode: "TR", preferredLanguage: "EN" },

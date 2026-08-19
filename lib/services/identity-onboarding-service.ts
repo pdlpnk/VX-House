@@ -110,7 +110,6 @@ export class IdentityOnboardingService {
     correlationId?: string;
     analyticsAnonymousId?: string | null;
   }) {
-    await this.purgeExpiredUnverifiedAccounts();
     const correlationId = input.correlationId ?? randomUUID();
     logger.info("registration_started", { correlationId });
     requireIdempotencyKey(input.idempotencyKey);
@@ -423,7 +422,6 @@ export class IdentityOnboardingService {
   }
 
   async getSnapshot(principal: AuthenticatedPrincipal, at = new Date()) {
-    await this.purgeExpiredUnverifiedAccounts(at);
     const user = await new PrismaIdentityUserRepository(this.database).findSafeById(principal.userId);
     const profile = await new PrismaUserProfileRepository(this.database).findByUserId(principal.userId);
     const progress = await new PrismaOnboardingRepository(this.database).findByUserId(principal.userId);

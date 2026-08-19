@@ -17,7 +17,6 @@ export async function POST(request: Request) {
       });
     }
     const identity = getIdentitySystem();
-    await identity.onboarding.purgeExpiredUnverifiedAccounts();
     const result = await identity.authentication.login({ email, password });
     if (!result.ok) {
       const failure = await bruteForce.registerFailure(key);
