@@ -12,6 +12,7 @@ import { DashboardProvider, useDashboard } from "@/components/dashboard/dashboar
 import { LanguageSwitcher } from "@/components/i18n/language-switcher";
 import { useI18n } from "@/components/i18n/i18n-provider";
 import { PersonalMessengerExperience } from "@/components/messenger/personal-messenger";
+import { UserAvatar } from "@/components/ui/user-avatar";
 import type { DashboardPreferences } from "@/lib/dashboard-data";
 import type { SafeProfileDTO } from "@/lib/repositories";
 import type { NotificationView, SupportConversationView } from "@/lib/support";
@@ -55,7 +56,7 @@ function WorkspaceNavigation({
 }) {
   const pathname = usePathname();
   const { profile, shouldReduceMotion } = useDashboard();
-  const { locale, t } = useI18n();
+  const { t } = useI18n();
   const displayName = profile?.user.displayName ?? t(config.profileRoleKey);
   const [messengerUnread, setMessengerUnread] = useState(0);
   const hasNavigationLogout = config.navigation.some((item) => item.action === "logout");
@@ -129,12 +130,12 @@ function WorkspaceNavigation({
         {(profile || config.kind === "admin") && !hasNavigationLogout ? <button type="button" className={styles.publicLink} onClick={() => void logout()}><LogOut aria-hidden="true" />{t("nav.logout")}<ChevronRight aria-hidden="true" /></button> : null}
         {config.kind !== "admin" ? config.kind === "player" ? (
           <div className={styles.sidebarProfile}>
-            <span>{displayName.charAt(0).toLocaleUpperCase(locale) || t("workspace.member").charAt(0)}</span>
+            <UserAvatar name={displayName} avatarEmoji={profile?.user.avatarEmoji} ariaHidden />
             <div><strong>{displayName}</strong><small>{t(config.profileRoleKey)}</small></div>
           </div>
         ) : (
           <Link href={config.profileHref ?? config.rootHref} className={styles.sidebarProfile} onClick={onNavigate}>
-            <span>{displayName.charAt(0).toLocaleUpperCase(locale) || t("workspace.member").charAt(0)}</span>
+            <UserAvatar name={displayName} avatarEmoji={profile?.user.avatarEmoji} ariaHidden />
             <div><strong>{displayName}</strong><small>{t(config.profileRoleKey)}</small></div>
           </Link>
         ) : null}
@@ -307,12 +308,12 @@ function WorkspaceShellContent({ children, config, initialNotifications, persona
 
             {config.kind === "admin" ? (
               <div className={styles.topbarProfile} data-static>
-                <span>{displayName.charAt(0).toLocaleUpperCase(locale) || t("workspace.member").charAt(0)}</span>
+                <UserAvatar name={displayName} ariaHidden />
                 <div><strong>{t(config.profileRoleKey)}</strong></div>
               </div>
             ) : (
               <Link href={config.profileHref ?? config.rootHref} className={styles.topbarProfile} aria-label={t("workspace.openProfile", { role: t(config.profileRoleKey) })}>
-                <span>{displayName.charAt(0).toLocaleUpperCase(locale) || t("workspace.member").charAt(0)}</span>
+                <UserAvatar name={displayName} avatarEmoji={profile?.user.avatarEmoji} ariaHidden />
                 <div><strong>{displayName}</strong><small>{t(config.profileRoleKey)}</small></div>
               </Link>
             )}

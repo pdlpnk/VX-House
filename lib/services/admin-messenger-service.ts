@@ -111,7 +111,7 @@ export class AdminMessengerService {
         conversationId: conversation.id,
         name: profile.user.displayName || "Участник VX House",
         email: profile.user.email,
-        initials: (profile.user.displayName || profile.user.email).split(/\s+/).slice(0, 2).map((part) => part[0]).join("").toLocaleUpperCase("ru"),
+        avatarEmoji: profile.user.avatarEmoji,
         market: profile.market.name,
         role: profile.productRole,
         registeredAt: profile.user.createdAt.toISOString(),

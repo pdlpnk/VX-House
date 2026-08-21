@@ -39,6 +39,7 @@ import type { EmailProvider } from "./email-provider";
 import { createLogger } from "@/lib/logger";
 import { createProductNotification } from "./product-notification";
 import { fromDatabaseLanguage } from "@/lib/i18n";
+import { avatarEmojiForVxId } from "@/lib/user-avatar";
 
 const IDEMPOTENCY_KEY = /^[A-Za-z0-9_.:-]{8,160}$/;
 const logger = createLogger({ level: "info", context: { component: "identity-onboarding" } });
@@ -179,6 +180,8 @@ export class IdentityOnboardingService {
       logger.info("profile_created", { correlationId, userId: user.id, productRole: command.productRole });
       if (command.productRole === "PLAYER") {
         await new PrismaPlayerProfileRepository(database).createPending(profile.id);
+        const avatarEmoji = avatarEmojiForVxId(user.vxId);
+        if (avatarEmoji) await users.assignPlayerAvatar(user.id, avatarEmoji);
       } else {
         await new PrismaPartnerProfileRepository(database).createPending(profile.id);
       }

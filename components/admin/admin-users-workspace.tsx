@@ -10,6 +10,7 @@ import { DashboardHeading, DashboardPage, StatusPill } from "@/components/dashbo
 import { useI18n } from "@/components/i18n/i18n-provider";
 import { Card } from "@/components/ui/card";
 import { VxIdCopy } from "@/components/ui/vx-id-copy";
+import { UserAvatar } from "@/components/ui/user-avatar";
 import type { AdminListQuery, AdminSectionView } from "@/lib/admin";
 import type { AdminTagAssignmentView, AdminTagView } from "@/lib/admin-tags";
 
@@ -48,7 +49,7 @@ export function AdminUsersWorkspace({ initialData, initialTags, initialQuery }: 
       <TagFilters tags={tags} selected={tagId} onSelect={(value) => { setTagId(value); void load(search, value); }} />
       <label className={styles.adminUserSearch}><Search aria-hidden="true" /><span className="sr-only">{t("adminMessenger.search")}</span><input value={search} placeholder={t("adminMessenger.searchPlaceholder")} onChange={(event) => setSearch(event.target.value)} /></label>
       <div className={styles.adminEntityList}>{data.items.length ? data.items.map((user) => <Card className={styles.adminEntityCard} key={user.id}>
-        <div className={styles.adminEntityIcon}><UsersRound aria-hidden="true" /></div><div><small>{user.eyebrow}</small><h3>{user.title}</h3>{user.vxId ? <VxIdCopy vxId={user.vxId} compact /> : null}<p>{user.description}</p><TagChips tags={user.tags ?? []} /><dl><div><dt>{t("adminUsers.status")}</dt><dd>{user.status}</dd></div></dl></div>
+        <UserAvatar className={styles.adminEntityAvatar} name={user.title} avatarEmoji={user.avatarEmoji} /><div><small>{user.eyebrow}</small><h3>{user.title}</h3>{user.vxId ? <VxIdCopy vxId={user.vxId} compact /> : null}<p>{user.description}</p><TagChips tags={user.tags ?? []} /><dl><div><dt>{t("adminUsers.status")}</dt><dd>{user.status}</dd></div></dl></div>
         <div className={styles.adminUserActions}><AdminTagManager userId={user.id} assigned={user.tags ?? []} tags={tags} onAssignedChange={(next) => updateUserTags(user.id, next)} onTagsChange={(next) => void updateTags(next)} /><Link href={`/admin/users/${user.id}`}>{t("adminUsers.open")}</Link></div>
       </Card>) : <Card className={styles.adminEntityCard}><div className={styles.adminEntityIcon}><UsersRound aria-hidden="true" /></div><div><h3>{t("adminUsers.empty")}</h3><p>{t("adminUsers.emptyDescription")}</p></div></Card>}</div>
     </section>

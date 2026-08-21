@@ -5,6 +5,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 
 import type { PrismaClient } from "../lib/db/generated/client.ts";
 import { PrismaClient as NodePrismaClient } from "../lib/db/generated-node/client.ts";
+import { avatarEmojiForVxId } from "../lib/user-avatar.ts";
 
 const connectionString = process.env.TEST_DATABASE_URL;
 if (!connectionString) throw new Error("TEST_DATABASE_URL is required");
@@ -29,6 +30,17 @@ test("new and parallel users receive unique sequential VX IDs", async () => {
   assert.equal(new Set(ids).size, ids.length);
   const numbers = ids.map(numberOf).sort((a, b) => a - b);
   assert.deepEqual(numbers, Array.from({ length: 16 }, (_, index) => numberOf(first.vxId) + index + 1));
+});
+
+test("parallel player avatar writes remain deterministic and unique", async () => {
+  const created = await Promise.all(Array.from({ length: 24 }, () => database.user.create({ data: { email: `${randomUUID()}@test.invalid` } })));
+  await Promise.all(created.map((user) => database.user.update({
+    where: { id: user.id },
+    data: { avatarEmoji: avatarEmojiForVxId(user.vxId) },
+  })));
+  const persisted = await database.user.findMany({ where: { id: { in: created.map((user) => user.id) } } });
+  assert.equal(new Set(persisted.map((user) => user.avatarEmoji)).size, persisted.length);
+  for (const user of persisted) assert.equal(user.avatarEmoji, avatarEmojiForVxId(user.vxId));
 });
 
 test("deleted VX ID is never reused", async () => {

@@ -15,7 +15,7 @@ export type AdminMessengerPlayer = {
   conversationId: string;
   name: string;
   email: string;
-  initials: string;
+  avatarEmoji: string | null;
   market: string;
   role: AdminMessengerRole;
   registeredAt: string;

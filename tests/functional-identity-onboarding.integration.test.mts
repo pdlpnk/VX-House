@@ -65,6 +65,8 @@ test("регистрация игрока атомарно создаёт identi
   assert.equal(result.profile.productRole, "PLAYER");
   assert.equal(result.profile.preferredLanguage, "EN");
   assert.equal(result.profile.playerProfile?.participationStatus, "PENDING");
+  const user = await database.user.findUniqueOrThrow({ where: { id: result.userId } });
+  assert.ok(user.avatarEmoji);
   assert.equal(mail.latest(result.userId)?.language, "en");
   assert.equal(await database.session.count({ where: { userId: result.userId } }), 1);
   assert.equal(await database.auditEvent.count({ where: { actorId: result.userId } }), 2);
@@ -76,6 +78,20 @@ test("регистрация партнёра создаёт только pendin
   const { result } = await register("PARTNER");
   assert.equal(result.profile.partnerProfile?.status, "PENDING");
   assert.equal(result.profile.playerProfile, null);
+  assert.equal((await database.user.findUniqueOrThrow({ where: { id: result.userId } })).avatarEmoji, null);
+});
+
+test("несколько зарегистрированных игроков получают разные постоянные emoji", async () => {
+  const registrations = [];
+  for (let index = 0; index < 12; index += 1) registrations.push(await register("PLAYER"));
+  const users = await database.user.findMany({ where: { id: { in: registrations.map(({ result }) => result.userId) } }, orderBy: { vxId: "asc" } });
+  const assigned = users.map((user) => user.avatarEmoji);
+  assert.ok(assigned.every(Boolean));
+  assert.equal(new Set(assigned).size, assigned.length);
+  for (const user of users) {
+    const reloaded = await database.user.findUniqueOrThrow({ where: { id: user.id } });
+    assert.equal(reloaded.avatarEmoji, user.avatarEmoji);
+  }
 });
 
 test("ошибка доставки не откатывает целостный pending-аккаунт и не активирует его", async () => {

@@ -7,6 +7,7 @@ import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 
 import { useDashboard } from "@/components/dashboard/dashboard-provider";
 import { useI18n } from "@/components/i18n/i18n-provider";
+import { UserAvatar } from "@/components/ui/user-avatar";
 import { formatLocalDay, formatLocalTime, type Locale } from "@/lib/i18n";
 import type { SupportConversationView, SupportMessageView } from "@/lib/support";
 import styles from "./personal-messenger.module.css";
@@ -47,6 +48,7 @@ function MessageList({
   todayLabel: string;
 }) {
   const { t } = useI18n();
+  const { profile } = useDashboard();
   const listRef = useRef<HTMLDivElement>(null);
   const restoredConversation = useRef("");
   const stickToBottom = useRef(true);
@@ -94,9 +96,11 @@ function MessageList({
             animate={{ opacity: 1, y: 0 }}
             transition={transition}
           >
-            <span className={styles.messageAvatar} aria-hidden="true">
-              {author === "system" ? "VX" : "M"}
-            </span>
+            {author === "user" ? (
+              <UserAvatar className={styles.messageAvatar} name={profile?.user.displayName ?? profile?.user.email ?? "VX House"} avatarEmoji={profile?.user.avatarEmoji} ariaHidden />
+            ) : (
+              <span className={styles.messageAvatar} aria-hidden="true">{author === "system" ? "VX" : "M"}</span>
+            )}
             <div className={styles.bubble}>
               <p>{message.systemKey ? t(message.systemKey, message.systemParams) : message.body}</p>
               {message.attachments.length ? (

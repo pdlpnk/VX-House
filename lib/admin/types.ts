@@ -5,6 +5,7 @@ export type AdminFieldView = Readonly<{ label: string; value: string; help?: str
 export type AdminRecordView = Readonly<{
   id: string;
   vxId?: string;
+  avatarEmoji?: string | null;
   eyebrow: string;
   title: string;
   description: string;

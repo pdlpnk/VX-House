@@ -246,6 +246,7 @@ model User {
   vxId                        String                       @unique @default(dbgenerated()) @db.VarChar(8)
   email                       String                       @unique @db.VarChar(320)
   displayName                 String?                      @db.VarChar(120)
+  avatarEmoji                 String?                      @unique @db.VarChar(32)
   passwordHash                String?                      @db.VarChar(255)
   passwordChangedAt           DateTime?
   disabledAt                  DateTime?

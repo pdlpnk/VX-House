@@ -77,7 +77,7 @@
 
 .sidebarProfile { display: flex; min-width: 0; align-items: center; gap: 0.7rem; border: 1px solid var(--dash-border); border-radius: 0.95rem; padding: 0.72rem; background: oklch(1 0 0 / 3%); transition: border-color 180ms ease, background 180ms ease, transform 180ms ease; }
 .sidebarProfile:hover { border-color: oklch(0.68 0.18 25 / 22%); background: oklch(1 0 0 / 4.5%); transform: translateY(-1px); }
-.sidebarProfile > span, .topbarProfile > span { display: grid; place-items: center; width: 2.25rem; aspect-ratio: 1; flex: none; border: 1px solid oklch(0.72 0.18 25 / 22%); border-radius: 0.72rem; background: oklch(0.58 0.2 25 / 11%); color: oklch(0.9 0.05 25); font-size: 0.68rem; font-weight: 680; }
+.sidebarProfile > span, .topbarProfile > span { --user-avatar-emoji-size: 1.15rem; display: grid; place-items: center; width: 2.25rem; aspect-ratio: 1; flex: none; border: 1px solid oklch(0.72 0.18 25 / 22%); border-radius: 0.72rem; background: oklch(0.58 0.2 25 / 11%); color: oklch(0.9 0.05 25); font-size: 0.68rem; font-weight: 680; }
 .sidebarProfile > div, .topbarProfile > div { min-width: 0; }
 .sidebarProfile strong, .sidebarProfile small, .topbarProfile strong, .topbarProfile small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sidebarProfile strong, .topbarProfile strong { color: oklch(0.9 0.006 25); font-size: 0.72rem; font-weight: 580; }
@@ -785,6 +785,7 @@
 .adminEntityCard { display: grid; min-height: 14rem; grid-template-columns: auto minmax(0, 1fr) auto; align-items: start; gap: 1rem; padding: 1rem; }
 .adminEntityIcon { display: grid; width: 2.8rem; aspect-ratio: 1; place-items: center; border-radius: 0.8rem; background: oklch(0.58 0.2 25 / 7%); color: oklch(0.74 0.1 25); }
 .adminEntityIcon svg { width: 1rem; }
+.adminEntityAvatar { --user-avatar-emoji-size: 1.35rem; display: grid; width: 2.8rem; aspect-ratio: 1; place-items: center; border: 1px solid oklch(0.72 0.18 25 / 14%); border-radius: 50%; background: oklch(0.58 0.2 25 / 8%); color: oklch(0.82 0.07 25); font-size: .72rem; font-weight: 680; }
 .adminEntityCard small { color: oklch(0.63 0.08 25); font-size: 0.54rem; letter-spacing: 0.06em; text-transform: uppercase; }
 .adminEntityCard h3 { margin-top: 0.3rem; color: oklch(0.88 0.006 25); font-size: 0.85rem; font-weight: 600; }
 .adminEntityCard p { max-width: 52rem; margin-top: 0.35rem; color: var(--dash-muted); font-size: 0.62rem; line-height: 1.55; }

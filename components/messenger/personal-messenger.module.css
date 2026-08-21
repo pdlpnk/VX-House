@@ -169,6 +169,7 @@
 .messageRow { display: flex; max-width: 88%; align-items: flex-end; gap: 0.55rem; margin-top: 1rem; }
 .messageRow[data-author="user"] { margin-left: auto; justify-content: flex-end; }
 .messageAvatar {
+  --user-avatar-emoji-size: .9rem;
   display: grid;
   width: 1.75rem;
   aspect-ratio: 1;

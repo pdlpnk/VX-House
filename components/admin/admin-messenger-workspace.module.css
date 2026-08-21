@@ -17,7 +17,7 @@
 .chatItem:hover { background: oklch(1 0 0 / 3.5%); }
 .chatItem[data-active] { background: linear-gradient(110deg, oklch(.55 .18 25 / 15%), oklch(1 0 0 / 3%)); }
 .chatItem[data-active]::before { position: absolute; inset-block: .7rem; left: -.42rem; width: 2px; border-radius: 2px; background: oklch(.65 .2 25); content: ""; }
-.avatar, .profileAvatar { position: relative; display: grid; width: 2.65rem; aspect-ratio: 1; place-items: center; border: 1px solid oklch(1 0 0 / 8%); border-radius: 50%; background: linear-gradient(145deg, oklch(.42 .12 25), oklch(.24 .04 25)); color: oklch(.92 .02 25); font-size: .66rem; font-weight: 720; }
+.avatar, .profileAvatar { --user-avatar-emoji-size: 1.25rem; position: relative; display: grid; width: 2.65rem; aspect-ratio: 1; place-items: center; border: 1px solid oklch(1 0 0 / 8%); border-radius: 50%; background: linear-gradient(145deg, oklch(.42 .12 25), oklch(.24 .04 25)); color: oklch(.92 .02 25); font-size: .66rem; font-weight: 720; }
 .avatar[data-status]::after, .profileAvatar[data-status]::after { position: absolute; right: 0; bottom: .05rem; width: .62rem; aspect-ratio: 1; border: 2px solid oklch(.13 .01 25); border-radius: 50%; content: ""; }
 .avatar[data-status="online"]::after, .profileAvatar[data-status="online"]::after { background: oklch(.72 .18 145); }
 .avatar[data-status="offline"]::after, .profileAvatar[data-status="offline"]::after { background: oklch(.59 .2 25); }
@@ -48,7 +48,7 @@
 .message { display: flex; max-width: min(78%, 40rem); align-items: flex-end; gap: .5rem; margin-top: .85rem; }
 .message[data-author="admin"] { justify-content: flex-end; margin-left: auto; }
 .message[data-author="system"] { max-width: min(82%, 44rem); margin-inline: auto; }
-.messageAvatar { display: grid; width: 1.65rem; aspect-ratio: 1; flex: none; place-items: center; border-radius: 50%; background: oklch(.46 .14 25 / 24%); color: oklch(.78 .1 25); font-size: .48rem; font-weight: 700; }
+.messageAvatar { --user-avatar-emoji-size: .9rem; display: grid; width: 1.65rem; aspect-ratio: 1; flex: none; place-items: center; border-radius: 50%; background: oklch(.46 .14 25 / 24%); color: oklch(.78 .1 25); font-size: .48rem; font-weight: 700; }
 .message > div { min-width: 5rem; max-width: calc(100% - 2.15rem); border: 1px solid var(--border); border-radius: 1rem 1rem 1rem .25rem; padding: .72rem .78rem .5rem; background: oklch(1 0 0 / 3.5%); }
 .message[data-author="admin"] > div { max-width: 100%; border-color: oklch(.7 .17 25 / 24%); border-radius: 1rem 1rem .25rem 1rem; background: linear-gradient(145deg, oklch(.53 .2 25), oklch(.4 .15 25)); }
 .message[data-author="system"] > div { width: 100%; border-color: oklch(.65 .15 25 / 13%); border-radius: .8rem; background: oklch(.5 .12 25 / 7%); text-align: center; }
@@ -94,7 +94,7 @@
 .playerPanel > header strong { display: block; margin-top: .18rem; font-size: .68rem; font-weight: 620; }
 .playerPanel > header button { display: none; }
 .profileBlock { display: grid; justify-items: center; padding: 1.1rem 1rem; text-align: center; }
-.profileAvatar { width: 3.6rem; }
+.profileAvatar { --user-avatar-emoji-size: 1.7rem; width: 3.6rem; }
 .profileBlock > strong { margin-top: .65rem; font-size: .74rem; }.profileBlock > small { margin-top: .18rem; color: oklch(.54 .01 25); font-size: .52rem; }.profileBlock > a { margin-top: .65rem; color: oklch(.72 .11 25); font-size: .54rem; }
 .profileFacts { padding: 0 .9rem; }
 .profileFacts > div { display: flex; justify-content: space-between; gap: .8rem; border-top: 1px solid var(--border); padding: .58rem 0; }

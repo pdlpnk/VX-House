@@ -23,6 +23,7 @@ import {
   PrismaUserProfileRepository,
 } from "@/lib/repositories";
 import { validateCreateProfileInput } from "@/lib/validation";
+import { avatarEmojiForVxId } from "@/lib/user-avatar";
 
 const ownProfilePolicy = authorizationPolicies.all(
   "profile.self.manage",
@@ -125,6 +126,8 @@ export class ProfileApplicationService {
       });
       if (profileInput.productRole === "PLAYER") {
         await new PrismaPlayerProfileRepository(database).createPending(profile.id);
+        const avatarEmoji = avatarEmojiForVxId(user.vxId);
+        if (avatarEmoji) await new PrismaIdentityUserRepository(database).assignPlayerAvatar(user.id, avatarEmoji);
       } else {
         await new PrismaPartnerProfileRepository(database).createPending(profile.id);
       }

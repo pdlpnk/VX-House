@@ -18,7 +18,7 @@ export const safeProfileSelect = {
   accountStatus: true,
   createdAt: true,
   updatedAt: true,
-  user: { select: { vxId: true, email: true, displayName: true } },
+  user: { select: { vxId: true, email: true, displayName: true, avatarEmoji: true } },
   market: { select: { id: true, code: true, name: true, defaultLanguage: true, isActive: true } },
   playerProfile: { select: { id: true, participationStatus: true } },
   partnerProfile: { select: { id: true, status: true } },
@@ -32,21 +32,29 @@ export class PrismaIdentityUserRepository {
   findSafeById(userId: string) {
     return this.database.user.findUnique({
       where: { id: userId },
-      select: { id: true, vxId: true, email: true, displayName: true, disabledAt: true, createdAt: true },
+      select: { id: true, vxId: true, email: true, displayName: true, avatarEmoji: true, disabledAt: true, createdAt: true },
     });
   }
 
   findSafeByEmail(email: string) {
     return this.database.user.findUnique({
       where: { email },
-      select: { id: true, vxId: true, email: true, displayName: true, disabledAt: true, createdAt: true },
+      select: { id: true, vxId: true, email: true, displayName: true, avatarEmoji: true, disabledAt: true, createdAt: true },
     });
   }
 
   create(input: { id: string; email: string; displayName: string; passwordHash: string; createdAt: Date }) {
     return this.database.user.create({
       data: { ...input, updatedAt: input.createdAt },
-      select: { id: true, vxId: true, email: true, displayName: true, createdAt: true },
+      select: { id: true, vxId: true, email: true, displayName: true, avatarEmoji: true, createdAt: true },
+    });
+  }
+
+  assignPlayerAvatar(userId: string, avatarEmoji: string) {
+    return this.database.user.update({
+      where: { id: userId },
+      data: { avatarEmoji },
+      select: { id: true, vxId: true, avatarEmoji: true },
     });
   }
 }
