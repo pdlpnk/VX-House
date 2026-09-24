@@ -364,3 +364,26 @@
   .launcher:hover { transform: none; }
   .spinner { animation: none; }
 }
+
+:global(html[dir="rtl"]) .launcher,
+:global(html[dir="rtl"]) .preview,
+:global(html[dir="rtl"]) .mini { right: auto; left: 1.35rem; }
+:global(html[dir="rtl"]) .launcher i { right: auto; left: -.12rem; }
+:global(html[dir="rtl"]) .preview { padding: 1rem 1rem 1rem 2.7rem; text-align: start; }
+:global(html[dir="rtl"]) .previewContent { text-align: start; }
+:global(html[dir="rtl"]) .previewClose { right: auto; left: .7rem; }
+:global(html[dir="rtl"]) .avatar::after { right: auto; left: 0; }
+:global(html[dir="rtl"]) .full { direction: rtl; }
+:global(html[dir="rtl"]) .dialogList { border-right: 0; border-left: 1px solid var(--messenger-border); }
+:global(html[dir="rtl"]) .conversationItem { text-align: start; }
+:global(html[dir="rtl"]) .conversationPanel { direction: ltr; }
+:global(html[dir="rtl"]) .conversationPanel .header,
+:global(html[dir="rtl"]) .conversationPanel .composer { direction: rtl; }
+:global(html[dir="rtl"]) .bubble p { unicode-bidi: plaintext; }
+:global(html[dir="rtl"]) .attachments { direction: rtl; }
+:global(html[dir="rtl"]) .emojiMenu { left: auto; right: 2.8rem; }
+
+@media (max-width: 760px) {
+  :global(html[dir="rtl"]) .launcher,
+  :global(html[dir="rtl"]) .preview { right: auto; left: 1rem; }
+}

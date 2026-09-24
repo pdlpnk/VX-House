@@ -42,6 +42,7 @@ enum LanguageCode {
   RU
   TR
   AZ
+  FA
 }
 
 enum AccountStatus {

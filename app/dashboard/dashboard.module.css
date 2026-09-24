@@ -1249,4 +1249,32 @@
 .managerHomeIcon { display: grid; width: 4rem; aspect-ratio: 1; place-items: center; border: 1px solid oklch(.7 .18 25 / 25%); border-radius: 1.15rem; background: oklch(.57 .2 25 / 12%); color: oklch(.8 .13 25); }.managerHomeIcon svg { width: 1.6rem; }
 .managerHomeHero small { color: oklch(.7 .1 25); font-size: .62rem; font-weight: 650; letter-spacing: .08em; text-transform: uppercase; }.managerHomeHero h2 { max-width: 34rem; margin-top: .55rem; color: oklch(.95 .006 25); font-size: clamp(1.8rem, 4vw, 3.4rem); font-weight: 620; letter-spacing: -.055em; line-height: 1.02; }.managerHomeHero p { max-width: 37rem; margin-top: 1rem; color: oklch(.7 .012 25); font-size: clamp(.9rem, 1.5vw, 1.05rem); line-height: 1.7; }.managerHomeHero a { margin-top: 1.5rem; }
 .managerHomeTrust { position: absolute; right: 1.3rem; bottom: 1.2rem; display: inline-flex; align-items: center; gap: .4rem; color: oklch(.57 .01 25); font-size: .58rem; }.managerHomeTrust svg { width: .75rem; }
+
+:global(html[dir="rtl"]) .sidebar { inset: 0 0 0 auto; border-right: 0; border-left: 1px solid var(--dash-border); box-shadow: -20px 0 64px oklch(0 0 0 / 18%); }
+:global(html[dir="rtl"]) .dashboardMainColumn { margin-left: 0; margin-right: var(--dashboard-sidebar); }
+:global(html[dir="rtl"]) .navUnreadBadge { margin-left: 0; margin-right: auto; }
+:global(html[dir="rtl"]) .navLink > i { left: auto; right: .32rem; }
+:global(html[dir="rtl"]) .navLink:hover { transform: translateX(-2px); }
+:global(html[dir="rtl"]) .globalSearchPanel,
+:global(html[dir="rtl"]) .notificationsPanel,
+:global(html[dir="rtl"]) .pointsCompact em,
+:global(html[dir="rtl"]) .rankCompactPanel { right: auto; left: 0; }
+:global(html[dir="rtl"]) .notificationButton > i { right: auto; left: -.25rem; }
+:global(html[dir="rtl"]) .notificationsList > button,
+:global(html[dir="rtl"]) .activityEmpty ul { text-align: start; }
+:global(html[dir="rtl"]) .inputWrap > svg { left: auto; right: .75rem; }
+:global(html[dir="rtl"]) .inputWrap input { padding-left: .75rem; padding-right: 2.25rem; }
+:global(html[dir="rtl"]) .profileFacts dd,
+:global(html[dir="rtl"]) .settingsSummary dd { text-align: start; }
+:global(html[dir="rtl"]) .floatingMessenger { right: auto; left: 1.25rem; }
+:global(html[dir="rtl"]) .managerHomeTrust { right: auto; left: 1.3rem; }
+
+@media (max-width: 1079px) {
+  :global(html[dir="rtl"]) .dashboardMainColumn { margin-right: 0; }
+  :global(html[dir="rtl"]) .mobileSidebar { inset: 0 0 0 auto; border-right: 0; border-left: 1px solid var(--dash-border); box-shadow: -24px 0 80px oklch(0 0 0 / 45%); }
+  :global(html[dir="rtl"]) .mobileClose { right: auto; left: .9rem; }
+  :global(html[dir="rtl"]) .floatingMessenger { right: auto; left: .9rem; }
+  :global(html[dir="rtl"]) .floatingMessenger i { right: auto; left: -.15rem; }
+  :global(html[dir="rtl"]) .globalSearchPanel { right: auto; left: -3.4rem; }
+}
 @media (max-width: 640px) { .managerHomeHero { min-height: 24rem; grid-template-columns: 1fr; }.managerHomeIcon { width: 3.4rem; }.managerHomeTrust { position: static; grid-column: 1; } }

@@ -18,12 +18,12 @@ export async function PATCH(request: Request) {
     const principal = await requireRequestPrincipal(request);
     const body = await readJsonBody(request);
     const preferredLanguage = String(body.preferredLanguage ?? "").toUpperCase();
-    if (!["EN", "RU", "TR", "AZ"].includes(preferredLanguage)) {
+    if (!["EN", "RU", "TR", "AZ", "FA"].includes(preferredLanguage)) {
       throw new ApplicationError("VALIDATION", "Некорректный язык интерфейса");
     }
     const profile = await new ProfileApplicationService(getDatabase()).updateLanguage({
       principal,
-      preferredLanguage: preferredLanguage as "EN" | "RU" | "TR" | "AZ",
+      preferredLanguage: preferredLanguage as "EN" | "RU" | "TR" | "AZ" | "FA",
     });
     return json({ profile });
   } catch (error) {

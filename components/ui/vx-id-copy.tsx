@@ -22,7 +22,7 @@ export function VxIdCopy({ vxId, compact = false }: { vxId: string; compact?: bo
 
   return (
     <button type="button" className={styles.copy} data-compact={compact || undefined} onClick={copy} aria-label={t("account.copyId", { id: vxId })}>
-      <span>{vxId}</span>
+      <span dir="ltr">{vxId}</span>
       {copied ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
       {copied ? <small role="status">{t("common.copied")}</small> : null}
     </button>

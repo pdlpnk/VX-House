@@ -1,4 +1,4 @@
-export const locales = ["en", "ru", "tr", "az"] as const;
+export const locales = ["en", "ru", "tr", "az", "fa"] as const;
 export type Locale = (typeof locales)[number];
 
 export const DEFAULT_LOCALE: Locale = "en";
@@ -17,6 +17,7 @@ export const localeNames: Readonly<Record<Locale, string>> = {
   ru: "Русский",
   tr: "Türkçe",
   az: "Azərbaycan dili",
+  fa: "فارسی",
 };
 
 export const intlLocales: Readonly<Record<Locale, string>> = {
@@ -24,7 +25,12 @@ export const intlLocales: Readonly<Record<Locale, string>> = {
   ru: "ru",
   tr: "tr",
   az: "az",
+  fa: "fa-IR-u-ca-gregory",
 };
+
+export function directionForLocale(locale: Locale): "ltr" | "rtl" {
+  return locale === "fa" ? "rtl" : "ltr";
+}
 
 export function isLocale(value: unknown): value is Locale {
   return typeof value === "string" && locales.includes(value.toLowerCase() as Locale);
@@ -41,6 +47,7 @@ export function localeFromBrowser(languages: readonly string[] | undefined): Loc
     if (language === "az") return "az";
     if (language === "ru" || language === "uk") return "ru";
     if (language === "en") return "en";
+    if (language === "fa" || language === "fa-ir" || language === "per") return "fa";
   }
   return DEFAULT_LOCALE;
 }
@@ -80,7 +87,7 @@ export function resolveLocalePriority(input: {
   const browserLocale = localeFromBrowser(browserLanguages);
   const hasSupportedBrowserLocale = browserLanguages.some((value) => {
     const language = value.trim().toLowerCase().split("-")[0];
-    return language === "tr" || language === "az" || language === "ru" || language === "uk" || language === "en";
+    return language === "tr" || language === "az" || language === "ru" || language === "uk" || language === "en" || language === "fa" || language === "per";
   });
 
   return {
@@ -97,7 +104,7 @@ export function resolveInitialLocale(
 }
 
 export function toDatabaseLanguage(locale: Locale) {
-  return locale.toUpperCase() as "EN" | "RU" | "TR" | "AZ";
+  return locale.toUpperCase() as "EN" | "RU" | "TR" | "AZ" | "FA";
 }
 
 export function fromDatabaseLanguage(locale: string | null | undefined): Locale {

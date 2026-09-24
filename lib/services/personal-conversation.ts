@@ -224,7 +224,7 @@ export async function appendPersonalConversationMessage(
     userId: string;
     messageId: string;
     body: string;
-    systemMessage?: { key: SystemMessageKey; params?: Readonly<Record<string, string | number>>; locale: "en" | "ru" | "tr" | "az" };
+    systemMessage?: { key: SystemMessageKey; params?: Readonly<Record<string, string | number>>; locale: "en" | "ru" | "tr" | "az" | "fa" };
     occurredAt: Date;
   },
 ) {

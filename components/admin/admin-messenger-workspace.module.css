@@ -131,3 +131,25 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
   .panelWrap { top: 0; width: 100%; }
 }
 @media (prefers-reduced-motion: reduce) { .workspace, .chatItem { transition: none; }.spinner, .loading svg { animation: none; } }
+
+:global(html[dir="rtl"]) .workspace { direction: rtl; }
+:global(html[dir="rtl"]) .chatList { border-right: 0; border-left: 1px solid var(--border); }
+:global(html[dir="rtl"]) .chatItem { text-align: start; }
+:global(html[dir="rtl"]) .chatItem[data-active]::before { left: auto; right: -.42rem; }
+:global(html[dir="rtl"]) .avatar[data-status]::after,
+:global(html[dir="rtl"]) .profileAvatar[data-status]::after { right: auto; left: 0; }
+:global(html[dir="rtl"]) .conversation { direction: ltr; }
+:global(html[dir="rtl"]) .conversationHeader,
+:global(html[dir="rtl"]) .composer { direction: rtl; }
+:global(html[dir="rtl"]) .message p,
+:global(html[dir="rtl"]) .noteHistory p { unicode-bidi: plaintext; }
+:global(html[dir="rtl"]) .messageAttachments { direction: rtl; }
+:global(html[dir="rtl"]) .emojiMenu { left: auto; right: 2.9rem; }
+:global(html[dir="rtl"]) .playerPanel { border-left: 0; border-right: 1px solid var(--border); }
+:global(html[dir="rtl"]) .profileFacts dd { text-align: start; }
+:global(html[dir="rtl"]) .noteHistory article { padding: .65rem .68rem .65rem 3.3rem; }
+:global(html[dir="rtl"]) .noteHistory article > div { right: auto; left: .4rem; }
+
+@media (max-width: 1180px) {
+  :global(html[dir="rtl"]) .panelWrap { right: auto; left: 0; box-shadow: 20px 0 60px #0008; }
+}

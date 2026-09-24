@@ -8,6 +8,12 @@
     var(--background);
 }
 
+:global(html[dir="rtl"]) .inputWrap svg { left: auto; right: .85rem; }
+:global(html[dir="rtl"]) .inputWrap input { padding-left: .85rem; padding-right: 2.45rem; }
+:global(html[dir="rtl"]) .reviewCard dd,
+:global(html[dir="rtl"]) .completeGrid,
+:global(html[dir="rtl"]) .benefitsStatus { text-align: start; }
+
 .background,
 .grid,
 .vignette {
@@ -836,4 +842,3 @@
   .marketOption,
   .checkRow { transition: none; }
 }
-

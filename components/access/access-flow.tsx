@@ -35,7 +35,7 @@ type Profile = {
   productRole: "PLAYER" | "PARTNER";
   user: { email: string; displayName: string };
   market: { code: "TR" | "AZ" };
-  preferredLanguage: "EN" | "RU" | "TR" | "AZ";
+  preferredLanguage: "EN" | "RU" | "TR" | "AZ" | "FA";
   accountStatus: string;
 };
 type Snapshot = {

@@ -18,7 +18,7 @@ const structuredData = {
   url: siteUrl,
   description:
     "A private VX House account with direct access to a personal manager.",
-  inLanguage: ["en", "ru", "tr", "az"],
+  inLanguage: ["en", "ru", "tr", "az", "fa"],
   audience: {
     "@type": "Audience",
     audienceType: "Adults and partners",

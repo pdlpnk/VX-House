@@ -6,6 +6,7 @@ import { I18nProvider } from "@/components/i18n/i18n-provider";
 import { LocalizedSkipLink } from "@/components/i18n/localized-skip-link";
 import {
   fromDatabaseLanguage,
+  directionForLocale,
   languagesFromAcceptLanguage,
   LOCALE_COOKIE,
   resolveLocalePriority,
@@ -71,6 +72,7 @@ const openGraphLocales: Readonly<Record<Locale, string>> = {
   ru: "ru_RU",
   tr: "tr_TR",
   az: "az_AZ",
+  fa: "fa_IR",
 };
 
 const metadataKeywords: Readonly<Record<Locale, string[]>> = {
@@ -78,6 +80,7 @@ const metadataKeywords: Readonly<Record<Locale, string[]>> = {
   ru: ["VX House", "личный аккаунт", "персональный менеджер", "приватный мессенджер"],
   tr: ["VX House", "kişisel hesap", "kişisel yönetici", "özel mesajlaşma"],
   az: ["VX House", "şəxsi hesab", "şəxsi menecer", "şəxsi messencer"],
+  fa: ["VX House", "حساب شخصی", "مدیر شخصی", "پیام‌رسان خصوصی"],
 };
 
 function cookieValue(cookieHeader: string | null, name: string) {
@@ -148,7 +151,7 @@ export default async function RootLayout({
   const resolution = await requestLocale();
 
   return (
-    <html lang={resolution.locale} className="dark">
+    <html lang={resolution.locale} dir={directionForLocale(resolution.locale)} className="dark">
       <body
         className={`${geistSans.variable} ${geistMono.variable} min-h-svh bg-background font-sans text-foreground antialiased`}
       >

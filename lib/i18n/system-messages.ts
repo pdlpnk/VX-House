@@ -39,6 +39,6 @@ export function systemNotificationParts(locale: Locale, key: SystemMessageKey, p
   return { title, body: body.join("\n\n") || title };
 }
 
-export function databaseLocale(value: "EN" | "RU" | "TR" | "AZ") {
+export function databaseLocale(value: "EN" | "RU" | "TR" | "AZ" | "FA") {
   return fromDatabaseLanguage(value);
 }

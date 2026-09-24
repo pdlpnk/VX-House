@@ -31,8 +31,8 @@ function ChatListItem({ item, active, onClick }: { item: AdminMessengerPlayer; a
       <UserAvatar className={styles.avatar} name={item.name} avatarEmoji={item.avatarEmoji} status={item.online ? "online" : "offline"} ariaLabel={`${item.name}: ${item.online ? t("adminMessenger.online") : t("adminMessenger.offline")}`} />
       <span className={styles.chatCopy}>
         <span><strong>{item.name}</strong><time dateTime={item.lastMessageAt ?? undefined}>{item.lastMessageAt ? formatLocalTime(locale, item.lastMessageAt) : ""}</time></span>
-        <span className={styles.chatVxId}>{item.vxId}</span>
-        <span><small>{item.lastMessage}</small>{item.hasNotes ? <NotebookPen aria-label={t("adminMessenger.hasNote")} /> : null}</span>
+        <span className={styles.chatVxId} dir="ltr">{item.vxId}</span>
+        <span><small dir="auto">{item.lastMessage}</small>{item.hasNotes ? <NotebookPen aria-label={t("adminMessenger.hasNote")} /> : null}</span>
         <TagChips tags={item.tags} />
       </span>
       {item.unreadCount ? <b aria-label={t("adminMessenger.unread", { count: item.unreadCount })}>{item.unreadCount}</b> : null}
@@ -45,14 +45,14 @@ function Attachment({ conversationId, attachment }: { conversationId: string; at
   const href = `/api/admin/messenger/${conversationId}/attachments/${attachment.id}`;
   if (attachment.mediaType.startsWith("image/")) {
     return (
-      <a className={styles.messageImage} href={href} download>
+      <a className={styles.messageImage} href={href} download dir="ltr">
         {/* Protected route handles authorization before returning image bytes. */}
         <img src={`${href}?inline=1`} alt={t("messenger.attachmentAlt", { name: attachment.fileName })} />
         <span><ImageIcon aria-hidden="true" />{attachment.fileName}<small>{size(attachment.sizeBytes, t("messenger.megabytes"), t("messenger.kilobytes"))}</small><Download aria-hidden="true" /></span>
       </a>
     );
   }
-  return <a className={styles.messageFile} href={href} download><FileText aria-hidden="true" /><span>{attachment.fileName}<small>{size(attachment.sizeBytes, t("messenger.megabytes"), t("messenger.kilobytes"))}</small></span><Download aria-hidden="true" /></a>;
+  return <a className={styles.messageFile} href={href} download dir="ltr"><FileText aria-hidden="true" /><span>{attachment.fileName}<small>{size(attachment.sizeBytes, t("messenger.megabytes"), t("messenger.kilobytes"))}</small></span><Download aria-hidden="true" /></a>;
 }
 
 function Messages({ detail, pending }: { detail: AdminMessengerDetail; pending: boolean }) {
@@ -109,7 +109,7 @@ function Messages({ detail, pending }: { detail: AdminMessengerDetail; pending: 
               {author === "system" ? <span className={styles.messageAvatar}>VX</span> : author === "player" ? <UserAvatar className={styles.messageAvatar} name={detail.player.name} avatarEmoji={detail.player.avatarEmoji} ariaHidden /> : null}
               <div>
                 <small>{message.authorLabel}</small>
-                <p>{message.body}</p>
+                <p dir="auto">{message.body}</p>
                 {message.attachments.length ? <div className={styles.messageAttachments}>{message.attachments.map((attachment) => <Attachment key={attachment.id} conversationId={detail.conversation.id} attachment={attachment} />)}</div> : null}
                 <time dateTime={message.createdAt}>{formatLocalTime(locale, message.createdAt)}</time>
               </div>
@@ -178,7 +178,7 @@ function AdminComposer({ detail, onUpdate }: { detail: AdminMessengerDetail; onU
       <label className={styles.composerIcon} aria-label={t("adminMessenger.attach")}><Paperclip aria-hidden="true" /><input type="file" accept=".jpg,.jpeg,.png,.webp,.pdf,image/jpeg,image/png,image/webp,application/pdf" disabled={pending} onChange={(event) => { choose(event.target.files?.[0] ?? null); event.currentTarget.value = ""; }} /></label>
       <button type="button" className={styles.composerIcon} aria-label={t("adminMessenger.emoji")} aria-expanded={emojiOpen} onClick={() => setEmojiOpen((value) => !value)}><Smile aria-hidden="true" /></button>
       <AnimatePresence>{emojiOpen ? <motion.div className={styles.emojiMenu} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>{emojis.map((emoji) => <button key={emoji} type="button" onClick={() => setBody((value) => value + emoji)}>{emoji}</button>)}</motion.div> : null}</AnimatePresence>
-      <textarea value={body} rows={1} maxLength={5000} aria-label={t("adminMessenger.messageFor", { name: detail.player.name })} placeholder={t("messenger.placeholder")} onChange={(event) => setBody(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); event.currentTarget.form?.requestSubmit(); } }} />
+      <textarea dir="auto" value={body} rows={1} maxLength={5000} aria-label={t("adminMessenger.messageFor", { name: detail.player.name })} placeholder={t("messenger.placeholder")} onChange={(event) => setBody(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); event.currentTarget.form?.requestSubmit(); } }} />
       <button className={styles.send} disabled={(!body.trim() && !file) || pending} aria-label={t("adminMessenger.send")}>{pending ? <LoaderCircle className={styles.spinner} aria-hidden="true" /> : <Send aria-hidden="true" />}</button>
       {error ? <p className={styles.error} role="alert">{error} <button type="button" onClick={() => setError("")}>{t("adminMessenger.close")}</button></p> : null}
     </form>
@@ -205,16 +205,16 @@ function PlayerPanel({ detail, tags, onUpdate, onTagsChange, onClose }: { detail
   return (
     <aside className={styles.playerPanel} aria-label={t("adminMessenger.memberInfo")}>
       <header><div><small>{detail.player.role === "PARTNER" ? t("adminMessenger.partnerProfile") : t("adminMessenger.playerProfile")}</small><strong>{detail.player.name}</strong></div><button type="button" onClick={onClose} aria-label={t("adminMessenger.infoClose")}><X aria-hidden="true" /></button></header>
-      <div className={styles.profileBlock}><UserAvatar className={styles.profileAvatar} name={detail.player.name} avatarEmoji={detail.player.avatarEmoji} status={detail.player.online ? "online" : "offline"} ariaLabel={`${detail.player.name}: ${detail.player.online ? t("adminMessenger.online") : t("adminMessenger.offline")}`} /><strong>{detail.player.name}</strong><small>{detail.player.email}</small><VxIdCopy vxId={detail.player.vxId} compact /><TagChips tags={detail.player.tags} /><AdminTagManager userId={detail.player.userId} assigned={detail.player.tags} tags={tags} onAssignedChange={(next) => onUpdate({ ...detail, player: { ...detail.player, tags: next } })} onTagsChange={onTagsChange} /><Link href={detail.player.profileHref}>{t("adminMessenger.fullProfile")}</Link></div>
+      <div className={styles.profileBlock}><UserAvatar className={styles.profileAvatar} name={detail.player.name} avatarEmoji={detail.player.avatarEmoji} status={detail.player.online ? "online" : "offline"} ariaLabel={`${detail.player.name}: ${detail.player.online ? t("adminMessenger.online") : t("adminMessenger.offline")}`} /><strong>{detail.player.name}</strong><small dir="ltr">{detail.player.email}</small><VxIdCopy vxId={detail.player.vxId} compact /><TagChips tags={detail.player.tags} /><AdminTagManager userId={detail.player.userId} assigned={detail.player.tags} tags={tags} onAssignedChange={(next) => onUpdate({ ...detail, player: { ...detail.player, tags: next } })} onTagsChange={onTagsChange} /><Link href={detail.player.profileHref}>{t("adminMessenger.fullProfile")}</Link></div>
       <dl className={styles.profileFacts}>
         <div><dt>{t("adminMessenger.role")}</dt><dd>{detail.player.role === "PARTNER" ? t("adminMessenger.partnerRole") : t("adminMessenger.playerRole")}</dd></div><div><dt>{t("adminMessenger.market")}</dt><dd>{detail.player.market}</dd></div>
         <div><dt>{t("adminMessenger.registered")}</dt><dd>{formatLocalDateTime(locale, detail.player.registeredAt)}</dd></div>
       </dl>
       <section className={styles.notes}>
         <header><div><small>{t("adminMessenger.adminOnly")}</small><h2>{t("adminMessenger.notes")}</h2></div><NotebookPen aria-hidden="true" /></header>
-        <textarea value={draft} maxLength={3000} placeholder={editing ? t("adminMessenger.editNote") : t("adminMessenger.addNote")} aria-label={t("adminMessenger.notes")} onChange={(event) => setDraft(event.target.value)} />
+        <textarea dir="auto" value={draft} maxLength={3000} placeholder={editing ? t("adminMessenger.editNote") : t("adminMessenger.addNote")} aria-label={t("adminMessenger.notes")} onChange={(event) => setDraft(event.target.value)} />
         <div className={styles.noteActions}>{editing ? <button type="button" onClick={() => { setEditing(null); setDraft(""); }}>{t("adminMessenger.cancel")}</button> : null}<button type="button" disabled={!draft.trim() || pending} onClick={() => save(editing ? "edit" : "create")}>{pending ? t("adminMessenger.saving") : editing ? t("adminMessenger.save") : t("adminMessenger.add")}</button></div>
-        <div className={styles.noteHistory}>{detail.notes.length ? detail.notes.map((note) => <article key={note.logicalId}><p>{note.body}</p><small>{note.author} · {formatLocalDateTime(locale, note.createdAt)}{note.modifiedAt ? ` · ${formatLocalDateTime(locale, note.modifiedAt)}` : ""}</small><div><button type="button" onClick={() => { setEditing(note); setDraft(note.body); }} aria-label={t("adminMessenger.editNote")}><Pencil aria-hidden="true" /></button><button type="button" onClick={() => save("delete", note)} aria-label={t("adminMessenger.close")}><Trash2 aria-hidden="true" /></button></div></article>) : <p className={styles.noNotes}>{t("adminMessenger.noNotes")}</p>}</div>
+        <div className={styles.noteHistory}>{detail.notes.length ? detail.notes.map((note) => <article key={note.logicalId}><p dir="auto">{note.body}</p><small>{note.author} · {formatLocalDateTime(locale, note.createdAt)}{note.modifiedAt ? ` · ${formatLocalDateTime(locale, note.modifiedAt)}` : ""}</small><div><button type="button" onClick={() => { setEditing(note); setDraft(note.body); }} aria-label={t("adminMessenger.editNote")}><Pencil aria-hidden="true" /></button><button type="button" onClick={() => save("delete", note)} aria-label={t("adminMessenger.close")}><Trash2 aria-hidden="true" /></button></div></article>) : <p className={styles.noNotes}>{t("adminMessenger.noNotes")}</p>}</div>
       </section>
     </aside>
   );

@@ -5,6 +5,7 @@ import { createContext, useCallback, useContext, useEffect, useLayoutEffect, use
 import {
   LOCALE_COOKIE,
   LOCALE_STORAGE_KEY,
+  directionForLocale,
   normalizeLocale,
   resolveInitialLocale,
   translate,
@@ -27,6 +28,11 @@ function persistLocale(nextLocale: Locale) {
   document.cookie = `${LOCALE_COOKIE}=${nextLocale}; Path=/; Max-Age=31536000; SameSite=Lax${location.protocol === "https:" ? "; Secure" : ""}`;
 }
 
+function applyDocumentLocale(nextLocale: Locale) {
+  document.documentElement.lang = nextLocale;
+  document.documentElement.dir = directionForLocale(nextLocale);
+}
+
 export function I18nProvider({
   children,
   initialLocale,
@@ -41,13 +47,13 @@ export function I18nProvider({
   useLayoutEffect(() => {
     if (initialSource === "profile" || initialSource === "saved") {
       window.localStorage.setItem(LOCALE_STORAGE_KEY, initialLocale);
-      document.documentElement.lang = initialLocale;
+      applyDocumentLocale(initialLocale);
       return;
     }
 
     const stored = normalizeLocale(window.localStorage.getItem(LOCALE_STORAGE_KEY));
     const resolved = resolveInitialLocale(stored, window.navigator.languages);
-    document.documentElement.lang = resolved;
+    applyDocumentLocale(resolved);
     if (stored) persistLocale(stored);
     if (resolved !== initialLocale) {
       let active = true;
@@ -59,13 +65,13 @@ export function I18nProvider({
   }, [initialLocale, initialSource]);
 
   useEffect(() => {
-    document.documentElement.lang = locale;
+    applyDocumentLocale(locale);
   }, [locale]);
 
   const setLocale = useCallback((nextLocale: Locale) => {
     setLocaleState(nextLocale);
     persistLocale(nextLocale);
-    document.documentElement.lang = nextLocale;
+    applyDocumentLocale(nextLocale);
     window.dispatchEvent(new CustomEvent("vx-house:locale-change", { detail: nextLocale }));
   }, []);
 

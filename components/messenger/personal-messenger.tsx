@@ -102,7 +102,7 @@ function MessageList({
               <span className={styles.messageAvatar} aria-hidden="true">{author === "system" ? "VX" : "M"}</span>
             )}
             <div className={styles.bubble}>
-              <p>{message.systemKey ? t(message.systemKey, message.systemParams) : message.body}</p>
+              <p dir="auto">{message.systemKey ? t(message.systemKey, message.systemParams) : message.body}</p>
               {message.attachments.length ? (
                 <div className={styles.attachments}>
                   {message.attachments.map((attachment) => {
@@ -112,10 +112,10 @@ function MessageList({
                         {/* The protected endpoint verifies ownership before returning bytes. */}
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img src={`${href}?inline=1`} alt={attachment.fileName} />
-                        <span><ImageIcon aria-hidden="true" />{attachment.fileName}<small>{fileSizeLabel(attachment.sizeBytes, "MB", "KB")}</small></span>
+                        <span dir="ltr"><ImageIcon aria-hidden="true" />{attachment.fileName}<small>{fileSizeLabel(attachment.sizeBytes, "MB", "KB")}</small></span>
                       </a>
                     ) : (
-                      <a key={attachment.id} href={href} download>
+                      <a key={attachment.id} href={href} download dir="ltr">
                         <FileText aria-hidden="true" />
                         {attachment.fileName}
                         <small>{fileSizeLabel(attachment.sizeBytes, "MB", "KB")}</small>
@@ -291,6 +291,7 @@ function Composer({
         ) : null}
       </AnimatePresence>
       <textarea
+        dir="auto"
         rows={1}
         value={body}
         maxLength={5000}

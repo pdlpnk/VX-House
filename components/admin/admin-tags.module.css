@@ -24,3 +24,6 @@
   .create input, .tagList input { font-size: 16px; }
   .tagList { max-height: min(52dvh, 23rem); }
 }
+
+:global(html[dir="rtl"]) .tagList { padding-right: 0; padding-left: .15rem; }
+:global(html[dir="rtl"]) .tagToggle { text-align: start; }

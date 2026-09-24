@@ -161,7 +161,7 @@ export class ProfileApplicationService {
   updateLanguage(input: { principal: AuthenticatedPrincipal; preferredLanguage: LanguageCode }) {
     return this.transactions.run(async ({ database, occurredAt }) => {
       authorizeSelf(input.principal);
-      if (!(["EN", "RU", "TR", "AZ"] as const).includes(input.preferredLanguage)) {
+      if (!(["EN", "RU", "TR", "AZ", "FA"] as const).includes(input.preferredLanguage)) {
         throw new ApplicationError("VALIDATION", "Некорректный язык");
       }
       const result = await new PrismaUserProfileRepository(database).updateLanguage(
@@ -211,9 +211,16 @@ export class ConsentApplicationService {
     authorizeSelf(principal);
     const profile = await new PrismaUserProfileRepository(this.database).findByUserId(principal.userId);
     if (!profile) throw new ApplicationError("NOT_FOUND", "Профиль не найден");
-    return new PrismaConsentVersionRepository(this.database).listPublished({
+    const repository = new PrismaConsentVersionRepository(this.database);
+    const localized = await repository.listPublished({
       marketId: profile.market.id,
       language: profile.preferredLanguage,
+      at,
+    });
+    if (localized.length || profile.preferredLanguage === profile.market.defaultLanguage) return localized;
+    return repository.listPublished({
+      marketId: profile.market.id,
+      language: profile.market.defaultLanguage,
       at,
     });
   }
@@ -242,12 +249,21 @@ export class ConsentApplicationService {
 
       const profile = await new PrismaUserProfileRepository(database).findByUserId(input.principal.userId);
       if (!profile) throw new ApplicationError("NOT_FOUND", "Профиль не найден");
-      const version = await new PrismaConsentVersionRepository(database).findPublishedById({
+      const repository = new PrismaConsentVersionRepository(database);
+      let version = await repository.findPublishedById({
         id: input.consentVersionId,
         marketId: profile.market.id,
         language: profile.preferredLanguage,
         at: occurredAt,
       });
+      if (!version && profile.preferredLanguage !== profile.market.defaultLanguage) {
+        version = await repository.findPublishedById({
+          id: input.consentVersionId,
+          marketId: profile.market.id,
+          language: profile.market.defaultLanguage,
+          at: occurredAt,
+        });
+      }
       if (!version) throw new ApplicationError("VALIDATION", "Версия согласия недоступна для профиля");
 
       const consents = new PrismaUserConsentRepository(database);
@@ -287,11 +303,19 @@ export class ConsentApplicationService {
     authorizeSelf(principal);
     const profile = await new PrismaUserProfileRepository(this.database).findByUserId(principal.userId);
     if (!profile) return false;
-    const versions = await new PrismaConsentVersionRepository(this.database).listPublished({
+    const repository = new PrismaConsentVersionRepository(this.database);
+    let versions = await repository.listPublished({
       marketId: profile.market.id,
       language: profile.preferredLanguage,
       at,
     });
+    if (!versions.length && profile.preferredLanguage !== profile.market.defaultLanguage) {
+      versions = await repository.listPublished({
+        marketId: profile.market.id,
+        language: profile.market.defaultLanguage,
+        at,
+      });
+    }
     const required = latestVersionsByDocument(versions);
     const requiredDocuments = await new PrismaConsentDocumentRepository(this.database).listRequired();
     if (required.length !== requiredDocuments.length) return false;

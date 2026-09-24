@@ -3,7 +3,7 @@ import type { LanguageCode, MarketCode, ProductRole } from "@/lib/db/generated/c
 
 const productRoles = new Set<ProductRole>(["PLAYER", "PARTNER"]);
 const marketCodes = new Set<MarketCode>(["TR", "AZ"]);
-const languages = new Set<LanguageCode>(["EN", "RU", "TR", "AZ"]);
+const languages = new Set<LanguageCode>(["EN", "RU", "TR", "AZ", "FA"]);
 const forbiddenInfrastructureFields = ["roleKeys", "permissionKeys", "infrastructureRole", "roles"];
 
 export interface CreateProfileInput {

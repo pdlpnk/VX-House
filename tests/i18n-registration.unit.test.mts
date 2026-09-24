@@ -4,6 +4,10 @@ import test from "node:test";
 
 import {
   fromDatabaseLanguage,
+  directionForLocale,
+  intlLocales,
+  localeNames,
+  locales,
   languagesFromAcceptLanguage,
   localeFromBrowser,
   resolveInitialLocale,
@@ -16,6 +20,7 @@ import {
   parseServerTimestamp,
 } from "../lib/i18n/date-time.ts";
 import { translate } from "../lib/i18n/translate.ts";
+import { dictionaries } from "../lib/i18n/messages.ts";
 import { publicContent } from "../lib/i18n/public-content.ts";
 import { decodeSystemMessage, encodeSystemMessage, renderSystemMessage } from "../lib/i18n/system-messages.ts";
 import { verificationEmailContent } from "../lib/services/email-provider.ts";
@@ -29,6 +34,8 @@ test("выбор языка из браузера использует ожид�
   assert.equal(localeFromBrowser(["ru-RU"]), "ru");
   assert.equal(localeFromBrowser(["uk-UA"]), "ru");
   assert.equal(localeFromBrowser(["en-US"]), "en");
+  assert.equal(localeFromBrowser(["fa-IR"]), "fa");
+  assert.equal(localeFromBrowser(["fa-IR", "fa", "en"]), "fa");
   assert.equal(localeFromBrowser(["de-DE", "fr-FR"]), "en");
   assert.equal(localeFromBrowser(["", "invalid"]), "en");
   assert.equal(localeFromBrowser(undefined), "en");
@@ -38,6 +45,7 @@ test("Accept-Language учитывает quality и никогда не испо
   assert.deepEqual(languagesFromAcceptLanguage("en-US;q=0.5, tr-TR;q=0.9, ru;q=0"), ["tr-TR", "en-US"]);
   assert.equal(localeFromBrowser(languagesFromAcceptLanguage("tr-TR,tr;q=0.9,en;q=0.8")), "tr");
   assert.equal(localeFromBrowser(languagesFromAcceptLanguage("de-DE,de;q=0.9,*;q=0.8")), "en");
+  assert.equal(localeFromBrowser(languagesFromAcceptLanguage("en-US;q=0.5,fa-IR;q=0.9")), "fa");
   assert.deepEqual(languagesFromAcceptLanguage(""), []);
 });
 
@@ -51,6 +59,7 @@ test("приоритет языка: профиль, сохранённый вы
   assert.deepEqual(resolveLocalePriority({ profileValue: "EN", savedValue: "tr", browserLanguages: ["ru-RU"] }), { locale: "en", source: "profile" });
   assert.deepEqual(resolveLocalePriority({ savedValue: "RU", browserLanguages: ["tr-TR"] }), { locale: "ru", source: "saved" });
   assert.deepEqual(resolveLocalePriority({ browserLanguages: ["az-Latn-AZ"] }), { locale: "az", source: "browser" });
+  assert.deepEqual(resolveLocalePriority({ browserLanguages: ["fa-IR"] }), { locale: "fa", source: "browser" });
   assert.deepEqual(resolveLocalePriority({ browserLanguages: ["de-DE"] }), { locale: "en", source: "fallback" });
   assert.deepEqual(resolveLocalePriority({ browserLanguages: [] }), { locale: "en", source: "fallback" });
 });
@@ -60,19 +69,33 @@ test("язык профиля поддерживает существующие 
   assert.equal(fromDatabaseLanguage("TR"), "tr");
   assert.equal(fromDatabaseLanguage("AZ"), "az");
   assert.equal(fromDatabaseLanguage("EN"), "en");
+  assert.equal(fromDatabaseLanguage("FA"), "fa");
+  assert.equal(toDatabaseLanguage("fa"), "FA");
   assert.equal(fromDatabaseLanguage(undefined), "en");
+  assert.equal(localeNames.fa, "فارسی");
+  assert.deepEqual(locales, ["en", "ru", "tr", "az", "fa"]);
 });
 
-test("переводы типизированы, интерполируются и доступны во всех четырёх языках", () => {
+test("переводы типизированы, интерполируются и доступны во всех пяти языках", () => {
   assert.equal(translate("en", "progress.step", { current: 2, total: 8 }), "Step 2 of 8");
   assert.match(translate("ru", "email.text", { code: "123456" }), /123456/);
   assert.match(translate("tr", "email.text", { code: "123456" }), /123456/);
   assert.match(translate("az", "email.text", { code: "123456" }), /123456/);
+  assert.match(translate("fa", "email.text", { code: "123456" }), /123456/);
+  assert.match(translate("fa", "dashboard.contactManager"), /مدیر/u);
+});
+
+test("персидский словарь не скрывает английские fallback-строки", () => {
+  const intentionallyLanguageNeutral = new Set(["common.invalidDate", "page.cms"]);
+  const inheritedEnglish = (Object.keys(dictionaries.en) as Array<keyof typeof dictionaries.en>).filter(
+    (key) => dictionaries.en[key] === dictionaries.fa[key] && !intentionallyLanguageNeutral.has(key),
+  );
+  assert.deepEqual(inheritedEnglish, []);
 });
 
 test("публичный лендинг полностью локализован и не содержит legacy-механики", async () => {
   const cyrillic = /[А-Яа-яЁё]/u;
-  for (const locale of ["en", "tr", "az"] as const) {
+  for (const locale of ["en", "tr", "az", "fa"] as const) {
     const visibleCopy = JSON.stringify(publicContent[locale]);
     assert.doesNotMatch(visibleCopy, cyrillic, `${locale} landing contains Russian copy`);
     assert.doesNotMatch(visibleCopy, /\b(?:tasks?|rewards?|points?|cashback|rank|progress)\b|görev|ödül|tapşırıq|mükafat/iu);
@@ -104,6 +127,7 @@ test("системные сообщения хранят ключ и парам�
   assert.match(renderSystemMessage("en", envelope.key, envelope.params), /Welcome to VX House/);
   assert.match(renderSystemMessage("az", envelope.key, envelope.params), /VX House-a xoş gəlmisiniz/);
   assert.match(renderSystemMessage("ru", envelope.key, envelope.params), /Добро пожаловать в VX House/);
+  assert.match(renderSystemMessage("fa", envelope.key, envelope.params), /VX House خوش آمدید/u);
   assert.equal(decodeSystemMessage("Обычное пользовательское сообщение"), null);
 });
 
@@ -118,7 +142,7 @@ test("TR → EN меняет только UI и системный рендер,
 });
 
 test("основные player UI-строки доступны без русского fallback", () => {
-  for (const locale of ["en", "ru", "tr", "az"] as const) {
+  for (const locale of locales) {
     assert.notEqual(translate(locale, "economy.title"), "");
     assert.notEqual(translate(locale, "messenger.personalChannel"), "");
     assert.notEqual(translate(locale, "opportunity.playerTitle"), "");
@@ -145,6 +169,9 @@ test("серверные timestamp безопасно нормализуются
     formatLocalDay("en", timestamp, "Today", new Date("2026-08-02T20:00:00.000Z"), { timeZone: "America/New_York" }),
     "Today",
   );
+  assert.match(intlLocales.fa, /ca-gregory/u);
+  const farsiGregorian = new Intl.DateTimeFormat(intlLocales.fa, { year: "numeric", timeZone: "UTC" }).format(new Date("2026-08-02T00:00:00Z"));
+  assert.match(farsiGregorian, /۲۰۲۶|2026/u);
 });
 
 test("письмо подтверждения локализуется на язык профиля", () => {
@@ -153,6 +180,7 @@ test("письмо подтверждения локализуется на яз
   assert.equal(verificationEmailContent("123456", expiresAt, "ru").subject, "Код подтверждения VX House");
   assert.match(verificationEmailContent("123456", expiresAt, "tr").text, /123456/);
   assert.match(verificationEmailContent("123456", expiresAt, "az").html, /lang="az"/);
+  assert.match(verificationEmailContent("123456", expiresAt, "fa").html, /lang="fa"/);
 });
 
 test("регистрация принимает пароль от 8 символов и отклоняет более короткий", () => {
@@ -185,6 +213,7 @@ test("SSR и hydration используют один язык без фикси�
     readFile(new URL("../components/i18n/i18n-provider.tsx", import.meta.url), "utf8"),
   ]);
   assert.match(layout, /<html lang=\{resolution\.locale\}/u);
+  assert.match(layout, /dir=\{directionForLocale\(resolution\.locale\)\}/u);
   assert.match(layout, /initialLocale=\{resolution\.locale\}/u);
   assert.match(layout, /initialSource=\{resolution\.source\}/u);
   assert.match(layout, /generateMetadata/u);
@@ -192,6 +221,25 @@ test("SSR и hydration используют один язык без фикси�
   assert.match(provider, /useState<Locale>\(initialLocale\)/u);
   assert.doesNotMatch(provider, /useState<Locale>\((?:DEFAULT_LOCALE|["']ru["'])\)/u);
   assert.match(provider, /useLayoutEffect/u);
+  assert.match(provider, /document\.documentElement\.dir = directionForLocale\(nextLocale\)/u);
+  assert.equal(directionForLocale("fa"), "rtl");
+  for (const locale of ["ru", "en", "tr", "az"] as const) assert.equal(directionForLocale(locale), "ltr");
+  assert.deepEqual(
+    ["ru", "fa", "en", "fa", "tr", "az", "fa"].map((locale) => directionForLocale(locale as (typeof locales)[number])),
+    ["ltr", "rtl", "ltr", "rtl", "ltr", "ltr", "rtl"],
+  );
+});
+
+test("FA migration additive и onboarding использует market fallback для legal versions", async () => {
+  const [migration, onboarding, consent] = await Promise.all([
+    readFile(new URL("../prisma/migrations/20260924090000_add_farsi_language/migration.sql", import.meta.url), "utf8"),
+    readFile(new URL("../lib/services/identity-onboarding-service.ts", import.meta.url), "utf8"),
+    readFile(new URL("../lib/services/identity-profile-consent-service.ts", import.meta.url), "utf8"),
+  ]);
+  assert.equal(migration.trim(), 'ALTER TYPE "LanguageCode" ADD VALUE IF NOT EXISTS \'FA\';');
+  assert.doesNotMatch(migration, /(?:UPDATE|DELETE|DROP|CREATE TABLE|ALTER TABLE)/iu);
+  assert.match(onboarding, /preferredLanguage !== profile\.market\.defaultLanguage/gu);
+  assert.match(consent, /preferredLanguage !== profile\.market\.defaultLanguage/gu);
 });
 
 test("ручная смена сохраняется без навигации и не теряет hash", async () => {
@@ -200,6 +248,7 @@ test("ручная смена сохраняется без навигации �
   assert.match(provider, /document\.cookie = `\$\{LOCALE_COOKIE\}=\$\{nextLocale\}/u);
   assert.doesNotMatch(provider, /location\.(?:assign|replace|href)|history\.(?:pushState|replaceState)/u);
   assert.equal(resolveLocalePriority({ savedValue: "tr", browserLanguages: ["en-US"] }).locale, "tr");
+  assert.equal(resolveLocalePriority({ savedValue: "fa", browserLanguages: ["ru-RU"] }).locale, "fa");
 });
 
 test("Dashboard и Admin Messenger используют единый словарь во всех направлениях переключения", async () => {
@@ -211,20 +260,27 @@ test("Dashboard и Admin Messenger используют единый слова�
   assert.equal(translate("az", "dashboard.personalManager"), "Şəxsi meneceriniz");
   assert.equal(translate("en", "adminTags.all"), "All");
   assert.equal(translate("ru", "adminTags.manage"), "Управление тегами");
+  assert.equal(translate("fa", "adminMessenger.archive"), "بایگانی");
   assert.notEqual(translate("tr", "dashboard.description"), translate("ru", "dashboard.description"));
 
-  const [shell, home, settings, profile, adminMessenger] = await Promise.all([
+  const [shell, home, settings, profile, adminMessenger, personalMessenger, vxId] = await Promise.all([
     readFile(new URL("../components/dashboard/workspace-shell.tsx", import.meta.url), "utf8"),
     readFile(new URL("../components/dashboard/pages/dashboard-home.tsx", import.meta.url), "utf8"),
     readFile(new URL("../components/dashboard/pages/dashboard-settings-page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../components/dashboard/pages/dashboard-profile-page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../components/admin/admin-messenger-workspace.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../components/messenger/personal-messenger.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../components/ui/vx-id-copy.tsx", import.meta.url), "utf8"),
   ]);
   for (const source of [shell, home, settings, profile, adminMessenger]) assert.match(source, /useI18n/u);
   assert.doesNotMatch(home, /Здравствуйте|Главная|Следующий шаг|Активные задания/u);
   assert.doesNotMatch(settings, /Параметры интерфейса|Уменьшенное движение|Сбросить локальные/u);
   assert.doesNotMatch(profile, /Подтверждённые данные|Электронная почта|Контакт подтверждён/u);
   assert.match(adminMessenger, /adminMessenger\.archive/u);
+  assert.match(adminMessenger, /<p dir="auto">\{message\.body\}<\/p>/u);
+  assert.match(personalMessenger, /<p dir="auto">\{message\.systemKey/u);
+  assert.match(personalMessenger, /textarea[\s\S]*dir="auto"/u);
+  assert.match(vxId, /<span dir="ltr">\{vxId\}<\/span>/u);
   assert.match(shell, /t\(config\.labelKey\)/u);
 });
 
@@ -242,6 +298,7 @@ test("auth-ошибки локализуются по серверному ко�
   assert.equal(translate("ru", "access.invalidCredentials"), "Неверная электронная почта или пароль.");
   assert.equal(translate("tr", "access.invalidCredentials"), "E-posta adresi veya parola hatalı.");
   assert.equal(translate("az", "access.invalidCredentials"), "E-poçt ünvanı və ya parol yanlışdır.");
+  assert.equal(translate("fa", "access.invalidCredentials"), "ایمیل یا رمز عبور نادرست است.");
 
   const flow = await readFile(new URL("../components/access/access-flow.tsx", import.meta.url), "utf8");
   assert.match(flow, /INVALID_CREDENTIALS:\s*"access\.invalidCredentials"/u);

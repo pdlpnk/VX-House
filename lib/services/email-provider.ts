@@ -1,6 +1,6 @@
 import "server-only";
 
-import { intlLocales, translate, type Locale } from "@/lib/i18n";
+import { directionForLocale, intlLocales, translate, type Locale } from "@/lib/i18n";
 
 export interface VerificationEmail {
   readonly idempotencyKey: string;
@@ -45,7 +45,7 @@ export function verificationEmailContent(code: string, expiresAt: Date, language
   const instruction = translate(language, "email.instruction");
   const expiration = translate(language, "email.expiration", { expires });
   const text = translate(language, "email.text", { code });
-  const html = `<!doctype html><html lang="${language}"><body style="margin:0;background:#090707;color:#f7f4f4;font-family:Arial,sans-serif"><div style="max-width:560px;margin:0 auto;padding:48px 24px"><p style="color:#ef3340;font-weight:700;letter-spacing:.08em">VX HOUSE</p><h1 style="font-size:28px">${heading}</h1><p style="color:#c8bebe;line-height:1.6">${instruction}</p><p style="font-size:36px;font-weight:700;letter-spacing:.18em;margin:32px 0">${code}</p><p style="color:#8f8585;font-size:14px">${expiration}</p></div></body></html>`;
+  const html = `<!doctype html><html lang="${language}" dir="${directionForLocale(language)}"><body style="margin:0;background:#090707;color:#f7f4f4;font-family:Tahoma,Arial,sans-serif"><div style="max-width:560px;margin:0 auto;padding:48px 24px"><p style="color:#ef3340;font-weight:700;letter-spacing:.08em">VX HOUSE</p><h1 style="font-size:28px">${heading}</h1><p style="color:#c8bebe;line-height:1.6">${instruction}</p><p dir="ltr" style="font-size:36px;font-weight:700;letter-spacing:.18em;margin:32px 0">${code}</p><p style="color:#8f8585;font-size:14px">${expiration}</p></div></body></html>`;
   return { subject, html, text };
 }
 
@@ -60,7 +60,7 @@ export function passwordResetEmailContent(code: string, expiresAt: Date, languag
   const instruction = translate(language, "passwordResetEmail.instruction");
   const expiration = translate(language, "passwordResetEmail.expiration", { expires });
   const text = translate(language, "passwordResetEmail.text", { code });
-  const html = `<!doctype html><html lang="${language}"><body style="margin:0;background:#090707;color:#f7f4f4;font-family:Arial,sans-serif"><div style="max-width:560px;margin:0 auto;padding:48px 24px"><p style="color:#ef3340;font-weight:700;letter-spacing:.08em">VX HOUSE</p><h1 style="font-size:28px">${heading}</h1><p style="color:#c8bebe;line-height:1.6">${instruction}</p><p style="font-size:36px;font-weight:700;letter-spacing:.18em;margin:32px 0">${code}</p><p style="color:#8f8585;font-size:14px">${expiration}</p></div></body></html>`;
+  const html = `<!doctype html><html lang="${language}" dir="${directionForLocale(language)}"><body style="margin:0;background:#090707;color:#f7f4f4;font-family:Tahoma,Arial,sans-serif"><div style="max-width:560px;margin:0 auto;padding:48px 24px"><p style="color:#ef3340;font-weight:700;letter-spacing:.08em">VX HOUSE</p><h1 style="font-size:28px">${heading}</h1><p style="color:#c8bebe;line-height:1.6">${instruction}</p><p dir="ltr" style="font-size:36px;font-weight:700;letter-spacing:.18em;margin:32px 0">${code}</p><p style="color:#8f8585;font-size:14px">${expiration}</p></div></body></html>`;
   return { subject, html, text };
 }
 

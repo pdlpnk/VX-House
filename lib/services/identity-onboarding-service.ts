@@ -446,7 +446,7 @@ export class IdentityOnboardingService {
       language: profile.preferredLanguage,
       at,
     });
-    if (!versions.length && profile.preferredLanguage === "EN") {
+    if (!versions.length && profile.preferredLanguage !== profile.market.defaultLanguage) {
       versions = await consentVersions.listPublished({
         marketId: profile.market.id,
         language: profile.market.defaultLanguage,
@@ -513,7 +513,7 @@ export class IdentityOnboardingService {
         language: profile.preferredLanguage,
         at: occurredAt,
       });
-      if (!versions.length && profile.preferredLanguage === "EN") {
+      if (!versions.length && profile.preferredLanguage !== profile.market.defaultLanguage) {
         versions = await consentVersions.listPublished({
           marketId: profile.market.id,
           language: profile.market.defaultLanguage,

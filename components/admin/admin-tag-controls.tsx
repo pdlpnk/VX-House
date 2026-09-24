@@ -19,7 +19,7 @@ export function TagFilters({ tags, selected, onSelect }: { tags: readonly AdminT
 }
 
 export function AdminTagManager({ userId, assigned, tags, onAssignedChange, onTagsChange }: { userId: string; assigned: readonly AdminTagAssignmentView[]; tags: readonly AdminTagView[]; onAssignedChange: (tags: AdminTagAssignmentView[]) => void; onTagsChange: (tags: AdminTagView[]) => void }) {
-  const { t } = useI18n();
+  const { locale, t } = useI18n();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [editingId, setEditingId] = useState("");
@@ -42,7 +42,8 @@ export function AdminTagManager({ userId, assigned, tags, onAssignedChange, onTa
       const anchor = managerRef.current?.getBoundingClientRect();
       if (!anchor) return;
       const width = Math.min(360, window.innerWidth - 24);
-      const left = Math.min(Math.max(12, anchor.right - width), window.innerWidth - width - 12);
+      const anchorEdge = locale === "fa" ? anchor.left : anchor.right - width;
+      const left = Math.min(Math.max(12, anchorEdge), window.innerWidth - width - 12);
       const preferredTop = anchor.bottom + 10;
       const estimatedHeight = Math.min(480, window.innerHeight - 24);
       setPosition({ top: Math.min(preferredTop, Math.max(12, window.innerHeight - estimatedHeight - 12)), left });
@@ -63,7 +64,7 @@ export function AdminTagManager({ userId, assigned, tags, onAssignedChange, onTa
       document.removeEventListener("keydown", closeOnEscape);
       document.removeEventListener("pointerdown", closeOutside);
     };
-  }, [open]);
+  }, [locale, open]);
 
   async function refreshTags() {
     const response = await fetch("/api/admin/tags", { cache: "no-store" });

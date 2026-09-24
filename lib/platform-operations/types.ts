@@ -4,7 +4,7 @@ export type ForecastView = Readonly<{
   title: string;
   author: string;
   version: number;
-  language: "EN" | "RU" | "TR" | "AZ";
+  language: "EN" | "RU" | "TR" | "AZ" | "FA";
   status: "PUBLISHED" | "SUPERSEDED" | "RETRACTED" | "ARCHIVED";
   summary: string;
   body: string;
