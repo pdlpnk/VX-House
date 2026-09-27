@@ -51,7 +51,7 @@ export type OpportunityView = {
   description: string;
   nextStep: string;
   role: "PLAYER" | "PARTNER";
-  market: { code: "TR" | "AZ"; name: string };
+  market: { code: "TR" | "AZ" | "IR"; name: string };
   availability: OpportunityAvailability;
   availabilityReason: string;
   task: TaskVersionView | null;

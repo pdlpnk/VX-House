@@ -97,6 +97,7 @@ const en = {
   "onboarding.countryDescription": "Determines the available terms.",
   "onboarding.turkey": "Türkiye",
   "onboarding.azerbaijan": "Azerbaijan",
+  "onboarding.iran": "Iran",
   "onboarding.continueRegistration": "Continue to registration",
   "messenger.manager": "VX House manager",
   "messenger.online": "Online",
@@ -224,6 +225,7 @@ const ru: Dictionary = {
   "login.eyebrow": "Возвращение в VX House", "login.title": "Войти в пространство", "login.description": "Используйте электронную почту и пароль, указанные при создании профиля.", "login.pending": "Входим…", "login.submit": "Войти",
   "verification.eyebrow": "Подтверждение контакта", "verification.title": "Введите код из письма", "verification.description": "Мы отправили шестизначный код на адрес {email}.", "verification.code": "Код подтверждения", "verification.devCode": "Код среды разработки:", "verification.pending": "Проверяем…", "verification.submit": "Подтвердить", "verification.resend": "Отправить новый код", "verification.resendIn": "Новый код через 0:{seconds}", "verification.otherEmail": "Начать с другого адреса",
   "progress.step": "Шаг {current} из {total}", "progress.role": "Страна", "progress.profile": "Профиль", "progress.email": "Подтверждение почты", "progress.tasks": "Задания", "progress.progress": "Прогресс", "progress.manager": "Менеджер", "progress.consents": "Подтверждения", "progress.done": "Готово",
+  "onboarding.iran": "Иран",
 };
 
 const tr: Dictionary = {
@@ -259,6 +261,7 @@ const tr: Dictionary = {
   "login.eyebrow": "VX House'a dönüş", "login.title": "Alanınıza giriş yapın", "login.description": "Profilinizi oluştururken kullandığınız e-posta ve parolayı girin.", "login.pending": "Giriş yapılıyor…", "login.submit": "Giriş yap",
   "verification.eyebrow": "İletişim doğrulaması", "verification.title": "E-postadaki kodu girin", "verification.description": "Altı haneli kodu {email} adresine gönderdik.", "verification.code": "Doğrulama kodu", "verification.devCode": "Geliştirme kodu:", "verification.pending": "Kontrol ediliyor…", "verification.submit": "Doğrula", "verification.resend": "Yeni kod gönder", "verification.resendIn": "Yeni kod 0:{seconds} sonra", "verification.otherEmail": "Başka bir e-posta kullan",
   "progress.step": "{total} adımın {current}. adımı", "progress.role": "Ülke", "progress.profile": "Profil", "progress.email": "E-posta doğrulama", "progress.tasks": "Görevler", "progress.progress": "İlerleme", "progress.manager": "Yönetici", "progress.consents": "Onaylar", "progress.done": "Tamamlandı",
+  "onboarding.iran": "İran",
 };
 
 const az: Dictionary = {
@@ -294,6 +297,7 @@ const az: Dictionary = {
   "login.eyebrow": "VX House-a qayıdış", "login.title": "Məkanınıza daxil olun", "login.description": "Profil yaradarkən göstərdiyiniz e-poçt və paroldan istifadə edin.", "login.pending": "Daxil olunur…", "login.submit": "Daxil ol",
   "verification.eyebrow": "Əlaqənin təsdiqi", "verification.title": "Məktubdakı kodu daxil edin", "verification.description": "Altı rəqəmli kodu {email} ünvanına göndərdik.", "verification.code": "Təsdiq kodu", "verification.devCode": "İnkişaf mühiti kodu:", "verification.pending": "Yoxlanılır…", "verification.submit": "Təsdiq et", "verification.resend": "Yeni kod göndər", "verification.resendIn": "Yeni kod 0:{seconds} sonra", "verification.otherEmail": "Başqa e-poçtdan istifadə et",
   "progress.step": "{total} addımdan {current}-ci", "progress.role": "Ölkə", "progress.profile": "Profil", "progress.email": "E-poçtun təsdiqi", "progress.tasks": "Tapşırıqlar", "progress.progress": "İrəliləyiş", "progress.manager": "Menecer", "progress.consents": "Təsdiqlər", "progress.done": "Hazırdır",
+  "onboarding.iran": "İran",
 };
 
 const fa: Dictionary = {
@@ -334,6 +338,7 @@ const fa: Dictionary = {
   "economy.eyebrow": "پیشرفت من", "economy.title": "مسیر شما در VX House", "economy.description": "امتیازها، سطح‌ها و مزایای دریافت‌شده در یک فضای روشن.", "economy.availableNow": "اکنون در دسترس", "economy.pointsDescription": "امتیازهای جایزه VX برای باز کردن مزایا استفاده می‌شوند.", "economy.monthGrowth": "رشد این ماه", "economy.rewardsReceived": "مزایای دریافت‌شده", "economy.currentLevel": "سطح فعلی", "economy.pointsDynamics": "فعالیت امتیازها", "economy.monthAccruals": "ثبت‌های این ماه", "economy.monthGrowthAria": "رشد این ماه: {points} امتیاز VX", "economy.toLevel": "تا {level}", "economy.levelProgress": "پیشرفت تا {level}: {progress}٪", "economy.maximumLevel": "بالاترین سطح به‌دست آمده است.", "economy.current": "فعلی", "economy.pointsCount": "{points} امتیاز", "economy.latestOperations": "آخرین عملیات", "economy.accrualHistory": "تاریخچه ثبت‌ها", "economy.noAccruals": "هنوز ثبتی نیست.", "economy.fullHistory": "تاریخچه کامل", "economy.benefits": "مزایا", "economy.latestRewards": "آخرین مزایا", "economy.noRewards": "مزایا پس از تکمیل کارهای واجد شرایط نمایش داده می‌شوند.", "economy.allRewards": "همه مزایا", "economy.now": "اکنون", "economy.daysShort": "روز", "economy.levelBronze": "کارهای آغازین و مزایای خوش‌آمد", "economy.levelSilver": "کارهای بیشتر و پیشنهادهای شخصی", "economy.levelGold": "فرصت‌های اولویت‌دار و مزایای اضافی", "economy.levelPlatinum": "شرایط خصوصی و پشتیبانی اولویت‌دار", "economy.levelDiamond": "مجموعه کامل مزایای VX House", "economy.rewardAvailable": "در دسترس", "economy.rewardProvided": "دریافت‌شده", "economy.rewardPreparing": "در حال آماده‌سازی", "economy.rewardExpected": "مورد انتظار", "economy.rewardReview": "در حال بررسی", "economy.rewardConfirmed": "تأییدشده", "economy.rewardRejected": "ردشده", "economy.rewardCancelled": "لغوشده", "economy.rewardExpired": "منقضی‌شده",
   "status.available": "در دسترس", "status.unavailable": "در دسترس نیست", "status.pendingReview": "در انتظار بررسی", "status.noData": "داده‌ای نیست", "reward.statusExpected": "مورد انتظار", "reward.statusAwaiting": "در انتظار تأیید", "reward.statusConfirmed": "تأییدشده", "reward.statusPreparing": "در حال آماده‌سازی", "reward.statusAvailable": "در دسترس", "reward.statusProvided": "ارائه‌شده", "reward.statusRejected": "ردشده", "reward.statusCancelled": "لغوشده", "reward.statusExpired": "منقضی‌شده", "workspace.pointsTooltip": "امتیازهای جایزه VX شما برای باز کردن مزایا استفاده می‌شوند.", "workspace.currentLevel": "سطح فعلی", "workspace.toLevel": "تا {level}", "workspace.criteriaCompleted": "معیارهای تکمیل‌شده: {completed} از {total}", "workspace.pointsRemaining": "{points} امتیاز VX تا سطح بعد", "workspace.rankDetails": "درباره سطح‌ها",
   "progress.step": "مرحله {current} از {total}", "progress.role": "کشور", "progress.profile": "پروفایل", "progress.email": "تأیید ایمیل", "progress.tasks": "فضای شخصی", "progress.progress": "راه‌اندازی", "progress.manager": "مدیر", "progress.consents": "تأییدها", "progress.done": "انجام شد",
+  "onboarding.iran": "ایران",
   "error.temporary": "خطای موقت", "error.dashboardTitle": "بارگذاری داشبورد ممکن نشد", "error.dashboardText": "حساب و داده‌های شما امن است. صفحه را دوباره بارگذاری کنید.", "error.retry": "تلاش دوباره",
 };
 

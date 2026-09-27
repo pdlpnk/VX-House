@@ -92,7 +92,7 @@ export type EconomyHistoryEvent =
 export type EconomySnapshotView = {
   configured: boolean;
   role: ProductRole;
-  market: { code: "TR" | "AZ"; name: string };
+  market: { code: "TR" | "AZ" | "IR"; name: string };
   points: { confirmedBalance: number; pendingBalance: number };
   trust: { score: number | null; zone: string | null; explanation: string };
   rank: { current: RankView | null; next: RankView | null; history: RankHistoryView[] };

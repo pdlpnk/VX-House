@@ -2,7 +2,7 @@ import { ApplicationError } from "@/lib/application";
 import type { LanguageCode, MarketCode, ProductRole } from "@/lib/db/generated/client";
 
 const productRoles = new Set<ProductRole>(["PLAYER", "PARTNER"]);
-const marketCodes = new Set<MarketCode>(["TR", "AZ"]);
+const marketCodes = new Set<MarketCode>(["TR", "AZ", "IR"]);
 const languages = new Set<LanguageCode>(["EN", "RU", "TR", "AZ", "FA"]);
 const forbiddenInfrastructureFields = ["roleKeys", "permissionKeys", "infrastructureRole", "roles"];
 

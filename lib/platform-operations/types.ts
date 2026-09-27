@@ -20,7 +20,7 @@ export type PromocodeView = Readonly<{
   id: string;
   key: string;
   partner: string;
-  market: "TR" | "AZ";
+  market: "TR" | "AZ" | "IR";
   role: "PLAYER" | "PARTNER";
   instructions: string;
   validFrom: string;

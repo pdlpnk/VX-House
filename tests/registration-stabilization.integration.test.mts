@@ -76,6 +76,7 @@ async function seedRequiredIdentityData() {
   for (const [code, name, defaultLanguage] of [
     ["TR", "Турция", "TR"],
     ["AZ", "Азербайджан", "AZ"],
+    ["IR", "Иран", "FA"],
   ] as const) {
     const market = await database.market.create({ data: { code, name, defaultLanguage, isActive: true } });
     for (const [key, document] of documents) {
@@ -128,6 +129,7 @@ for (const account of [
   { role: "PLAYER", market: "TR", locale: "RU", expectedRoute: "/dashboard" },
   { role: "PLAYER", market: "AZ", locale: "AZ", expectedRoute: "/dashboard" },
   { role: "PLAYER", market: "TR", locale: "TR", expectedRoute: "/dashboard" },
+  { role: "PLAYER", market: "IR", locale: "FA", expectedRoute: "/dashboard" },
 ] as const) {
   test(`полный HTTP-сценарий регистрации и повторного входа: ${account.role}/${account.market}/${account.locale}`, async () => {
     const email = `${account.role.toLowerCase()}-${randomUUID()}@registration.invalid`;
@@ -215,7 +217,7 @@ for (const account of [
     const user = await database.user.findUniqueOrThrow({
       where: { email },
       include: {
-        profile: { include: { playerProfile: true, partnerProfile: true } },
+        profile: { include: { market: true, playerProfile: true, partnerProfile: true } },
         onboardingProgress: true,
         sessions: true,
         userConsents: true,
@@ -223,6 +225,7 @@ for (const account of [
     });
     assert.equal(user.profile?.productRole, account.role);
     assert.equal(user.profile?.marketId != null, true);
+    assert.equal(user.profile?.market.code, account.market);
     assert.equal(user.profile?.preferredLanguage, account.locale);
     assert.equal(user.profile?.playerProfile != null, true);
     assert.equal(user.profile?.partnerProfile, null);

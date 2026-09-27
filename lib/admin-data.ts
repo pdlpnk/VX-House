@@ -18,7 +18,7 @@ export const adminSections: readonly AdminSection[] = [
   { id: "notifications", label: "Уведомления", singular: "Уведомление", description: "Серверные уведомления и история доставки.", purpose: "Одиночная и массовая отправка с фильтрацией по роли и рынку.", icon: MailCheck },
   { id: "team", label: "Команда и права", singular: "Роль сотрудника", description: "Инфраструктурные роли и разрешения сотрудников.", purpose: "Просмотр действующей RBAC-матрицы и назначений.", icon: UsersRound },
   { id: "audit", label: "Аудит", singular: "Запись аудита", description: "Неизменяемый журнал административных действий.", purpose: "Просмотр автора, времени, цели, основания и метаданных критического действия.", icon: History },
-  { id: "settings", label: "Настройки", singular: "Рынок", description: "Серверная конфигурация рынков и локализации.", purpose: "Просмотр активной конфигурации Турции и Азербайджана.", icon: Settings2 },
+  { id: "settings", label: "Настройки", singular: "Рынок", description: "Серверная конфигурация рынков и локализации.", purpose: "Просмотр активной конфигурации Турции, Азербайджана и Ирана.", icon: Settings2 },
 ] as const;
 
 export function getAdminSection(id: string) { return adminSections.find((section) => section.id === id); }

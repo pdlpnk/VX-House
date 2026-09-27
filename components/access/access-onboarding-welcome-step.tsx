@@ -7,7 +7,11 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useI18n } from "@/components/i18n/i18n-provider";
 import type { AccessCountry } from "@/lib/access-types";
-const countries = [{ id: "turkey" as const, title: "onboarding.turkey" as const }, { id: "azerbaijan" as const, title: "onboarding.azerbaijan" as const }];
+const countries = [
+  { id: "turkey" as const, title: "onboarding.turkey" as const },
+  { id: "azerbaijan" as const, title: "onboarding.azerbaijan" as const },
+  { id: "iran" as const, title: "onboarding.iran" as const },
+];
 
 export function AccessOnboardingWelcomeStep({
   country,

@@ -28,6 +28,11 @@ try {
     update: { name: "Азербайджан", defaultLanguage: "AZ", isActive: true },
     create: { code: "AZ", name: "Азербайджан", defaultLanguage: "AZ", isActive: true },
   });
+  const ir = await database.market.upsert({
+    where: { code: "IR" },
+    update: { name: "Иран", defaultLanguage: "FA", isActive: true },
+    create: { code: "IR", name: "Иран", defaultLanguage: "FA", isActive: true },
+  });
   await database.user.upsert({
     where: { email: "synthetic-user@development.invalid" },
     update: { displayName: "Синтетический пользователь" },
@@ -43,7 +48,7 @@ try {
         isRequired: true,
       },
     });
-    for (const market of [tr, az]) {
+    for (const market of [tr, az, ir]) {
       for (const language of ["RU", market.defaultLanguage] as const) {
         await database.consentVersion.upsert({
           where: {

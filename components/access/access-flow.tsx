@@ -34,7 +34,7 @@ type Consent = { id: string; title: string; version: number; accepted: boolean }
 type Profile = {
   productRole: "PLAYER" | "PARTNER";
   user: { email: string; displayName: string };
-  market: { code: "TR" | "AZ" };
+  market: { code: "TR" | "AZ" | "IR" };
   preferredLanguage: "EN" | "RU" | "TR" | "AZ" | "FA";
   accountStatus: string;
 };
@@ -125,7 +125,7 @@ export function AccessFlow() {
     setName(profile.user.displayName);
     setEmail(profile.user.email);
     setScenario(profile.productRole === "PLAYER" ? "player" : "partner");
-    setCountry(profile.market.code === "TR" ? "turkey" : "azerbaijan");
+    setCountry(profile.market.code === "TR" ? "turkey" : profile.market.code === "AZ" ? "azerbaijan" : "iran");
     setLocale(fromDatabaseLanguage(profile.preferredLanguage));
     setDestination(profile.productRole === "PLAYER" ? "/dashboard/opportunities" : "/partner/opportunities");
   }
@@ -204,7 +204,7 @@ export function AccessFlow() {
           email,
           password,
           productRole: "PLAYER",
-          marketCode: country === "azerbaijan" ? "AZ" : "TR",
+          marketCode: country === "turkey" ? "TR" : country === "azerbaijan" ? "AZ" : "IR",
           preferredLanguage: toDatabaseLanguage(locale),
           idempotencyKey: crypto.randomUUID(),
         }),

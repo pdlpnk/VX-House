@@ -39,7 +39,7 @@ export type AdminListQuery = Readonly<{
   search?: string;
   status?: string;
   role?: "PLAYER" | "PARTNER";
-  market?: "TR" | "AZ";
+  market?: "TR" | "AZ" | "IR";
   cursor?: string;
   take?: number;
   tagId?: string;
@@ -52,7 +52,7 @@ export type ContentDraftInput = Readonly<{
   description: string;
   key?: string;
   role?: "PLAYER" | "PARTNER";
-  market?: "TR" | "AZ";
+  market?: "TR" | "AZ" | "IR";
   nextStep?: string;
   instructionVersionId?: string;
   sequenceOrder?: number;
@@ -76,4 +76,4 @@ export type AdminCommand =
   | Readonly<{ action: "SUPPORT_STATUS"; status: "ASSIGNED" | "WAITING_OPERATOR" | "WAITING_USER" | "RESOLVED" | "CLOSED"; reason: string }>
   | Readonly<{ action: "APPEAL_DECISION"; appealId: string; status: "UPHELD" | "PARTIALLY_UPHELD" | "DENIED"; reason: string }>
   | Readonly<{ action: "ECONOMY_ADJUST"; userId: string; kind: "POINTS" | "TRUST"; delta: number; reason: string; idempotencyKey: string }>
-  | Readonly<{ action: "NOTIFY"; userId?: string; role?: "PLAYER" | "PARTNER"; market?: "TR" | "AZ"; type: string; title: string; body: string; idempotencyKey: string }>;
+  | Readonly<{ action: "NOTIFY"; userId?: string; role?: "PLAYER" | "PARTNER"; market?: "TR" | "AZ" | "IR"; type: string; title: string; body: string; idempotencyKey: string }>;

@@ -32,11 +32,13 @@ async function seed() {
   for (const [key, title] of [["terms", "Условия использования"], ["privacy", "Политика конфиденциальности"]] as const) {
     documents.set(key, await database.consentDocument.create({ data: { key, title, isRequired: true }, select: { id: true } }));
   }
-  for (const [code, name, defaultLanguage] of [["TR", "Турция", "TR"], ["AZ", "Азербайджан", "AZ"]] as const) {
+  for (const [code, name, defaultLanguage] of [["TR", "Турция", "TR"], ["AZ", "Азербайджан", "AZ"], ["IR", "Иран", "FA"]] as const) {
     const market = await database.market.create({ data: { code, name, defaultLanguage, isActive: true } });
     for (const key of ["terms", "privacy"] as const) {
       const document = documents.get(key)!;
-      await database.consentVersion.create({ data: { consentDocumentId: document.id, marketId: market.id, language: "RU", version: 1, contentHash: `${key}${code}`.padEnd(64, "0"), publishedAt: new Date("2026-01-01"), effectiveFrom: new Date("2026-01-01") } });
+      for (const language of new Set(["RU" as const, defaultLanguage])) {
+        await database.consentVersion.create({ data: { consentDocumentId: document.id, marketId: market.id, language, version: 1, contentHash: `${key}${code}${language}`.padEnd(64, "0"), publishedAt: new Date("2026-01-01"), effectiveFrom: new Date("2026-01-01") } });
+      }
     }
   }
 }
@@ -53,9 +55,10 @@ after(async () => database.$disconnect());
 async function register(
   role: "PLAYER" | "PARTNER" = "PLAYER",
   email = `${randomUUID()}@test.invalid`,
-  preferredLanguage: "EN" | "RU" | "TR" | "AZ" = "RU",
+  preferredLanguage: "EN" | "RU" | "TR" | "AZ" | "FA" = "RU",
+  marketCode: "TR" | "AZ" | "IR" = "TR",
 ) {
-  const result = await service.register({ command: { displayName: "Тестовый пользователь", email, password: "correct horse battery staple", productRole: role, marketCode: "TR", preferredLanguage }, idempotencyKey: `register-${randomUUID()}` });
+  const result = await service.register({ command: { displayName: "Тестовый пользователь", email, password: "correct horse battery staple", productRole: role, marketCode, preferredLanguage }, idempotencyKey: `register-${randomUUID()}` });
   const principal: AuthenticatedPrincipal = { userId: result.userId, sessionId: result.session.sessionId, roleKeys: ["authenticated"], permissionKeys: [] };
   return { result, principal, code: mail.latest(result.userId)!.code };
 }
@@ -79,6 +82,20 @@ test("регистрация партнёра создаёт только pendin
   assert.equal(result.profile.partnerProfile?.status, "PENDING");
   assert.equal(result.profile.playerProfile, null);
   assert.equal((await database.user.findUniqueOrThrow({ where: { id: result.userId } })).avatarEmoji, null);
+});
+
+test("IR + FA проходит регистрацию, подтверждение и onboarding без изменения выбранной страны", async () => {
+  const { result, principal, code } = await register("PLAYER", undefined, "FA", "IR");
+  await service.verifyEmail({ principal, code });
+  const snapshot = await service.getSnapshot(principal);
+  assert.equal(snapshot.requiredConsents.length, 2);
+  const consentVersions = await database.consentVersion.findMany({ where: { id: { in: snapshot.requiredConsents.map(({ id }) => id) } } });
+  assert.ok(consentVersions.every((consent) => consent.language === "FA"));
+  await service.complete({ principal, ageConfirmed: true, consentVersionIds: snapshot.requiredConsents.map(({ id }) => id), idempotencyKey: `complete-${randomUUID()}` });
+  const profile = await database.userProfile.findUniqueOrThrow({ where: { userId: result.userId }, include: { market: true } });
+  assert.equal(profile.market.code, "IR");
+  assert.equal(profile.preferredLanguage, "FA");
+  assert.equal(profile.accountStatus, "ACTIVE");
 });
 
 test("несколько зарегистрированных игроков получают разные постоянные emoji", async () => {

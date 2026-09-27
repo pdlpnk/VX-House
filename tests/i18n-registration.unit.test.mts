@@ -21,6 +21,7 @@ import {
 } from "../lib/i18n/date-time.ts";
 import { translate } from "../lib/i18n/translate.ts";
 import { dictionaries } from "../lib/i18n/messages.ts";
+import { accessContent } from "../lib/i18n/access-content.ts";
 import { publicContent } from "../lib/i18n/public-content.ts";
 import { decodeSystemMessage, encodeSystemMessage, renderSystemMessage } from "../lib/i18n/system-messages.ts";
 import { verificationEmailContent } from "../lib/services/email-provider.ts";
@@ -83,6 +84,29 @@ test("переводы типизированы, интерполируются 
   assert.match(translate("az", "email.text", { code: "123456" }), /123456/);
   assert.match(translate("fa", "email.text", { code: "123456" }), /123456/);
   assert.match(translate("fa", "dashboard.contactManager"), /مدیر/u);
+  assert.equal(translate("en", "onboarding.iran"), "Iran");
+  assert.equal(translate("ru", "onboarding.iran"), "Иран");
+  assert.equal(translate("tr", "onboarding.iran"), "İran");
+  assert.equal(translate("az", "onboarding.iran"), "İran");
+  assert.equal(translate("fa", "onboarding.iran"), "ایران");
+  assert.deepEqual(
+    [accessContent.ru.labels.iran, accessContent.en.labels.iran, accessContent.tr.labels.iran, accessContent.az.labels.iran, accessContent.fa.labels.iran],
+    ["Иран", "Iran", "İran", "İran", "ایران"],
+  );
+});
+
+test("регистрация принимает IR независимо от выбранного языка интерфейса", () => {
+  const base = {
+    displayName: "Iran Player",
+    email: "iran-player@example.com",
+    password: "12345678",
+    productRole: "PLAYER",
+    marketCode: "IR",
+    preferredLanguage: "EN",
+    idempotencyKey: "iran-market-test",
+  } as const;
+  assert.equal(validateRegistrationInput(base).marketCode, "IR");
+  assert.equal(validateRegistrationInput({ ...base, preferredLanguage: "FA" }).preferredLanguage, "FA");
 });
 
 test("персидский словарь не скрывает английские fallback-строки", () => {
@@ -240,6 +264,21 @@ test("FA migration additive и onboarding использует market fallback �
   assert.doesNotMatch(migration, /(?:UPDATE|DELETE|DROP|CREATE TABLE|ALTER TABLE)/iu);
   assert.match(onboarding, /preferredLanguage !== profile\.market\.defaultLanguage/gu);
   assert.match(consent, /preferredLanguage !== profile\.market\.defaultLanguage/gu);
+});
+
+test("IR migration только расширяет MarketCode, а UI сохраняет страну отдельно от языка", async () => {
+  const [migration, schema, flow, countryStep] = await Promise.all([
+    readFile(new URL("../prisma/migrations/20260928120000_add_iran_market/migration.sql", import.meta.url), "utf8"),
+    readFile(new URL("../prisma/schema.prisma", import.meta.url), "utf8"),
+    readFile(new URL("../components/access/access-flow.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../components/access/access-onboarding-welcome-step.tsx", import.meta.url), "utf8"),
+  ]);
+  assert.equal(migration.trim(), `ALTER TYPE "MarketCode" ADD VALUE IF NOT EXISTS 'IR';`);
+  assert.match(schema, /enum MarketCode\s*\{[\s\S]*\bTR\b[\s\S]*\bAZ\b[\s\S]*\bIR\b[\s\S]*\}/u);
+  assert.match(flow, /country === "turkey" \? "TR" : country === "azerbaijan" \? "AZ" : "IR"/u);
+  assert.match(flow, /preferredLanguage:\s*toDatabaseLanguage\(locale\)/u);
+  assert.match(countryStep, /id: "iran"[\s\S]*title: "onboarding\.iran"/u);
+  assert.doesNotMatch(countryStep, /setLocale|onLanguageChange/u);
 });
 
 test("ручная смена сохраняется без навигации и не теряет hash", async () => {

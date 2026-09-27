@@ -151,7 +151,7 @@ export class AdminApplicationService {
   }
 
   private async notifyAudience(database: DatabaseClient, actorId: string, role: string, market: string, type: string, title: string, body: string, relatedType: string, relatedId: string, occurredAt: Date) {
-    const users = await database.user.findMany({ where: { profile: { accountStatus: "ACTIVE", productRole: role as "PLAYER" | "PARTNER", market: { code: market as "TR" | "AZ" } } }, select: { id: true }, take: 500 });
+    const users = await database.user.findMany({ where: { profile: { accountStatus: "ACTIVE", productRole: role as "PLAYER" | "PARTNER", market: { code: market as "TR" | "AZ" | "IR" } } }, select: { id: true }, take: 500 });
     for (const user of users) await createProductNotification(database, { userId: user.id, type, title, body, relatedType, relatedId, idempotencyKey: `${type}:${relatedId}:${user.id}:${occurredAt.getTime()}`, actorId, occurredAt });
   }
 }

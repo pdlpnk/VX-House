@@ -44,7 +44,7 @@ test("server-renders the VX House landing experience", async () => {
   assert.match(html, /More opportunities\. Less uncertainty\./i);
   assert.match(html, /See which opportunities are available to you/i);
   assert.match(html, /VX Rewards are confirmed benefits/i);
-  assert.match(html, /Türkiye and Azerbaijan/i);
+  assert.match(html, /Türkiye, Azerbaijan and Iran/i);
   assert.match(html, /id="faq"/i);
   assert.match(html, /application\/ld\+json/i);
   assert.doesNotMatch(html, /12 480|\+ 1 250|Прайм|24\/7/i);

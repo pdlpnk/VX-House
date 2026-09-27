@@ -13,7 +13,7 @@ import { useI18n } from "@/components/i18n/i18n-provider";
 import { workspaceContent } from "@/lib/i18n/workspace-content";
 
 export function AdminSectionPage({ sectionId, data, query }: { sectionId: string; data: AdminSectionView; query: AdminListQuery }) {
-  const { locale } = useI18n(); const copy = workspaceContent[locale].admin.section;
+  const { locale, t } = useI18n(); const copy = workspaceContent[locale].admin.section;
   const section = getAdminSection(sectionId);
   if (!section) return <AdminMissingState />;
   const Icon = section.icon;
@@ -37,7 +37,7 @@ export function AdminSectionPage({ sectionId, data, query }: { sectionId: string
         <form className={styles.adminToolbar} aria-label={copy.searchFilters}>
           <label><Search aria-hidden="true" /><span className="sr-only">{copy.search}</span><input name="search" defaultValue={query.search} placeholder={copy.search} /></label>
           <select name="role" defaultValue={query.role ?? ""} aria-label={copy.roleFilter}><option value="">{copy.allRoles}</option><option value="PLAYER">{copy.player}</option><option value="PARTNER">{copy.partner}</option></select>
-          <select name="market" defaultValue={query.market ?? ""} aria-label={copy.marketFilter}><option value="">{copy.allMarkets}</option><option value="TR">{copy.turkey}</option><option value="AZ">{copy.azerbaijan}</option></select>
+          <select name="market" defaultValue={query.market ?? ""} aria-label={copy.marketFilter}><option value="">{copy.allMarkets}</option><option value="TR">{copy.turkey}</option><option value="AZ">{copy.azerbaijan}</option><option value="IR">{t("onboarding.iran")}</option></select>
           <button type="submit"><Filter aria-hidden="true" /> {copy.apply}</button>
           <button type="button" disabled><Bookmark aria-hidden="true" /> {copy.savedViews}</button>
         </form>

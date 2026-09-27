@@ -27,6 +27,11 @@ try {
         update: { name: "Азербайджан", defaultLanguage: "AZ", isActive: true },
         create: { code: "AZ", name: "Азербайджан", defaultLanguage: "AZ", isActive: true },
       }),
+      await transaction.market.upsert({
+        where: { code: "IR" },
+        update: { name: "Иран", defaultLanguage: "FA", isActive: true },
+        create: { code: "IR", name: "Иран", defaultLanguage: "FA", isActive: true },
+      }),
     ];
 
     for (const definition of [
