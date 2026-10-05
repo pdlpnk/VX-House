@@ -1,5 +1,11 @@
 import type { SupportConversationView } from "@/lib/support";
 import type { AdminTagAssignmentView, AdminTagView } from "@/lib/admin-tags";
+import type { MarketCode } from "@/lib/domain/entities";
+
+export const MESSENGER_GEOS = [{ code: "TR", label: "TR" }, { code: "AZ", label: "AZ" }, { code: "IR", label: "IRN" }] as const;
+export function isMessengerGeo(value: unknown): value is MarketCode {
+  return MESSENGER_GEOS.some(({ code }) => code === value);
+}
 
 export const ADMIN_MESSENGER_ROLES = ["PLAYER", "PARTNER"] as const;
 export type AdminMessengerRole = (typeof ADMIN_MESSENGER_ROLES)[number];
@@ -17,6 +23,7 @@ export type AdminMessengerPlayer = {
   email: string;
   avatarEmoji: string | null;
   market: string;
+  marketCode: MarketCode;
   role: AdminMessengerRole;
   registeredAt: string;
   online: boolean;

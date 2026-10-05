@@ -2,7 +2,8 @@ import "server-only";
 
 import { randomUUID } from "node:crypto";
 
-import { ADMIN_MESSENGER_ROLES, isAdminMessengerRole, type AdminMessengerDetail, type AdminMessengerList, type AdminMessengerNote, type AdminMessengerScope } from "@/lib/admin-messenger";
+import { ADMIN_MESSENGER_ROLES, isAdminMessengerRole, isMessengerGeo, type AdminMessengerDetail, type AdminMessengerList, type AdminMessengerNote, type AdminMessengerScope } from "@/lib/admin-messenger";
+import type { MarketCode } from "@/lib/domain/entities";
 import type { AuthenticatedPrincipal } from "@/lib/auth";
 import { ApplicationError, createTransactionalEventServices, PrismaTransactionRunner } from "@/lib/application";
 import type { AesGcmDataProtector, EncryptedPayload } from "@/lib/data-protection";
@@ -49,8 +50,9 @@ export class AdminMessengerService {
     this.transactions = new PrismaTransactionRunner(database);
   }
 
-  async list(actor: AuthenticatedPrincipal, search = "", scope: AdminMessengerScope = "active", tagId?: string): Promise<AdminMessengerList> {
+  async list(actor: AuthenticatedPrincipal, search = "", scope: AdminMessengerScope = "active", tagId?: string, geo?: MarketCode): Promise<AdminMessengerList> {
     requireAdmin(actor);
+    if (geo !== undefined && !isMessengerGeo(geo)) throw new ApplicationError("VALIDATION", "Invalid GEO");
     const query = search.trim();
     const vxId = normalizeVxIdSearch(query);
     const searchFilters: Prisma.UserProfileWhereInput[] = query ? [
@@ -63,6 +65,7 @@ export class AdminMessengerService {
       where: {
         productRole: { in: [...ADMIN_MESSENGER_ROLES] },
         contactVerificationStatus: "VERIFIED",
+        ...(geo ? { market: { code: geo } } : {}),
         user: { disabledAt: null },
         ...(tagId ? { user: { disabledAt: null, adminTagAssignments: { some: { tagId } } } } : {}),
         ...(query ? { OR: searchFilters } : {}),
@@ -113,6 +116,7 @@ export class AdminMessengerService {
         email: profile.user.email,
         avatarEmoji: profile.user.avatarEmoji,
         market: profile.market.name,
+        marketCode: profile.market.code,
         role: profile.productRole,
         registeredAt: profile.user.createdAt.toISOString(),
         online: Boolean(profile.user.updatedAt && Date.now() - profile.user.updatedAt.getTime() < 15 * 60_000),
@@ -153,6 +157,22 @@ export class AdminMessengerService {
       conversation: await this.conversationView(record),
       notes: await this.noteViews(record.internalNotes),
     };
+  }
+
+  async changeGeo(actor: AuthenticatedPrincipal, conversationId: string, geo: unknown) {
+    requireAdmin(actor);
+    if (!isMessengerGeo(geo)) throw new ApplicationError("VALIDATION", "Invalid GEO");
+    await this.transactions.run(async ({ database, occurredAt }) => {
+      const conversation = await database.supportConversation.findUnique({ where: { id: conversationId }, include: { user: { include: { profile: { include: { market: true } } } } } });
+      const profile = conversation?.user.profile;
+      if (!profile || !isAdminMessengerRole(profile.productRole) || profile.contactVerificationStatus !== "VERIFIED") throw new ApplicationError("NOT_FOUND", "Member not found");
+      const market = await database.market.findUnique({ where: { code: geo } });
+      if (!market?.isActive) throw new ApplicationError("VALIDATION", "GEO unavailable");
+      if (profile.marketId === market.id) return;
+      await database.userProfile.update({ where: { id: profile.id }, data: { marketId: market.id, updatedAt: profile.updatedAt } });
+      await createTransactionalEventServices(database, occurredAt).audit.record({ actor: { type: "user", id: actor.userId, sessionId: actor.sessionId }, action: "admin.messenger.geo.changed", target: { type: "user", id: profile.userId }, metadata: { from: profile.market.code, to: geo } });
+    });
+    return this.detail(actor, conversationId);
   }
 
   async markRead(actor: AuthenticatedPrincipal, conversationId: string) {

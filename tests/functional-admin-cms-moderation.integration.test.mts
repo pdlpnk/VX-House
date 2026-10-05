@@ -121,6 +121,45 @@ test("Admin Messenger синхронизирует постоянный диал
   assert.equal(await database.supportInternalNote.count({ where: { conversationId } }), 3);
 });
 
+test("Messenger GEO combines scope, tags and search and preserves identity/history", async () => {
+  const az = await database.market.create({ data: { code: "AZ", name: "Azerbaijan", defaultLanguage: "AZ", isActive: true } });
+  const ir = await database.market.create({ data: { code: "IR", name: "Iran", defaultLanguage: "FA", isActive: true } });
+  await database.userProfile.update({ where: { userId: partnerId }, data: { marketId: az.id } });
+  const iranId = await createProductUser("iran@test.invalid", "PLAYER");
+  await database.userProfile.update({ where: { userId: iranId }, data: { marketId: ir.id } });
+  const archive = await messenger.list(admin, "", "archive");
+  const conversationId = archive.items.find((item) => item.userId === playerId)!.conversationId;
+  await database.supportMessage.create({ data: { conversationId, authorType: "USER", authorId: playerId, bodyProtected: await encrypted("Hello", "support-message", conversationId) } });
+  const tag = await tags.create(admin, { name: "HOT" });
+  await tags.assign(admin, playerId, tag.id);
+  await tags.assign(admin, iranId, tag.id);
+  assert.deepEqual((await messenger.list(admin, "", "active", tag.id, "TR")).items.map((item) => item.userId), [playerId]);
+  assert.deepEqual((await messenger.list(admin, "", "archive", undefined, "AZ")).items.map((item) => item.userId), [partnerId]);
+  assert.deepEqual((await messenger.list(admin, "iran@test.invalid", "archive", tag.id, "IR")).items.map((item) => item.userId), [iranId]);
+  assert.equal((await messenger.list(admin, "iran@test.invalid", "archive", tag.id, "TR")).items.length, 0);
+  const beforeUser = await database.user.findUniqueOrThrow({ where: { id: playerId } });
+  const beforeProfile = await database.userProfile.findUniqueOrThrow({ where: { userId: playerId } });
+  const beforeConversation = await database.supportConversation.findUniqueOrThrow({ where: { id: conversationId }, include: { messages: true, internalNotes: true } });
+  const before = await messenger.detail(admin, conversationId);
+  const changed = await messenger.changeGeo(admin, conversationId, "IR");
+  assert.equal(changed.player.marketCode, "IR");
+  assert.equal(changed.player.vxId, before.player.vxId);
+  assert.equal(changed.player.avatarEmoji, before.player.avatarEmoji);
+  assert.deepEqual(changed.player.tags, before.player.tags);
+  assert.deepEqual(await database.user.findUniqueOrThrow({ where: { id: playerId } }), beforeUser);
+  const afterProfile = await database.userProfile.findUniqueOrThrow({ where: { userId: playerId } });
+  assert.deepEqual({ ...afterProfile, marketId: beforeProfile.marketId }, beforeProfile);
+  assert.deepEqual(await database.supportConversation.findUniqueOrThrow({ where: { id: conversationId }, include: { messages: true, internalNotes: true } }), beforeConversation);
+  assert.equal((await messenger.list(admin, "", "active", tag.id, "TR")).items.length, 0);
+  const moved = await messenger.list(admin, beforeUser.vxId, "active", tag.id, "IR");
+  assert.equal(moved.items[0]?.userId, playerId);
+  assert.equal(moved.items[0]?.unreadCount, 1);
+  for (const invalid of ["IRN", "US", null]) await assert.rejects(messenger.changeGeo(admin, conversationId, invalid), (error: unknown) => error instanceof ApplicationError && error.code === "VALIDATION");
+  await assert.rejects(messenger.changeGeo({ ...admin, roleKeys: ["player"], permissionKeys: [] }, conversationId, "AZ"), (error: unknown) => error instanceof ApplicationError && error.code === "FORBIDDEN");
+  await messenger.changeGeo(admin, conversationId, "TR");
+  assert.equal((await messenger.list(admin, "", "active", tag.id, "TR")).items[0]?.userId, playerId);
+});
+
 test("Admin Messenger сохраняет и возвращает защищённое вложение", async () => {
   const conversationId = (await messenger.list(admin, "", "archive")).items.find((item) => item.userId === playerId)!.conversationId;
   const detail = await messenger.sendMessage(admin, conversationId, "Документ для игрока");

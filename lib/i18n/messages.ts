@@ -98,6 +98,8 @@ const en = {
   "onboarding.turkey": "Türkiye",
   "onboarding.azerbaijan": "Azerbaijan",
   "onboarding.iran": "Iran",
+  "adminMessenger.geoUpdated": "GEO updated",
+  "adminMessenger.geoError": "Could not update GEO. Please try again.",
   "onboarding.continueRegistration": "Continue to registration",
   "messenger.manager": "VX House manager",
   "messenger.online": "Online",
@@ -226,6 +228,8 @@ const ru: Dictionary = {
   "verification.eyebrow": "Подтверждение контакта", "verification.title": "Введите код из письма", "verification.description": "Мы отправили шестизначный код на адрес {email}.", "verification.code": "Код подтверждения", "verification.devCode": "Код среды разработки:", "verification.pending": "Проверяем…", "verification.submit": "Подтвердить", "verification.resend": "Отправить новый код", "verification.resendIn": "Новый код через 0:{seconds}", "verification.otherEmail": "Начать с другого адреса",
   "progress.step": "Шаг {current} из {total}", "progress.role": "Страна", "progress.profile": "Профиль", "progress.email": "Подтверждение почты", "progress.tasks": "Задания", "progress.progress": "Прогресс", "progress.manager": "Менеджер", "progress.consents": "Подтверждения", "progress.done": "Готово",
   "onboarding.iran": "Иран",
+  "adminMessenger.geoUpdated": "GEO обновлено",
+  "adminMessenger.geoError": "Не удалось изменить GEO. Повторите попытку.",
 };
 
 const tr: Dictionary = {
@@ -262,6 +266,8 @@ const tr: Dictionary = {
   "verification.eyebrow": "İletişim doğrulaması", "verification.title": "E-postadaki kodu girin", "verification.description": "Altı haneli kodu {email} adresine gönderdik.", "verification.code": "Doğrulama kodu", "verification.devCode": "Geliştirme kodu:", "verification.pending": "Kontrol ediliyor…", "verification.submit": "Doğrula", "verification.resend": "Yeni kod gönder", "verification.resendIn": "Yeni kod 0:{seconds} sonra", "verification.otherEmail": "Başka bir e-posta kullan",
   "progress.step": "{total} adımın {current}. adımı", "progress.role": "Ülke", "progress.profile": "Profil", "progress.email": "E-posta doğrulama", "progress.tasks": "Görevler", "progress.progress": "İlerleme", "progress.manager": "Yönetici", "progress.consents": "Onaylar", "progress.done": "Tamamlandı",
   "onboarding.iran": "İran",
+  "adminMessenger.geoUpdated": "GEO güncellendi",
+  "adminMessenger.geoError": "GEO güncellenemedi. Lütfen tekrar deneyin.",
 };
 
 const az: Dictionary = {
@@ -298,6 +304,8 @@ const az: Dictionary = {
   "verification.eyebrow": "Əlaqənin təsdiqi", "verification.title": "Məktubdakı kodu daxil edin", "verification.description": "Altı rəqəmli kodu {email} ünvanına göndərdik.", "verification.code": "Təsdiq kodu", "verification.devCode": "İnkişaf mühiti kodu:", "verification.pending": "Yoxlanılır…", "verification.submit": "Təsdiq et", "verification.resend": "Yeni kod göndər", "verification.resendIn": "Yeni kod 0:{seconds} sonra", "verification.otherEmail": "Başqa e-poçtdan istifadə et",
   "progress.step": "{total} addımdan {current}-ci", "progress.role": "Ölkə", "progress.profile": "Profil", "progress.email": "E-poçtun təsdiqi", "progress.tasks": "Tapşırıqlar", "progress.progress": "İrəliləyiş", "progress.manager": "Menecer", "progress.consents": "Təsdiqlər", "progress.done": "Hazırdır",
   "onboarding.iran": "İran",
+  "adminMessenger.geoUpdated": "GEO yeniləndi",
+  "adminMessenger.geoError": "GEO dəyişdirilmədi. Yenidən cəhd edin.",
 };
 
 const fa: Dictionary = {
@@ -339,6 +347,8 @@ const fa: Dictionary = {
   "status.available": "در دسترس", "status.unavailable": "در دسترس نیست", "status.pendingReview": "در انتظار بررسی", "status.noData": "داده‌ای نیست", "reward.statusExpected": "مورد انتظار", "reward.statusAwaiting": "در انتظار تأیید", "reward.statusConfirmed": "تأییدشده", "reward.statusPreparing": "در حال آماده‌سازی", "reward.statusAvailable": "در دسترس", "reward.statusProvided": "ارائه‌شده", "reward.statusRejected": "ردشده", "reward.statusCancelled": "لغوشده", "reward.statusExpired": "منقضی‌شده", "workspace.pointsTooltip": "امتیازهای جایزه VX شما برای باز کردن مزایا استفاده می‌شوند.", "workspace.currentLevel": "سطح فعلی", "workspace.toLevel": "تا {level}", "workspace.criteriaCompleted": "معیارهای تکمیل‌شده: {completed} از {total}", "workspace.pointsRemaining": "{points} امتیاز VX تا سطح بعد", "workspace.rankDetails": "درباره سطح‌ها",
   "progress.step": "مرحله {current} از {total}", "progress.role": "کشور", "progress.profile": "پروفایل", "progress.email": "تأیید ایمیل", "progress.tasks": "فضای شخصی", "progress.progress": "راه‌اندازی", "progress.manager": "مدیر", "progress.consents": "تأییدها", "progress.done": "انجام شد",
   "onboarding.iran": "ایران",
+  "adminMessenger.geoUpdated": "GEO به‌روز شد",
+  "adminMessenger.geoError": "به‌روزرسانی GEO ممکن نشد. دوباره تلاش کنید.",
   "error.temporary": "خطای موقت", "error.dashboardTitle": "بارگذاری داشبورد ممکن نشد", "error.dashboardText": "حساب و داده‌های شما امن است. صفحه را دوباره بارگذاری کنید.", "error.retry": "تلاش دوباره",
 };
 

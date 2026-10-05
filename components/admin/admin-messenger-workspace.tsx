@@ -12,6 +12,8 @@ import { VxIdCopy } from "@/components/ui/vx-id-copy";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import type { AdminTagAssignmentView, AdminTagView } from "@/lib/admin-tags";
 import type { AdminMessengerDetail, AdminMessengerList, AdminMessengerNote, AdminMessengerPlayer, AdminMessengerScope } from "@/lib/admin-messenger";
+import { MESSENGER_GEOS, isMessengerGeo } from "@/lib/admin-messenger";
+import type { MarketCode } from "@/lib/domain/entities";
 import { formatLocalDateTime, formatLocalTime } from "@/lib/i18n";
 import type { SupportMessageView } from "@/lib/support";
 import styles from "./admin-messenger-workspace.module.css";
@@ -231,15 +233,40 @@ export function AdminMessengerWorkspace({ initialList, initialDetail }: { initia
   const [mobileChat, setMobileChat] = useState(false);
   const [scope, setScope] = useState<AdminMessengerScope>("active");
   const [tagId, setTagId] = useState("");
+  const [geo, setGeo] = useState<MarketCode>("TR");
+  const [geoPending, setGeoPending] = useState(false);
+  const [geoFeedback, setGeoFeedback] = useState("");
+  const listRequest = useRef(0);
   const pollingRef = useRef(false);
   const selectedId = detail?.conversation.id;
 
-  const visible = useMemo(() => list.items, [list.items]);
+  const visible = useMemo(() => list.items.filter((item) => item.marketCode === geo), [list.items, geo]);
 
-  const loadList = useCallback(async (query = search, nextScope = scope, nextTag = tagId) => {
-    const response = await fetch(`/api/admin/messenger?q=${encodeURIComponent(query)}&scope=${nextScope}&tag=${encodeURIComponent(nextTag)}`, { cache: "no-store" });
-    if (response.ok) setList(await response.json() as AdminMessengerList);
-  }, [scope, search, tagId]);
+  const loadList = useCallback(async (query = search, nextScope = scope, nextTag = tagId, nextGeo = geo) => {
+    const request = ++listRequest.current;
+    const response = await fetch(`/api/admin/messenger?q=${encodeURIComponent(query)}&scope=${nextScope}&tag=${encodeURIComponent(nextTag)}&geo=${nextGeo}`, { cache: "no-store" });
+    if (response.ok && request === listRequest.current) setList(await response.json() as AdminMessengerList);
+  }, [scope, search, tagId, geo]);
+
+  function selectGeo(next: MarketCode) {
+    setGeo(next); window.localStorage.setItem("vx-house:admin-messenger-geo", next);
+    setDetail(null); setMobileChat(false); setPanelOpen(false); setGeoFeedback("");
+    void loadList(search, scope, tagId, next);
+  }
+
+  async function changeUserGeo(next: string) {
+    if (!detail || !isMessengerGeo(next) || geoPending || next === detail.player.marketCode) return;
+    setGeoPending(true); setGeoFeedback("");
+    try {
+      const response = await fetch(`/api/admin/messenger/${detail.conversation.id}/geo`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ country: next }) });
+      if (!response.ok) throw new Error();
+      const updated = await response.json() as AdminMessengerDetail;
+      setDetail(null); setMobileChat(false); setPanelOpen(false);
+      setList((current) => ({ ...current, items: current.items.filter((item) => item.userId !== updated.player.userId) }));
+      await loadList(); setGeoFeedback(t("adminMessenger.geoUpdated"));
+    } catch { setGeoFeedback(t("adminMessenger.geoError")); }
+    finally { setGeoPending(false); }
+  }
 
   function changeScope(nextScope: AdminMessengerScope) {
     setScope(nextScope);
@@ -263,6 +290,8 @@ export function AdminMessengerWorkspace({ initialList, initialDetail }: { initia
   useEffect(() => {
     const saved = window.localStorage.getItem("vx-house:admin-messenger-tag");
     if (saved) queueMicrotask(() => setTagId(saved));
+    const savedGeo = window.localStorage.getItem("vx-house:admin-messenger-geo");
+    queueMicrotask(() => { if (isMessengerGeo(savedGeo)) setGeo(savedGeo); setDetail(null); });
   }, []);
 
   useEffect(() => {
@@ -315,6 +344,10 @@ export function AdminMessengerWorkspace({ initialList, initialDetail }: { initia
     <section className={styles.workspace} data-mobile-chat={mobileChat || undefined} data-panel-open={panelOpen || undefined}>
       <aside className={styles.chatList}>
         <header><div><small>{t("adminMessenger.channel")}</small><h1 tabIndex={-1}>Messenger</h1></div>{scope === "active" && list.unreadCount ? <b>{list.unreadCount}</b> : null}</header>
+        <div className={`${styles.scopeTabs} ${styles.geoTabs}`} role="tablist" aria-label={t("adminMessenger.market")} dir="ltr">
+          {MESSENGER_GEOS.map(({ code, label }) => <button key={code} type="button" role="tab" aria-selected={geo === code} data-active={geo === code || undefined} disabled={geoPending} onClick={() => selectGeo(code)}>{label}</button>)}
+        </div>
+        {geoFeedback ? <p className={styles.geoFeedback} role="status">{geoFeedback}</p> : null}
         <div className={styles.scopeTabs} role="tablist" aria-label={t("adminMessenger.listMode")}>
           <button type="button" role="tab" aria-selected={scope === "active"} data-active={scope === "active" || undefined} onClick={() => changeScope("active")}>{t("adminMessenger.active")}</button>
           <button type="button" role="tab" aria-selected={scope === "archive"} data-active={scope === "archive" || undefined} onClick={() => changeScope("archive")}>{t("adminMessenger.archive")}</button>
@@ -330,6 +363,7 @@ export function AdminMessengerWorkspace({ initialList, initialDetail }: { initia
             <button type="button" className={styles.mobileBack} onClick={() => setMobileChat(false)} aria-label={t("adminMessenger.back")}><ArrowLeft aria-hidden="true" /></button>
             <UserAvatar className={styles.avatar} name={detail.player.name} avatarEmoji={detail.player.avatarEmoji} status={detail.player.online ? "online" : "offline"} ariaLabel={`${detail.player.name}: ${detail.player.online ? t("adminMessenger.online") : t("adminMessenger.offline")}`} />
             <div className={styles.conversationIdentity}><strong>{detail.player.name}</strong><small>{detail.player.vxId} · {detail.player.online ? t("adminMessenger.online") : t("adminMessenger.offline")}</small><TagChips tags={detail.player.tags} /></div>
+            <label className={styles.geoControl}><span>GEO</span><select dir="ltr" aria-label={t("adminMessenger.market")} value={detail.player.marketCode} disabled={geoPending} onChange={(event) => void changeUserGeo(event.target.value)}>{MESSENGER_GEOS.map(({ code, label }) => <option key={code} value={code}>{label}</option>)}</select></label>
             <AdminTagManager userId={detail.player.userId} assigned={detail.player.tags} tags={list.tags} onAssignedChange={updateAssigned} onTagsChange={updateAvailableTags} />
             <button type="button" className={styles.infoButton} data-active={panelOpen || undefined} onClick={() => setPanelOpen((open) => !open)} aria-label={panelOpen ? t("adminMessenger.infoClose") : t("adminMessenger.infoOpen")} aria-expanded={panelOpen}><Info aria-hidden="true" /></button>
           </header>
